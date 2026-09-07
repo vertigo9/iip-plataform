@@ -1,0 +1,12 @@
+from pathlib import Path
+
+
+def test_campaign_files_present():
+    required = [
+        Path("pyproject.toml"),
+        Path("tests/test_coverage_core_export.py"),
+        Path("tests/test_coverage_registry_events_versioning.py"),
+        Path("tests/test_coverage_knowledge_health.py"),
+        Path("tests/test_coverage_harvest_helpers.py"),
+    ]
+    assert all(path.exists() for path in required)

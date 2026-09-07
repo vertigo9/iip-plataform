@@ -1,0 +1,240 @@
+﻿                if not any(
+                    x["url"] == item["url"] and x.get("post_data") == item.get("post_data")
+                    for x in api_templates
+                ):
+                    api_templates.append(item)
+                    print(
+                        f"[API] REQUEST capturado: {request.method} {u} "
+                        f"body={'sim' if request.post_data else 'nÃ£o'}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(
+                    f"[DIAGNÃ“STICO] falha ao capturar REQUEST API: "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+
+        def _capture_api_response(response):
+            """Captura o molde a partir da RESPOSTA, que Ã© mais confiÃ¡vel aqui.
+
+            O diagnÃ³stico externo jÃ¡ mostrou que o site faz POST em
+            /filter/categories/year/meta. Em alguns ambientes, o listener de
+            request nÃ£o entrega o POST da mesma forma; a resposta, porÃ©m,
+            mantÃ©m a Request associada e permite recuperar mÃ©todo/body/headers.
+            """
+            try:
+                u = response.url
+                # Captura tambÃ©m o JSON de documentos que o site jÃ¡ entrega no
+                # carregamento inicial. Esse Ã© o caminho principal do V12.
+                meta = _capture_document_meta_payload(response, ticker)
+                if meta:
+                    existing_keys = {
+                        str(x.get("id") or x.get("file_url") or x.get("permalink") or "")
+                        for x in initial_document_metas
+                        if isinstance(x, dict)
+                    }
+                    added = []
+                    for x in meta:
+                        key = str(x.get("id") or x.get("file_url") or x.get("permalink") or "")
+                        if key and key in existing_keys:
+                            continue
+                        initial_document_metas.append(x)
+                        if key:
+                            existing_keys.add(key)
+                        added.append(x)
+                    print(
+                        f"[API] document_metas capturados diretamente da resposta: "
+                        f"+{len(added)} (total={len(initial_document_metas)})",
+                        flush=True,
+                    )
+                    return
+                if "/filter/categories/year/meta" not in u.lower():
+                    return
+                req = response.request
+                item = {
+                    "url": u,
+                    "method": req.method,
+                    "post_data": req.post_data,
+                    "headers": req.headers,
+                }
+                if not any(
+                    x["url"] == item["url"] and x.get("post_data") == item.get("post_data")
+                    for x in api_templates
+                ):
+                    api_templates.append(item)
+                    print(
+                        f"[API] molde capturado via response: {req.method} {u} "
+                        f"body={'sim' if req.post_data else 'nÃ£o'}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(f"[DIAGNÃ“STICO] falha ao capturar molde API: {type(exc).__name__}: {exc}", flush=True)
+
+        page.on("request", _capture_api_request)
+        page.on("response", _capture_api_response)
+
+        try:
+            url = base_url.format(ticker=ticker.lower())
+            print(f"Abrindo: {url}")
+            page.goto(url, wait_until="domcontentloaded", timeout=120_000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=15_000)
+            except Exception:
+                pass
+
+            page.wait_for_timeout(2500)
+            print(f"[API] moldes year/meta capturados: {len(api_templates)}", flush=True)
+            print(f"[API] document_metas iniciais capturados: {len(initial_document_metas)}", flush=True)
+            if not api_templates and not initial_document_metas:
+                print(
+                    "[API] AVISO: nenhum POST /filter/categories/year/meta foi capturado "
+                    "no carregamento inicial; a coleta tentarÃ¡ DOM/fallback sem quebrar.",
+                    flush=True,
+                )
+
+            for year in years:
+                print(f"Ano {year}: selecionando...", flush=True)
+
+                # A Central atual fornece document_meta por API mesmo quando
+                # nÃ£o existe <select> de ano no DOM. Tentar isso primeiro.
+                # Caminho principal: a prÃ³pria pÃ¡gina jÃ¡ devolveu document_metas
+                # no carregamento inicial. Filtramos por file_year sem depender
+                # do seletor de ano ou de reconstruÃ§Ã£o do POST.
+                docs = _documents_from_mziq_meta(initial_document_metas, ticker, year)
+                if docs:
+                    print(
+                        f"[API] ano={year}: {len(docs)} documentos obtidos do "
+                        f"document_metas capturado no carregamento inicial.",
+                        flush=True,
+                    )
+                else:
+                    docs = _api_documents_for_year(page, ticker, year, api_templates)
+
+                if not docs:
+                    if not _select_year(page, year):
+                        print(f"Ano {year}: nÃ£o disponÃ­vel via API/DOM; pulando.", flush=True)
+                    if headed:
+                        print("  [DIAGNÃ“STICO] navegador visÃ­vel por 3s antes do fallback DOM.", flush=True)
+                        page.wait_for_timeout(3000)
+                    docs = _collect_links(page, ticker, year)
+
+                if headed and docs:
+                    print("  [DIAGNÃ“STICO] documentos obtidos; navegador visÃ­vel por 3s antes dos downloads.", flush=True)
+                    page.wait_for_timeout(3000)
+                print(f"Ano {year}: {len(docs)} links de documentos encontrados.", flush=True)
+                print(f"  Iniciando coleta de {len(docs)} documentos...", flush=True)
+                year_dir = output_dir / ticker / str(year)
+                year_dir.mkdir(parents=True, exist_ok=True)
+
+                for index, doc in enumerate(docs, start=1):
+                    filename = _safe_name(doc.title) or Path(doc.url.split("?", 1)[0]).name or f"documento_{index}"
+                    target = year_dir / filename
+                    saved = False
+                    try:
+                        with _ProgressPulse(f"  [{index}/{len(docs)}] baixando {filename[:55]}"):
+                            response = page.context.request.get(doc.url, timeout=30_000, fail_on_status_code=False)
+                        if response.ok:
+                            content_type = (response.headers.get("content-type") or "").lower()
+                            body = response.body()
+                            # PATCH V8: resolve a extensÃ£o real via headers (Content-Disposition
+                            # / Content-Type) â€” nÃ£o depende de a URL ter extensÃ£o (ex.: MZIQ/UUID).
+                            real_ext = _resolve_real_extension(response.headers, doc.url)
+                            known_type = bool(real_ext) or any(token in content_type for token in (
+                                "application/pdf", "application/octet-stream", "application/vnd",
+                                "text/csv", "application/xml", "text/xml", "application/zip",
+                                "application/msword",
+                            ))
+                            known_ext = any(ext in doc.url.lower() for ext in (
+                                ".pdf", ".xlsx", ".xls", ".csv", ".xml", ".doc", ".docx", ".zip"
+                            ))
+                            if body and (known_type or known_ext):
+                                if real_ext and target.suffix.lower() != real_ext:
+                                    target = target.with_name(target.name + real_ext)
+                                elif not target.suffix and known_ext:
+                                    url_ext = next(
+                                        (ext for ext in (
+                                            ".pdf", ".xlsx", ".xls", ".csv", ".xml",
+                                            ".doc", ".docx", ".zip",
+                                        ) if ext in doc.url.lower()),
+                                        "",
+                                    )
+                                    if url_ext:
+                                        target = target.with_name(target.name + url_ext)
+                                target.write_bytes(body)
+                                saved = True
+                    except Exception:
+                        pass
+
+                    if not saved:
+                        # Fallback for endpoints that require a browser click.
+                        try:
+                            links_now = page.locator("a[href]")
+                            for j in range(links_now.count()):
+                                link = links_now.nth(j)
+                                href = link.get_attribute("href")
+                                if href and urljoin(page.url, href) == doc.url:
+                                    with _ProgressPulse(f"  [{index}/{len(docs)}] aguardando download {filename[:45]}"):
+                                        with page.expect_download(timeout=8_000) as info:
+                                            link.click(timeout=8_000)
+                                    download = info.value
+                                    target = year_dir / _safe_name(download.suggested_filename or doc.title)
+                                    download.save_as(str(target))
+                                    saved = True
+                                    break
+                        except Exception:
+                            pass
+
+                    if saved and target.exists() and target.stat().st_size > 0:
+                        results.append(Document(**{**asdict(doc), "sha256": _hash_file(target)}))
+                        print(f"  [{index}/{len(docs)}] OK: {target.name}", flush=True)
+                    else:
+                        results.append(doc)
+                        print(f"  [{index}/{len(docs)}] URL registrada: {doc.url}", flush=True)
+        finally:
+            browser.close()
+
+    manifest = output_dir / ticker / "manifest.csv"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    with manifest.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["ticker", "year", "category", "title", "url", "sha256"],
+        )
+        writer.writeheader()
+        writer.writerows(asdict(x) for x in results)
+    return results
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Coleta documentos da Central Patria.")
+    parser.add_argument("--ticker", required=True)
+    parser.add_argument("--years", required=True, help="Ex.: 2026 ou 2019-2026")
+    parser.add_argument("--output", default="data/patria")
+    parser.add_argument("--headed", action="store_true", help="Abre o Chromium visivelmente.")
+    return parser
+
+
+def _parse_years(value: str) -> range:
+    if "-" in value:
+        start, end = value.split("-", 1)
+        return range(int(start), int(end) + 1)
+    year = int(value)
+    return range(year, year + 1)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    docs = harvest(
+        ticker=args.ticker,
+        years=_parse_years(args.years),
+        output_dir=Path(args.output),
+        headed=args.headed,
+    )
+    downloaded = sum(1 for doc in docs if doc.sha256)
+    print(f"Documentos registrados: {len(docs)}")
+    print(f"Downloads concluÃ­dos: {downloaded}")
+    print(f"Manifesto: {Path(args.output) / args.ticker.upper() / 'manifest.csv'}")
+    return 0
+
+

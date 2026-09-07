@@ -1,0 +1,1038 @@
+PTMSYNC
+Senha adm: AbrakadabraPtm#2016#
+IP 35.199.112.18
+porta 443
+pasta teste PortalTM_clinica_teste
+usuario: nome pasta drop
+Senha: PtmFsGC20!8
+
+celso.frazao@angloamerican.com 
+--> homologação
+
+ftQjH9@E#2b
+saojoao_ubas
+
+
+Implantação Finalizada
+
+Responsável pela Implantação:
+Nome pasta:
+Sistemas instalados:
+Especialidades/equipamentos instalados:
+Método de envio:
+Treinamento feito com:
+Treinamento de realização:
+Dados adicionais:
+____
+
+Exemplo de implantação pendente:
+
+
+Implantação Pendente
+
+Responsável pela Implantação: Nome
+Nome pasta: clinica_exemplo
+Sistemas instalados: pendente
+Especialidades/equipamentos instalados: pendente
+Método de envio:
+Treinamento feito com: 
+Treinamento de realização: pendente
+Dados adicionais:
+rochdale_amaoratorio
+
+O que mudou nesta versão:
+1. Envio de exames de ECG normal e ECG Risco Cirúrgico no mesmo PC
+2. Inclusão de pastas "enviados" e "erros" os exames enviados serão colocados automaticamente na pasta enviados e exames com erro na pasta erros
+3. Tempo de envio mínimo 1 minuto
+
+
+rochdale_vilaclara
+campomaior_centroesp
+cocal_argeu --> nova versao ptmsync_gc instalada em fase de testes
+caninde_ums --> nova versao ptmsync_gc instalada em fase de testes
+campomaior_centroesp --> nova versao ptmsync_gc instalada em fase de testes
+luzilandia_novotempo --> nova versao ptmsync_gc instalada em fase de testes
+
+C:\PortalTM\ptmsyncplus
+C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup
+
+Piaui: https://laudos.piauisaudedigital.com.br/
+
+Amazonas: https://laudos.saudeamdigital.am.gov.br/
+
+Alagoas: laudos.Qualquer problema só avisar
+
+LINK CONFIGURAÇÃO LOAD BALANCE PCC NO MIKROTIK
+--> https://www.youtube.com/watch?v=gfBFam88Uow&t=539s
+
+CONIGURAÇÃO FAILOVER
+https://www.youtube.com/watch?v=PV1M0DzKvnw&t=1300s
+
+SAÚDE ATÉ VOCÊ (ALAGOAS)
+
+Implantação finalizada: Adraino Dias (a.dias@portaltelemedicina.com.br) -  psico_geraldo
+• Instalação ptmsync + plus em um PC
+• Envio de EEG em
+ • Envio de EEG com mapeamento em formato original Neuron- Spectrum
+• Treinamento feito com Geraldo Ferreira Teixeira
+
+Informações adicionais:
+
+
+ECG RISCO CIRURGICO:
+Você precisa inserir os arquivos dos pacientes unificados em um único PDF.
+Os arquivos a serem unificados são:
+1. O ECG e o Laudo.
+2. O questionário abaixo respondido e assinado pelo médico.
+3. O exame laboratorial assinado pelo médico. Este não é específico, seria o que o paciente realizou.
+Por fim, o arquivo que você unificou deve ser salvo na pasta e nomeado como: NOME COMPLETO DO PACIENTE - RISCO CIRÚRGICO
+
+
+1855216388
+campomaior_centroesp
+_(13-08-2025_09h41m)ana_paula_-_ecg_risco_cirurgico
+_(13-08-2025_09h42m)maria_reijane_torres_ecg_risco_cirurgico
+_(13-08-2025_09h43m)marilene_andra_de_da_silva_-_ecg_risco_cirurgico
+
+Bruna Lopes Silva De Souza
+Login: bruna.annery
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+brunalopesppja@gmail.com
+CLINICA MAIS SAÚDEnuziele.cmsaude
+recep.maissaude@gmail.com
+CLINICA MAIS SAÚDE
+
+Damiana Oliveira Dias
+Login: damiana.dias
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+damyolivieiradias@gmail.com
+PIAUÍ Ribeira do Piauí PS Salinas
+
+fisio.labsono@gmail.com
+CLIESF CLINICA MEDICA E FISIOTERAPIA LTDA
+
+
+ROSANGELA MIRANDA VALCASSE
+Login: rosangela.hrfb
+Senha provisória: Mudar123
+Acesso: https://laudos.saudeamdigital.am.gov.br/
+rosangelavalcasse100@gmail.com
+AM Fonte Boa Hospital Regional de Fonte Boa
+
+Maria Edneuza Cameta
+Login: maria.hrfb
+Senha provisória: Mudar123
+Acesso: https://laudos.saudeamdigital.am.gov.br/
+salomaoednelza@gmail.com
+AM Fonte Boa Hospital Regional de Fonte Boa
+
+Roberto Pedrozo Figueroa
+
+
+Gabriele Gonçalves Gomes
+Login: gabriele.grion
+Senha provisória: Mudar123
+Acesso:
+goncalvesgabriele170@gmail.com
+Clinica Grion Unidade Arapongas
+
+Gabriele Gonçalves Gomes
+Login: gabriele.grion
+Senha provisória: Mudar123
+Acesso: app.portalteleemdicina.com.br
+goncalvesgabriele170@gmail.com
+Clinica Grion Unidade Arapongas
+
+Josiane Aparecida dos Santos
+Login: josiane.grion
+Senha provisória: Grion123
+Acesso: app.portalteleemdicina.com.br
+clinicagrion@yahoo.com
+Clinica Grion Unidade Arapongas
+
+F - J. C. A. SANTOS JUNIOR & CIA LTDA - ARAPONGAS MATRIZ
+e37af27e-99ec-4907-814c-5f1c2438cab2
+9h59
+Senha: holter12345
+
+
+Biovale Valença
+Login: biovale.valenca
+Senha provisória:Mudar123
+Acesso: app.portaltelemedicna.com.br
+janyner@hotmail.com
+BIOVALE Unidade Valença
+
+Janyne Evellin dos Santos Rosa
+Login: janyne.biovale
+Senha provisória:Mudar123
+Acesso: app.portaltelemedicna.com.br
+janyner@hotmail.com
+BIOVALE Unidade Valença
+
+
+Gean Carlos Nunes dos Santos Araújo
+Login: gean.dellmed
+Senha provisória:Mudar123
+Acesso: app.portaltelemedicna.com.br
+E-mail: geanc0745@gmail.com
+DELLMED
+
+Pollyanne Pires do Nascimento
+Login: pollyane.pires
+Senha provisória:Mudar123
+Acesso: https://laudos.piauisaudedigital.com.br/
+E-mal: pollynhapires@hotmail.com
+
+
+Vanessa de Assis Santos
+Login: vanessa.biovale
+Senha provisória:Mudar123
+Acesso: app.portaltelemedicna.com.br
+Recuperação de senha: va9103176@gmail.com
+BIOVALE Unidade Apuarema
+
+
+
+César Augusto de Almeida Santos
+Login: cesar.csantosar
+Senha provisória:Mudar123
+Acesso: app.portaltelemedicna.com.br
+cesaralmeidasantos@yahoo.com.br
+CSANTOSAR
+
+Julio Amorim Prestes de Arruda
+Login: julio.jepserv2
+Senha Provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+jepservicos@gmail.com
+EVAN CENTRO MEDICO
+
+
+1) Botão aparece mais não gera nada ou mesmo com a opção desmarcada
+2) Emita seu boleto --> de onde vem o e-mail (CPF e email)
+
+
+Carla Cristina Ferreira de Andrade
+Login:carla.andrade
+Sena provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+dracarlaandrade@yahoo.com
+
+
+Jacqueline Calasans de Queiroz Costa Peres
+jacqueline.peres
+Sena provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+laudos2021cme@gmail.com
+
+
+ISABELLA FERREIRA DA SILVA
+ARNALDO REGONHA
+
+
+
+VITALOGRAPH
+21/08/2025 10:06:10
+IRLANDÊS
+21/08/2025 10:06
+
+
+Djavan Mota Silva
+djavan.isa
+Sena provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+djavan10motasilva@gmail.com
+ISA Instituto de Saúde de Araci
+
+Felipe Guimaraes de Almeida
+Login: felipe.almeida
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+felipefutsalcf@gmail.com
+LAGOS IMAGEM
+
+
+
+1960467
+cesst
+cesst_sacramento
+cesst_itapiranga
+cesst_bahia
+cesst_sjalmeida_mg
+cesst_jacinto
+cesst_farroupilhas
+cesst_pe
+cesst_rosario
+cesst_palma
+cesst_dianopolis
+
+
+A configuração mínima seria:
+
+
+
+
+Nome: Vanderson Dos Anjos Santos
+Login: vanderson.cmo
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+E-mail: vandersonanjos07@gmail.com
+Empresa/Hospital/Clinica: CMO
+
+Nome: Fernando Franco da Silveira
+Login: fernando.franco
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+E-mail: fernando.francosilveira@gmail.com
+Hospiital/Clinica: Nursing
+
+Lenovo V15 G3 IAP Laptop - Type 82UM
+
+
+
+Daniel dos Reis Soares
+Login: daniel.saluten
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+danielreissoares65@gmail.com
+SALUTEN ET FORTUNE
+
+
+Adriane Welter
+Login: adriane.hsl
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+adriane.welter@hospitalsaolucaslrv.com.br
+HOSPITAL SÃO LUCAS
+
+
+Bruno Henrique Barbosa Nascimento
+Login: bruno.lf
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+tecbrunobarbosa@gmail.com
+L.F ASSESSORIA
+
+
+Dados de acesso - portal MV AMERICANA
+Mário Luis Thomé Furoni
+login: mario.mvamaericana
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+mariothfuroni@gmail.com
+MV Americana
+
+Jardeine leite Silva
+Login: jardeine.ultraderma
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+leitejardeine@gmail.com
+CLINICA ULTRADERMA
+
+Alinne Moraes oliveira
+Login: alinne.moraes
+Senha provisória: Mudar123
+Acesso: https://laudos.piauisaudedigital.com.br/
+enfermeiraalinne1613@gmail.com
+PIAUÍ Teresina UBS Dr. Durvalino Couto
+
+Luciana Gomes de Souza Lima
+Login: luciana.gomes
+Senha provisória: Mudar123
+Acesso: https://laudos.piauisaudedigital.com.br/
+lucianagsouaalima@hotmail.com
+PIAUÍ Teresina UBS Dr. Durvalino Couto
+
+Gisele Silva Araújo
+Login: gisele.araujo
+Senha provisória: Mudar123
+Acesso: https://laudos.piauisaudedigital.com.br/
+PIAUÍ Teresina UBS Dr. Durvalino Couto
+
+Hilderlania Gizelda Gomes Leal
+Login: hiderlania.leal
+Senha provisória: Mudar123
+Acesso: https://laudos.piauisaudedigital.com.br/
+hilderlanialeal@hotmail.com
+PIAUÍ Teresina UBS Dr. Durvalino Couto
+
+Hemerson Fernando Balan
+Login: hemerson.hf
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+hfbalan@gmail.com
+HF Servicos Medicos
+
+
+Bruna de Jesus Galdino
+Login: bruna.bem
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+brunajesusgadino@yahoo.com.br
+BEM VIVER SERVICOS DE APOIO A SAUDE LTDA
+
+Fabiana Silva Reis
+Login: fabiana.cesstjussiape
+Senha provisória: Mudar123 (senha deve ser alterada no primeiro acesso)
+Acesso: app.portaltelemedicina.com.br
+contasapagar@cesst.com.br
+CESST JUSSIAPE
+
+Emerson Tiago Carneiro Sousa
+Login: emerson.provida
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+emersontyago23@gmail.com
+LABORATORIO PROVIDA
+
+
+
+
+
+
+Natalia dos Santos Moura
+natalia.agramed
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+clinicaagramed@gmail.com
+Espaço Saúde Agramed
+
+Rogério da Silva Souza
+Login: rogerio.saudefoz
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+saudefozconsultas@gmail.com
+Saúde Foz consultas ltda
+
+
+
+Ramom Henriques Garcia
+Login: ramom.medservice
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+henriquesgarciaramom@gmail.com
+MEDSERVICE SERVIÇOS MEDICOS LTDA
+
+Fabiana Fernandes Sandri LTDA (Empresa Principal)
+Código: 2041072
+ADM-LABORAVITA
+Site: Não informado
+
+
+hge09re149w.sn.mynetname.net
+
+Joseli da Silva Calandrini Sidonio Serruya
+Login: joseli.csi
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+joseliserruya@yahoo.com.br
+CSI - CENTRO DE SAÚDE INTEGRADA
+
+Monica Mouara Lobato
+Login: monica.csi
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+monicamlobato@gmail.com
+CSI - CENTRO DE SAÚDE INTEGRADA
+
+Joyce Yngrid Abdoral Pereira
+Login: joyce.csi
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+joyceabdoral@gmail.com
+CSI - CENTRO DE SAÚDE INTEGRADA
+
+PREVENCAO MEDICINA E SEGURANCA DO TRABALHO LTDA
+Código: 688620
+
+Wallyson Domingos Torquato
+Login: wallyson.prevencao
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+wallyson@prevmedseg.com.br
+PREVENÇÃO
+
+Wallyson Domingos Torquato
+Login: wallyson.prevencaoadm
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+wallyson@prevmedseg.com.br
+PREVENÇÃO
+
+Stefane Dias teixeira
+Login: stefane.ascon
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+stefane.teixeira@asconcipa.com.br
+ASCONCIPA SERVICOS MEDICOS - SANTOS
+
+
+
+
+Outras informações:
+Rayani Jesus de Andrade
+Login: rayani.ascon
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+laboratorio.filial@asconcipa.com.br
+ASCONCIPA SERVICOS MEDICOS - CONSOLAÇÃO
+
+
+Geraldo Ferreira Teixeira
+Login: geraldo.psicologia
+Senha provisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+teixeiratimbola@gmail.com
+Psicológico Geraldo Teixeira
+
+
+Ruth Romão de Souza
+Login: ruth.lfassessoria
+Senha provisória: Mudar123*
+Acesso: https://app.portaltelemedicina.com.br
+ruth.rhomao@gmail.com
+L.F ASSESSORIA
+
+
+Brenda Eduarda Da Silva Lima
+Login: brenda.lfassessoria
+Senha provisória: Mudar123*
+Acesso: https://app.portaltelemedicina.com.br
+brendaeduarda8k@gmail.com
+L.F ASSESSORIA
+
+
+Beatriz Silva Alves
+beatriz.eficacia
+silvaalvesbeatriz1808@gmail.com
+EFICACIA
+
+
+Brenda Eduarda Da Silva Lima
+Login: brenda.prosaude
+Senha provisória: Mudar123*
+Acesso: https://app.portaltelemedicina.com.br
+brendaeduarda8k@gmail.com
+PRO SAUDE DR LUIZ FERNANDO
+
+
+Ruth Romão de Souza
+Login: ruth.prosaude
+Senha provisória: Mudar123*
+Acesso: https://app.portaltelemedicina.com.br
+ruth.rhomao@gmail.com
+PRO SAUDE DR LUIZ FERNANDO
+
+
+Lucia Siqueira dos Santos
+Login: lucia.multiclin
+Senha provisória: Mudar123*
+Acesso: https://app.portaltelemedicina.com.br
+lucia-sony@hotmail.com
+MULTICLIN CLINICA MEDICA E MEDICINA DO TRABALHO
+
+Sidiane Rodrigues Bacelo
+Login:sidiane.infinit
+Senhaprovisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+sidiane.enf@hotmail.com
+INFINIT
+
+
+Ozeias Martins dos Santos
+Login: ozeias.s4
+Senhaprovisória: Mudar123
+Acesso: https://app.portaltelemedicina.com.br
+ozeiasm07@gmail.com
+S4 DIAGNOSTICO LTDA
+
+Paula Cristina Ribeiro
+Login: paula.cardiomed
+Senhaprovisória: Mudar123*
+Acesso: https://app.portaltelemedicina.com.br
+clinicacardiosaude@gmail.com
+CLINICA CARDIOMED SAUDE
+
+MAPA --> Conetc ABPM, GTECH
+ECG --> Contec 8000G --> Ventrix --> Prolife TouchECG
+Holter --> Contec, Cardios, Micromed
+ESPIRO - CONTEC SP80B
+
+
+	
+Alef de Luna Brito Matos
+Login: alef.policlinicajp
+Senha provisório: Mudar123
+alef.matos@saude.ce.gov.br
+Policlínica João Pereira Dos Santos
+
+Elaine de Souza Coelho Santos
+Login: elaine.cliverde
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+elasoucsan@hotmail.com
+Clínica Cliverde
+
+
+Gabriela Sales Nascimento
+Login: gabriela.cliverde
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+gabipri84@gmail.com
+Clínica Cliverde
+
+Aline Pinheiro Santos
+Login: aline.cliverde
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+dilepinheiro85@gmail.com
+Clínica Cliverde
+
+
+Clara Pinto de Ormande
+Login: clara.cliverde
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+claraormande@hotmail.com
+Clínica Cliverde
+
+Giselle da Silva Freitas
+Login: eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+enfgisellefreitas@outlook.com
+ELETROCARDIO LUISBURGO
+
+Naiara Fonseca Silva
+naiara.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+naiarafonseca2016@gmail.com
+ELETROCARDIO POLICLÍNICA LAJINHA
+
+
+José Maria Monteiro Filho
+Login: josem.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+jmonteirofilhob@hotmail.com
+ELETROCARDIO PAM LAJINHA
+
+Carlos Alberto Xavier
+Login: carlos.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+carlosxavier@live.com
+ELETROCARDIO PAM LAJINHA
+
+Samira Silva Pereira
+samira.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+samira.pereira1@gmail.com
+ELETROCARDIO PAM LAJINHA
+
+Diana Lemos Rodrigues
+diana.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+dianalemosrodrigues@hotmail.com
+ELETROCARDIO PAM LAJINHA
+
+Lilian Dias Pereira
+lilian.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+lilian_diaspereira@yahoo.com.br
+ELETROCARDIO PAM LAJINHA
+
+Lívia Rodrigues Nunes Gonçalves da Silva
+livia.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+livinha_rng@yahoo.com.br
+ELETROCARDIO PAM LAJINHA
+
+Kellen Ambrósio
+kellen.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+ksfrei@hotmail.com
+ELETROCARDIO PAM LAJINHA
+
+Ketila Rejane de Paula Enes
+ketila.enes1
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+ketila.enes@fieac.org.br
+SESI - UNIDADE CRUZEIRO DO SUL
+
+
+Andre Luiz Gouveia Bertier
+andre.neoseg
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+andrebertier@neosegmedicina.com.br
+NEOSEG
+
+ISABELLA GERMANO AMORIM
+isabella.neoseg
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+enfermagem@neosegmedicina.com.br
+NEOSEG
+
+Jordana Maciel Campos
+jordana.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+jordanacamposenf@gmail.com
+ELETROCARDIO JAGUARAI
+Treinamentos de Realização uarta-feira · 2:30 – 3:30pm
+
+	
+Maxsuel Santos
+maxsuel.santos
+mslexamescomplementares@gmail.com
+MSL EXAMES COMPLEMENTARES
+
+
+X9PVN-HRP3V-CXJGJ-RPH3M-7MH3B
+
+Yoga Slim 7 14IMH9
+
+
+Central Holter Fernanda Lima Ferreira
+Holter Fernanda Lima Ferreira de Almeida
+Monica A Hartilek
+Monica A Hartilek
+
+
+AMANDA SALES
+amanda.ecocare
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+alefservmedicos@gmail.com
+ECOCARE
+
+Guilherme Cunha da Gama
+guilherme.fonoclinic
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+sancleasolucoesauditiva@gmail.com
+FONOCLINIC
+
+
+Fabiana Nascimento Ganev
+fabiana.rey
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+reycentrodesaude.gestao@gmail.com
+REY
+
+Aline Feitosa da Silva
+aline.prolabor
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+administracao@prolabormed.com.br
+Pro Labor - Medicina Ocupacional
+
+
+Jose Maria Monteiro Filho
+jose.eletrocardio
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+augustovergasc@gmail.com
+ELETROCARDIO PAM LAJINHA
+
+
+José Maria Monteiro Filho
+jose.pamlajinha
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+augustovergasc@gmail.com
+ELETROCARDIO PAM LAJINHA
+
+schtasks /create /tn "LimpezaAnyDesk" /tr "C:\script\remover_anydesk.bat" /sc once /st 00:0 /ru SYSTEM /rl HIGHEST
+
+Maria Eduarda Tome Portela
+Login: maria.six
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+ocupacionalsix@gmail.com
+SIX
+
+
+SIX OCUPACIONAL LTDA
+Código: 1954893
+
+Acesso Arya
+Login: fernanda.lopes
+Senha provisória: X8!52bt4+
+
+
+servicosmedicosfernandalopes@gmail.com
+
+Genésio de Melo
+Login: genesio.melo
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+genesiodemelo2009@gmail.com
+Gastroimagem
+
+
+
+
+	Acertamed Querencia SoC Intregração
+R M GUIMARAES LTDA
+Código: 2186883
+
+
+Ane Rafaela da Rocha Gomes
+Login: ane.acertamed
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+financeiroqra@acertamed.com.br
+ACERTAMED QUERENCIA
+
+Marcos Victor Duarte Rodrigues
+Login: marcos.acertamed
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+victorduarte200118@gmail.com
+ACERTAMED QUERENCIA
+
+82Sup$pk
+
+
+
+Login: elizia.regina
+Senha provisória: Zta256!8+
+
+Login: kelton.nunes
+Senha provisória: Zta256!8+
+
+
+Betânia Silvia Heleoterio
+Login: betania.clinicaldas1
+Senha provisória: Mudar123
+Acesso: app.portlatelemedicina.com.br
+helesilbe@hotmail.com
+Clinicaldas Dr. João Kersul Imagem e Saúde
+
+Déborah Victoria Muniz Pimentel
+Login: deborah.cmguadalupe
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+deborahmuniz94@gmail.com
+CENTRO MEDICO E DIAGNOSTICO NOSSA SRA DE GUADALUPE
+
+	
+PEDRO HENRIQUE CAVALCANTI SANTOS
+pedro.cmguadalupe
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+pedromansur05@gmail.com
+CENTRO MEDICO E DIAGNOSTICO NOSSA SRA DE GUADALUPE
+
+Gláucia Martins Nunes
+Login: galucia.unimed
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+glaucianunes98@gmail.com
+UNIMED NACIONAL
+
+	
+ENOCK RICARDO DE ARAÚJO NETO
+Login: enock
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+enock.ricardo@hotmail.com
+ENOCK ENFERMEIRO
+
+
+wanderson sousa amorim
+wanderson.medicmil
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+amorims.w@gmail.com
+MEDICMIL
+
+Andressa de Souza Rezende
+Login: andressa.clinvitta
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+andressasouzarezende33@gmail.com
+Clin Vitta Medicina e Segurança do Trabalho
+
+Sophia Bezerra dos Santos
+Login: sophia.perfilguaruja
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+aso5@perfilsst.com
+Perfil - Guarujá
+
+
+Ana Beatriz de Lima Santos
+Login: ana.perfilguaruja
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+aso5@perfilsst.com
+Perfil - Guarujá
+
+
+camila.tizone
+
+rosana.zambiazzi
+
+ailson_luiz
+
+Gabrielli Bonassa da Silva
+Login: gabrielli.hpfundacao
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+gabriellibonassa76@gmail.com
+Hospital Fundação Santa Catarina
+
+Giovanna Cristina dos Santos Silva
+Login:giovanna.drsafety
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+giovannadrsafety@gmail.com
+DOUTOR SAFETY
+
+Luciana Alves Rodrigues
+Login: luciana.sesc
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+lucianaar@sescdf.com.br
+SESC GUARA
+
+Maria Eduarda Silva Santos
+Login: maria.sesc
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+mariass@sescdf.com.br
+SESC GUARA
+
+
+Emanuelle de Oliveira Albernaz
+Login: emanuelle.sesc
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+emanuelleo@sescdf.com.br
+SESC GUARA
+
+Magali Ferreira Bonifacio Silva
+Login: magali.abza
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+magaly.secretary@gmail.com
+ASSOCIACAO BENEFICENTE ZEQUINHA ARAUJO - ABZA
+
+Roney César de Souza Cabral
+Login: adm.ld
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+roney0cabral@gmail.com
+Norte Imagem - USF Lindalva Damasceno
+
+
+DiagMed SP
+Login: diagmedsp
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+laressa.oliveira1@gmail.com
+DIAGMED SP
+
+Diagmed ES
+Login: diagmedes
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+laressa.oliveira1@gmail.com
+DIAGMED ES
+
+Diagmed PB
+Login: diagmedpb
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+laressa.oliveira1@gmail.com
+DIAGMED PB
+
+
+Diagmed RJ
+Login: diagmedrj
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+laressa.oliveira1@gmail.com
+DIAGMED RJ
+
+Diagmed BA
+Login: diagmedba
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+laressa.oliveira1@gmail.com
+DIAGMED BA
+
+
+	
+Arivaldo Monteiro de Almeida
+Login: arivaldo.hsa
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+E-mail: arivaldomda@gmail.com
+
+Bruno Martins Novoa
+Login: bruno.unica
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+bruno.m.novoa@gmail.com
+
+
+
+Jarina Silva Oliveira
+Login: jarina.fiquene
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+salomaofiquenevg@gmail.com
+
+Maura Roberta Gomes Miranda
+Login: maura.qac
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+ebimaura2018@gmail.com
+
+Francisca Marta Vieira do Nascimento
+Login: francisca.cefim
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+martavieira.cefim@gmail.com
+
+	
+Caroline Iwen Bierhals
+Login: carol.provida
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+caroline.bierhals@grupoprovida.com.br
+
+
+End.: Av. Transamazônica, 2285 - São Pedro CNPJ: 08.799.046/0001-24
+Humaitá-AM CEP: 69803-110
+Contato: (97) 98109-5161
+e-mail: clinicabiodiagnósticos@gmail.com
+
+
+
+Rejane Nascimento Peixe
+Login: rejane.cans
+Senha provisória: Mudar123
+Acesso: app.portaltelemedicina.com.br
+gerente@zamidiagnosticos.com.br
+
+SUELI DA CONCEICAO DE SOUZA6
+
+
+

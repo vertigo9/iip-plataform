@@ -1,0 +1,1274 @@
+
+===== src\iip\portfolio\registry.py =====
+
+"""Portfolio-backed asset registry bootstrap.
+
+Source of the records: IIP DATABASE da Carteira v3.2.
+Classification fields are marked by provenance:
+- database: directly represented in the portfolio database;
+- user: classification explicitly supplied in the IIP discussion;
+- pending: intentionally not inferred.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class ClassificationProvenance(StrEnum):
+    DATABASE = "database"
+    USER = "user"
+    PENDING = "pending"
+
+
+@dataclass(frozen=True)
+class PortfolioAsset:
+    ticker: str
+    asset_class: str
+    subtype: str | None = None
+    structure: str | None = None
+    segment: str | None = None
+    manager: str | None = None
+    source_url: str | None = None
+    indexation: tuple[str, ...] = ()
+    risk_profile: str | None = None
+    strategy: str | None = None
+    classification_provenance: ClassificationProvenance = (
+        ClassificationProvenance.PENDING
+    )
+
+
+# This table deliberately avoids inventing classifications not supported by
+# the DATABASE or explicitly supplied by the user.
+PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
+    PortfolioAsset("BBSE3", "equity"),
+    PortfolioAsset("ISAE4", "equity"),
+    PortfolioAsset("CXSE3", "equity"),
+    PortfolioAsset("CPFE3", "equity"),
+    PortfolioAsset("ABCB4", "equity"),
+    PortfolioAsset("CMIG4", "equity"),
+    PortfolioAsset("SAUD3", "equity"),
+    PortfolioAsset("ALOS3", "equity"),
+    PortfolioAsset("CSUD3", "equity"),
+    PortfolioAsset("VBBR3", "equity"),
+    PortfolioAsset("KLBN4", "equity"),
+    PortfolioAsset("FESA4", "equity"),
+    PortfolioAsset("LEVE3", "equity"),
+    PortfolioAsset("PASS3", "equity"),
+    PortfolioAsset(
+        "BTLG11", "fund", subtype="FII", structure="Tijolo",
+        segment="Logístico", manager="BTG Pactual",
+        source_url="https://btlg.btgpactual.com",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "TRXF11", "fund", subtype="FII", structure="Híbrido",
+        manager="TRX", source_url="https://trxf11.com.br/relatorios-gerenciais-2",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "HGRU11", "fund", subtype="FII", structure="Tijolo",
+        segment="Renda Urbana", manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/hgru",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "CDII11", "fund", subtype="FI-Infra", structure="Papel",
+        segment="Infraestrutura", manager="Sparta",
+        source_url="https://sparta.com.br/sparta-cdii11",
+        indexation=("CDI",), risk_profile="Baixo",
+        strategy="Crédito / Debêntures incentivadas",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "JURO11", "fund", subtype="FI-Infra", manager="Sparta",
+        source_url="https://sparta.com.br/juro11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "CRAA11", "fund", subtype="FI-Agro", structure="Papel",
+        segment="Crédito Agrícola", manager="Sparta",
+        source_url="https://sparta.com.br/craa11",
+        indexation=("CDI", "IPCA"), risk_profile="Alto", strategy="CRA",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "BTCI11", "fund", subtype="FII", structure="Papel",
+        segment="Crédito Imobiliário", manager="BTG Pactual",
+        source_url="https://btgpactual.com/asset-management/.../BTCI11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "VGIP11", "fund", subtype="FII", structure="Papel",
+        manager="Valora Invest (fonte agregadora)",
+        source_url="https://valorainvest.com.br/fundo/vgip11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "PCIP11", "fund", subtype="FII", structure="Híbrido",
+        manager="Pátria", source_url="https://realestate.patria.com/tijolo/pcip11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "LVBI11", "fund", subtype="FII", structure="Tijolo",
+        segment="Logístico", manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/lvbi11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "AFHI11", "fund", subtype="FII", structure="Papel",
+        segment="Crédito Imobiliário", source_url="https://afhi11.com.br/documentos",
+        indexation=("CDI", "IPCA"), risk_profile="Médio",
+        strategy="CRI", classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "CPTI11", "fund", subtype="FI-Infra", manager="Capitânia",
+        source_url="https://capitaniainfra.com.br/cpti11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "MANA11", "fund", subtype="FII", structure="Multiestratégia",
+        segment="Multiestratégia", manager="Manati/ICM",
+        source_url="https://manaticm.com/fundo/mana11",
+        indexation=("Multi-indexador",), risk_profile="Médio",
+        strategy="Hedge Fund",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "HSML11", "fund", subtype="FII", structure="Tijolo",
+        segment="Shopping", manager="HSI",
+        source_url="https://hsml.hsifii.com",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "XPML11", "fund", subtype="FII", structure="Tijolo",
+        segment="Shopping", manager="XP Asset",
+        source_url="https://xpasset.com.br/fundos/xp-malls",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "HGCR11", "fund", subtype="FII", structure="Papel",
+        segment="Crédito Imobiliário", manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/hgcr11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "RBVA11", "fund", subtype="FII", structure="Híbrido",
+        manager="Rio Bravo", source_url="https://riobravo.com.br/rbva11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "PVBI11", "fund", subtype="FII", structure="Tijolo",
+        segment="Lajes", manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/pvbi11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "ALZR11", "fund", subtype="FII", structure="Híbrido",
+        manager="Alianza", source_url="https://alzr11.alianza.com.br",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "KNRI11", "fund", subtype="FII", structure="Híbrido",
+        manager="Kinea", source_url="https://kinea.com.br/fundos/.../knri11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "HGBS11", "fund", subtype="FII", structure="Tijolo",
+        segment="Shopping", manager="Hedge Investments",
+        source_url="https://hedgeinvest.com.br/fundos/hgbs",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "LFTB11", "etf", subtype="ETF Renda Fixa",
+        manager="Investo", source_url="https://www.investoetf.com/etf/lftb11/",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "AXIA3", "fixed_income",
+        subtype="Daycoval FMP FGTS / subjacente AXIA3",
+        manager="Daycoval",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+)
+
+
+def get_asset(ticker: str) -> PortfolioAsset | None:
+    target = ticker.strip().upper()
+    return next((asset for asset in PORTFOLIO_ASSETS if asset.ticker == target), None)
+
+
+def assets_by_class(asset_class: str) -> tuple[PortfolioAsset, ...]:
+    target = asset_class.strip().lower()
+    return tuple(a for a in PORTFOLIO_ASSETS if a.asset_class == target)
+
+
+===== src\iip\portfolio\source_policy.py =====
+
+"""Bind real portfolio assets to source policies without mutating old registries."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from iip.portfolio.registry import PortfolioAsset, PORTFOLIO_ASSETS
+from iip.sources.policy import (
+    ProviderSpec,
+    SourcePolicy,
+    SourceRole,
+    default_priority_for,
+    default_provider_specs,
+)
+
+
+@dataclass(frozen=True)
+class AssetSourcePolicy:
+    asset: PortfolioAsset
+    policy: SourcePolicy
+    institutional_provider: ProviderSpec | None
+
+
+class PortfolioSourcePolicyResolver:
+    """Resolve a portfolio asset into its transversal and institutional sources."""
+
+    def __init__(
+        self,
+        assets: tuple[PortfolioAsset, ...] = PORTFOLIO_ASSETS,
+        providers: tuple[ProviderSpec, ...] | None = None,
+    ) -> None:
+        self.assets = assets
+        self.providers = providers or default_provider_specs()
+        self._providers = {provider.name: provider for provider in self.providers}
+
+    def resolve(self, ticker: str) -> AssetSourcePolicy | None:
+        target = ticker.strip().upper()
+        asset = next((item for item in self.assets if item.ticker == target), None)
+        if asset is None:
+            return None
+
+        asset_class = self._map_asset_class(asset.asset_class)
+        priority = default_priority_for(asset_class)
+
+        eligible = tuple(
+            provider
+            for provider in self.providers
+            if asset_class in provider.asset_classes and provider.enabled
+        )
+
+        institutional = self._institutional_provider(asset, eligible)
+
+        # Keep canonical cross-asset providers plus the specific institutional
+        # provider. The priority tuple remains the IIP high-level policy.
+        selected_names = {provider.name for provider in eligible}
+        if institutional is not None:
+            selected_names.add(institutional.name)
+
+        selected = tuple(
+            provider for provider in self.providers
+            if provider.name in selected_names and provider.enabled
+        )
+
+        policy = SourcePolicy(
+            asset_class=asset_class,
+            providers=selected,
+            priority=priority,
+        )
+        return AssetSourcePolicy(
+            asset=asset,
+            policy=policy,
+            institutional_provider=institutional,
+        )
+
+    @staticmethod
+    def _map_asset_class(asset_class: str):
+        from iip.registry.models import AssetClass
+
+        mapping = {
+            "fund": AssetClass.FUND,
+            "equity": AssetClass.EQUITY,
+            "etf": AssetClass.ETF,
+            "bdr": AssetClass.BDR,
+            "adr": AssetClass.ADR,
+            "fixed_income": AssetClass.FIXED_INCOME,
+        }
+        return mapping.get(asset_class, AssetClass.OTHER)
+
+    def _institutional_provider(
+        self,
+        asset: PortfolioAsset,
+        eligible: tuple[ProviderSpec, ...],
+    ) -> ProviderSpec | None:
+        manager = (asset.manager or "").lower()
+
+        aliases = {
+            "xp asset": "xp_asset",
+            "pátria": "patria",
+            "patria": "patria",
+            "sparta": "sparta",
+            "capitânia": "capitania",
+            "capitania": "capitania",
+            "valora": "valora",
+            "btg pactual": "btg",
+            "manati/icm": "manati",
+            "trx": "trx",
+            "araujo fontes": "araujo_fontes",
+            "araújo fontes": "araujo_fontes",
+            "hedge investments": "hedge",
+            "rio bravo": "rio_bravo",
+            "kinea": "kinea",
+        }
+
+        provider_name = aliases.get(manager)
+        if provider_name is None:
+            return None
+
+        provider = self._providers.get(provider_name)
+        return provider if provider in eligible else None
+
+    def resolve_many(
+        self,
+        tickers: tuple[str, ...] | None = None,
+    ) -> tuple[AssetSourcePolicy, ...]:
+        targets = (
+            {ticker.strip().upper() for ticker in tickers}
+            if tickers is not None
+            else None
+        )
+        results = []
+        for asset in self.assets:
+            if targets is not None and asset.ticker not in targets:
+                continue
+            resolved = self.resolve(asset.ticker)
+            if resolved is not None:
+                results.append(resolved)
+        return tuple(results)
+
+
+===== src\iip\portfolio\source_router.py =====
+
+"""Bridge the real portfolio registry into the existing multi-provider router."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from iip.portfolio.registry import PortfolioAsset
+from iip.sources.registry import AssetRef, SourceRef
+from iip.sources.router import SourceRoute, SourceRouter
+
+
+@dataclass(frozen=True)
+class RoutedPortfolioAsset:
+    """A real portfolio asset plus its resolved source routes."""
+
+    asset: PortfolioAsset
+    routes: tuple[SourceRoute, ...]
+
+    @property
+    def primary(self) -> SourceRoute | None:
+        return self.routes[0] if self.routes else None
+
+    @property
+    def fallbacks(self) -> tuple[SourceRoute, ...]:
+        return self.routes[1:] if len(self.routes) > 1 else ()
+
+
+class PortfolioSourceRouter:
+    """Create SourceRef records from a portfolio asset and use SourceRouter.
+
+    The existing SourceRouter remains the single routing implementation.
+    This bridge only adapts PortfolioAsset -> AssetRef and therefore keeps the
+    old Source Registry and Provider Registry contracts intact.
+    """
+
+    def __init__(self, router: SourceRouter) -> None:
+        self.router = router
+
+    @staticmethod
+    def _asset_ref(asset: PortfolioAsset) -> AssetRef:
+        source = None
+        if asset.source_url:
+            source_name = (asset.manager or "institutional").strip().lower()
+            source = SourceRef(
+                provider=source_name,
+                role="institutional_primary",
+                priority=3,
+                url=asset.source_url,
+                active=True,
+            )
+
+        sources = (source,) if source is not None else ()
+
+        return AssetRef(
+            ticker=asset.ticker,
+            asset_class=asset.asset_class,
+            asset_subtype=asset.subtype or "",
+            segment=asset.segment or "",
+            sources=sources,
+        )
+
+    def route(self, asset: PortfolioAsset) -> RoutedPortfolioAsset:
+        asset_ref = self._asset_ref(asset)
+        routes = self.router.routes_for(asset_ref)
+        return RoutedPortfolioAsset(asset=asset, routes=routes)
+
+
+===== src\iip\providers\registry.py =====
+
+"""Operational provider manifest registry."""
+
+from __future__ import annotations
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class ProviderKind(StrEnum):
+    INSTITUTIONAL = "institutional"
+    REGULATORY = "regulatory"
+    MARKET = "market"
+    ISSUER = "issuer"
+
+
+class ProviderStatus(StrEnum):
+    REGISTERED = "registered"
+    READY = "ready"
+    PARTIAL = "partial"
+    PENDING = "pending"
+
+
+@dataclass(frozen=True)
+class ProviderManifest:
+    name: str
+    kind: ProviderKind
+    status: ProviderStatus
+    asset_classes: tuple[str, ...]
+    source_roles: tuple[str, ...]
+    implementation: str | None = None
+    notes: str | None = None
+
+
+FUND_MANAGERS = (
+    "xp_asset", "patria", "sparta", "capitania", "valora", "btg",
+    "manati", "trx", "araujo_fontes", "hedge", "rio_bravo", "kinea",
+)
+
+TRANSVERSAL_PROVIDERS = (
+    "cvm", "fnet", "b3", "ri_company", "sec", "issuer", "market_data",
+)
+
+
+def default_provider_manifests() -> tuple[ProviderManifest, ...]:
+    result = []
+    for name in FUND_MANAGERS:
+        result.append(
+            ProviderManifest(
+                name=name,
+                kind=ProviderKind.INSTITUTIONAL,
+                status=ProviderStatus.READY if name in {"xp_asset", "patria"} else ProviderStatus.PENDING,
+                asset_classes=("fund",),
+                source_roles=("institutional_primary",),
+                implementation=(
+                    "iip.sources.xp_asset.XPAssetProvider"
+                    if name == "xp_asset"
+                    else "iip.harvest.patria"
+                    if name == "patria"
+                    else None
+                ),
+            )
+        )
+    result.extend([
+        ProviderManifest("cvm", ProviderKind.REGULATORY, ProviderStatus.REGISTERED,
+                         ("fund","equity","etf","bdr","adr","fixed_income","other"), ("regulatory",)),
+        ProviderManifest("fnet", ProviderKind.REGULATORY, ProviderStatus.REGISTERED,
+                         ("fund",), ("regulatory",)),
+        ProviderManifest("b3", ProviderKind.MARKET, ProviderStatus.REGISTERED,
+                         ("fund","equity","etf","bdr","adr","fixed_income","other"), ("market_validation",)),
+        ProviderManifest("ri_company", ProviderKind.INSTITUTIONAL, ProviderStatus.PENDING,
+                         ("equity",), ("institutional_primary",)),
+        ProviderManifest("sec", ProviderKind.REGULATORY, ProviderStatus.REGISTERED,
+                         ("adr",), ("regulatory",)),
+        ProviderManifest("issuer", ProviderKind.ISSUER, ProviderStatus.PENDING,
+                         ("etf","bdr","adr"), ("institutional_primary",)),
+        ProviderManifest("market_data", ProviderKind.MARKET, ProviderStatus.REGISTERED,
+                         ("fund","equity","etf","bdr","adr","fixed_income","other"), ("enrichment",)),
+    ])
+    return tuple(result)
+
+
+def manifest_map() -> dict[str, ProviderManifest]:
+    return {item.name: item for item in default_provider_manifests()}
+
+
+===== src\iip\providers\factory.py =====
+
+"""Provider factory with compatibility for existing implementations."""
+
+from __future__ import annotations
+
+import importlib
+from dataclasses import dataclass
+from inspect import isclass
+
+from .registry import ProviderManifest, ProviderStatus, manifest_map
+
+
+@dataclass(frozen=True)
+class ProviderHandle:
+    manifest: ProviderManifest
+    provider: object | None
+
+
+class ProviderFactory:
+    def __init__(self, manifests=None) -> None:
+        self.manifests = {
+            item.name: item
+            for item in (manifests or manifest_map().values())
+        }
+
+    def manifest(self, name: str) -> ProviderManifest | None:
+        return self.manifests.get(name.strip().lower())
+
+    @staticmethod
+    def _instantiate_implementation(implementation: str) -> object:
+        module_name, symbol_name = implementation.rsplit(".", 1)
+        module = importlib.import_module(module_name)
+        symbol = getattr(module, symbol_name)
+
+        if isclass(symbol):
+            return symbol()
+
+        # Legacy Pátria integration is a module-level implementation, not a
+        # provider class. Preserve it as the provider object.
+        if hasattr(symbol, "collect") or hasattr(symbol, "harvest") or hasattr(symbol, "discover"):
+            return symbol
+
+        return symbol
+
+    def create(self, name: str) -> ProviderHandle | None:
+        manifest = self.manifest(name)
+        if manifest is None:
+            return None
+
+        if manifest.status in {ProviderStatus.PENDING, ProviderStatus.PARTIAL}:
+            return ProviderHandle(manifest, None)
+
+        if not manifest.implementation:
+            return ProviderHandle(manifest, None)
+
+        return ProviderHandle(
+            manifest,
+            self._instantiate_implementation(manifest.implementation),
+        )
+
+
+===== src\iip\providers\operations.py =====
+
+"""Provider operational diagnostics."""
+
+from __future__ import annotations
+from dataclasses import dataclass
+from .factory import ProviderFactory
+
+
+@dataclass(frozen=True)
+class ProviderDiagnostic:
+    name: str
+    status: object
+    implemented: bool
+    usable_for_production: bool
+    implementation: str | None
+
+
+class ProviderOperations:
+    def __init__(self, factory: ProviderFactory | None = None) -> None:
+        self.factory = factory or ProviderFactory()
+
+    def diagnostic(self, name: str) -> ProviderDiagnostic | None:
+        manifest = self.factory.manifest(name)
+        if manifest is None:
+            return None
+        handle = self.factory.create(name)
+        implemented = bool(manifest.implementation and handle and handle.provider)
+        return ProviderDiagnostic(
+            manifest.name,
+            manifest.status,
+            implemented,
+            bool(implemented and manifest.status.value == "ready"),
+            manifest.implementation,
+        )
+
+    def diagnostics(self):
+        return tuple(sorted(
+            (self.diagnostic(name) for name in self.factory.manifests),
+            key=lambda item: item.name,
+        ))
+
+
+===== src\iip\providers\integration.py =====
+
+"""Operational provider planning."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .factory import ProviderFactory
+from .registry import FUND_MANAGERS, ProviderManifest, ProviderStatus
+
+
+@dataclass(frozen=True)
+class ProviderBinding:
+    provider: ProviderManifest
+    implementation_available: bool
+    production_ready: bool
+
+
+@dataclass(frozen=True)
+class ProviderRoutingPlan:
+    ticker: str
+    bindings: tuple[ProviderBinding, ...]
+    primary: ProviderBinding | None
+    fallbacks: tuple[ProviderBinding, ...]
+
+
+class OperationalProviderPlanner:
+    def __init__(self, provider_factory: ProviderFactory | None = None) -> None:
+        self.factory = provider_factory or ProviderFactory()
+
+    def binding(self, provider_name: str) -> ProviderBinding | None:
+        manifest = self.factory.manifest(provider_name)
+        if manifest is None:
+            return None
+
+        try:
+            handle = self.factory.create(provider_name)
+        except Exception:
+            handle = None
+
+        implemented = bool(handle is not None and handle.provider is not None)
+
+        # Positional construction preserves compatibility with the public
+        # ProviderBinding field name ``provider`` used by earlier tests/code.
+        return ProviderBinding(
+            manifest,
+            implemented,
+            implemented and manifest.status == ProviderStatus.READY,
+        )
+
+    def plan_from_routes(
+        self,
+        ticker: str,
+        provider_names: tuple[str, ...],
+    ) -> ProviderRoutingPlan:
+        bindings = tuple(
+            binding
+            for name in provider_names
+            if (binding := self.binding(name)) is not None
+        )
+
+        ready = tuple(binding for binding in bindings if binding.production_ready)
+
+        return ProviderRoutingPlan(
+            ticker=ticker.upper(),
+            bindings=bindings,
+            primary=ready[0] if ready else None,
+            fallbacks=ready[1:] if len(ready) > 1 else (),
+        )
+
+    def implementation_gap(self) -> tuple[str, ...]:
+        # The roadmap gap concerns the 12 fund-manager providers only.
+        # Transversal institutional providers such as RI Company are tracked
+        # separately and must not inflate the fund-manager gap.
+        return tuple(sorted(
+            name
+            for name in FUND_MANAGERS
+            if not self._implemented(name)
+        ))
+
+    def _implemented(self, name: str) -> bool:
+        manifest = self.factory.manifest(name)
+        if manifest is None or not manifest.implementation:
+            return False
+
+        try:
+            handle = self.factory.create(name)
+        except Exception:
+            return False
+
+        return bool(handle is not None and handle.provider is not None)
+
+
+===== src\iip\providers\source_manifest.py =====
+
+"""Institutional source readiness records for the fund managers."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class InstitutionalSourceRecord:
+    provider: str
+    source_url: str | None
+    url_validated: bool
+    requires_custom_adapter: bool
+    status: str
+
+
+# Deliberately conservative: URLs in the portfolio registry are useful source
+# hints, but they are not treated as validated production endpoints until an
+# actual adapter test proves the path and document behavior.
+SOURCE_STATUS = {
+    "xp_asset": "validated",
+    "patria": "validated",
+    "sparta": "mapped",
+    "capitania": "mapped",
+    "valora": "mapped",
+    "btg": "mapped",
+    "manati": "mapped",
+    "trx": "mapped",
+    "araujo_fontes": "mapped",
+    "hedge": "mapped",
+    "rio_bravo": "mapped",
+    "kinea": "mapped",
+}
+
+
+def build_source_records() -> tuple[InstitutionalSourceRecord, ...]:
+    return tuple(
+        InstitutionalSourceRecord(
+            provider=name,
+            source_url=None,
+            url_validated=(status == "validated"),
+            requires_custom_adapter=(status != "validated"),
+            status=status,
+        )
+        for name, status in sorted(SOURCE_STATUS.items())
+    )
+
+
+===== src\iip\sources\provider.py =====
+
+"""Contracts for IIP document providers."""
+
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+
+from .registry import AssetRef
+
+
+class DocumentProvider(ABC):
+    """Base contract for provider-specific document ingestion."""
+
+    provider_name: str
+
+    @abstractmethod
+    def supports(self, asset: AssetRef) -> bool:
+        """Return whether this provider handles the given asset."""
+
+    @abstractmethod
+    def discover(self, asset: AssetRef, years: range):
+        """Discover documents for an asset and year range."""
+
+===== src\iip\sources\registry.py =====
+
+"""IIP source registry.
+
+Maps assets to their classification and prioritized information sources.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+
+@dataclass(frozen=True)
+class SourceRef:
+    provider: str
+    role: str
+    priority: int
+    url: str
+    active: bool = True
+
+
+@dataclass(frozen=True)
+class AssetRef:
+    ticker: str
+    asset_class: str
+    asset_subtype: str
+    segment: str | None = None
+    manager: str | None = None
+    administrator: str | None = None
+    sources: tuple[SourceRef, ...] = field(default_factory=tuple)
+
+
+class SourceRegistry:
+    """In-memory registry for asset/source metadata."""
+
+    def __init__(self) -> None:
+        self._assets: dict[str, AssetRef] = {}
+
+    def register(self, asset: AssetRef) -> None:
+        ticker = asset.ticker.upper().strip()
+        if not ticker:
+            raise ValueError("ticker must not be empty")
+
+        if not asset.sources:
+            raise ValueError(f"{ticker}: at least one source is required")
+
+        self._assets[ticker] = AssetRef(
+            ticker=ticker,
+            asset_class=asset.asset_class,
+            asset_subtype=asset.asset_subtype,
+            segment=asset.segment,
+            manager=asset.manager,
+            administrator=asset.administrator,
+            sources=tuple(
+                sorted(
+                    asset.sources,
+                    key=lambda source: source.priority,
+                )
+            ),
+        )
+
+    def get(self, ticker: str) -> AssetRef | None:
+        return self._assets.get(ticker.upper().strip())
+
+    def sources_for(self, ticker: str) -> tuple[SourceRef, ...]:
+        asset = self.get(ticker)
+        return asset.sources if asset else ()
+
+    def clear(self) -> None:
+        self._assets.clear()
+
+    def register_many(self, assets: tuple[AssetRef, ...]) -> None:
+        """Register multiple assets using the same normalization rules."""
+        for asset in assets:
+            self.register(asset)
+
+    @classmethod
+    def from_assets(cls, assets: tuple[AssetRef, ...]) -> "SourceRegistry":
+        """Build a registry from a canonical asset collection."""
+        registry = cls()
+        registry.register_many(assets)
+        return registry
+
+===== src\iip\sources\router.py =====
+
+"""Multi-provider source routing for IIP.
+
+D-OBSIDIAN-06.2-09
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .provider import DocumentProvider
+from .provider_registry import ProviderRegistry
+from .registry import AssetRef, SourceRef, SourceRegistry
+
+
+@dataclass(frozen=True)
+class SourceRoute:
+    """A resolved, active source/provider pair."""
+
+    source: SourceRef
+    provider: DocumentProvider
+
+
+class SourceRouter:
+    """Resolve active asset sources against the registered providers.
+
+    Sources are considered in ascending priority order. Inactive sources are
+    skipped. An explicit provider name is preferred, but the registry can
+    still resolve a provider by asset capability when the named provider is
+    not registered.
+    """
+
+    def __init__(
+        self,
+        *,
+        source_registry: SourceRegistry,
+        provider_registry: ProviderRegistry,
+    ) -> None:
+        self.source_registry = source_registry
+        self.provider_registry = provider_registry
+
+    def routes_for(self, asset: AssetRef) -> tuple[SourceRoute, ...]:
+        routes: list[SourceRoute] = []
+
+        for source in sorted(
+            (item for item in asset.sources if item.active),
+            key=lambda item: item.priority,
+        ):
+            provider = self.provider_registry.get(source.provider)
+            if provider is None:
+                provider = self.provider_registry.resolve(asset)
+
+            if provider is None:
+                continue
+
+            routes.append(SourceRoute(source=source, provider=provider))
+
+        return tuple(routes)
+
+    def primary_route(self, asset: AssetRef) -> SourceRoute | None:
+        routes = self.routes_for(asset)
+        return routes[0] if routes else None
+
+    def fallback_routes(self, asset: AssetRef) -> tuple[SourceRoute, ...]:
+        routes = self.routes_for(asset)
+        return routes[1:] if len(routes) > 1 else ()
+
+
+===== src\iip\sources\policy.py =====
+
+"""Source policy and provider matrix contracts."""
+
+from __future__ import annotations
+from dataclasses import dataclass
+from enum import StrEnum
+from iip.registry.models import AssetClass
+
+
+class SourceRole(StrEnum):
+    REGULATORY = "regulatory"
+    INSTITUTIONAL_PRIMARY = "institutional_primary"
+    MARKET_VALIDATION = "market_validation"
+    ENRICHMENT = "enrichment"
+
+
+@dataclass(frozen=True)
+class ProviderSpec:
+    name: str
+    roles: tuple[SourceRole, ...]
+    asset_classes: tuple[AssetClass, ...]
+    enabled: bool = True
+
+
+@dataclass(frozen=True)
+class SourcePolicy:
+    asset_class: AssetClass
+    providers: tuple[ProviderSpec, ...]
+    priority: tuple[str, ...]
+
+
+def default_provider_specs() -> tuple[ProviderSpec, ...]:
+    fund = (AssetClass.FUND,)
+    universal = tuple(AssetClass)
+    return (
+        ProviderSpec("cvm", (SourceRole.REGULATORY,), universal),
+        ProviderSpec("fnet", (SourceRole.REGULATORY,), fund),
+        ProviderSpec("b3", (SourceRole.MARKET_VALIDATION,), universal),
+        ProviderSpec("xp_asset", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("patria", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("sparta", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("capitania", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("valora", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("btg", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("manati", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("trx", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("araujo_fontes", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("hedge", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("rio_bravo", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("kinea", (SourceRole.INSTITUTIONAL_PRIMARY,), fund),
+        ProviderSpec("ri_company", (SourceRole.INSTITUTIONAL_PRIMARY,), (AssetClass.EQUITY,)),
+        ProviderSpec("sec", (SourceRole.REGULATORY,), (AssetClass.ADR,)),
+        ProviderSpec("issuer", (SourceRole.INSTITUTIONAL_PRIMARY,), (AssetClass.ETF, AssetClass.BDR, AssetClass.ADR)),
+        ProviderSpec("market_data", (SourceRole.ENRICHMENT,), universal),
+    )
+
+
+def default_priority_for(asset_class: AssetClass) -> tuple[str, ...]:
+    if asset_class == AssetClass.FUND:
+        return ("cvm", "fnet", "institutional", "b3", "market_data")
+    if asset_class == AssetClass.EQUITY:
+        return ("cvm", "ri_company", "b3", "market_data")
+    if asset_class == AssetClass.ADR:
+        return ("sec", "issuer", "b3", "market_data")
+    if asset_class in (AssetClass.ETF, AssetClass.BDR):
+        return ("issuer", "cvm", "b3", "market_data")
+    return ("cvm", "b3", "market_data")
+
+
+def build_default_policies() -> tuple[SourcePolicy, ...]:
+    specs = default_provider_specs()
+    return tuple(SourcePolicy(c, specs, default_priority_for(c)) for c in AssetClass)
+
+
+===== src\iip\sources\xp_asset.py =====
+
+"""XP Asset institutional document discovery.
+
+D-OBSIDIAN-06.2-02
+
+This increment converts canonical XP Asset source metadata into deterministic
+discovery targets. It does not perform HTTP requests.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .provider import DocumentProvider
+from .registry import AssetRef, SourceRef
+
+
+@dataclass(frozen=True)
+class DocumentTarget:
+    """A deterministic institutional discovery target."""
+
+    ticker: str
+    provider: str
+    role: str
+    url: str
+    year: int | None = None
+
+
+class XPAssetProvider(DocumentProvider):
+    """Document provider for assets managed by XP Asset."""
+
+    provider_name = "xp_asset"
+
+    @staticmethod
+    def _normalize(value: str | None) -> str:
+        return (value or "").strip().casefold()
+
+    def supports(self, asset: AssetRef) -> bool:
+        """Return True when the asset is clearly associated with XP Asset."""
+        if self._normalize(asset.manager) == "xp asset":
+            return True
+
+        return any(
+            self._normalize(source.provider) == self.provider_name
+            and source.active
+            for source in asset.sources
+        )
+
+    def _institutional_sources(self, asset: AssetRef) -> tuple[SourceRef, ...]:
+        """Return active XP Asset sources ordered by registry priority."""
+        return tuple(
+            sorted(
+                (
+                    source
+                    for source in asset.sources
+                    if source.active
+                    and self._normalize(source.provider) == self.provider_name
+                ),
+                key=lambda source: source.priority,
+            )
+        )
+
+    def discover(
+        self,
+        asset: AssetRef,
+        years: range,
+    ) -> tuple[DocumentTarget, ...]:
+        """Build deterministic discovery targets for the requested years."""
+        if not isinstance(years, range):
+            raise TypeError("years must be a range")
+
+        # If the asset is explicitly classified as XP Asset, it is supported
+        # even when its source list is temporarily inactive/missing.
+        # Conversely, an explicit inactive XP Asset source is an identifiable
+        # routing case and deserves a precise diagnostic instead of the more
+        # generic "unsupported asset" error.
+        manager_is_xp = self._normalize(asset.manager) == "xp asset"
+        has_xp_source = any(
+            self._normalize(source.provider) == self.provider_name
+            for source in asset.sources
+        )
+
+        if not self.supports(asset):
+            if has_xp_source and not manager_is_xp:
+                raise ValueError(
+                    f"{asset.ticker}: no active XP Asset institutional source"
+                )
+            raise ValueError(
+                f"{asset.ticker}: asset is not supported by {self.provider_name}"
+            )
+
+        sources = self._institutional_sources(asset)
+
+        if not sources:
+            raise ValueError(
+                f"{asset.ticker}: no active XP Asset institutional source"
+            )
+
+        requested_years = tuple(years)
+        targets: list[DocumentTarget] = []
+
+        for source in sources:
+            if not requested_years:
+                targets.append(
+                    DocumentTarget(
+                        ticker=asset.ticker,
+                        provider=self.provider_name,
+                        role=source.role,
+                        url=source.url.strip(),
+                        year=None,
+                    )
+                )
+                continue
+
+            targets.extend(
+                DocumentTarget(
+                    ticker=asset.ticker,
+                    provider=self.provider_name,
+                    role=source.role,
+                    url=source.url.strip(),
+                    year=year,
+                )
+                for year in requested_years
+            )
+
+        return tuple(targets)
+
+
+===== src\iip\sources\harvester.py =====
+
+"""HTTP transport for IIP document discovery targets."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Callable
+from urllib.request import Request, urlopen
+
+from .xp_asset import DocumentTarget
+
+
+@dataclass(frozen=True)
+class FetchedDocument:
+    target: DocumentTarget
+    status_code: int
+    content_type: str
+    body: bytes
+    final_url: str
+
+
+class XPAssetHTTPHarvester:
+    def __init__(
+        self,
+        opener: Callable[..., object] | None = None,
+        *,
+        timeout: float = 20.0,
+        user_agent: str = "IIP-D-OBSIDIAN/1.0",
+    ) -> None:
+        self._opener = opener or urlopen
+        self.timeout = timeout
+        self.user_agent = user_agent
+
+    def fetch(self, target: DocumentTarget) -> FetchedDocument:
+        request = Request(
+            target.url,
+            headers={
+                "User-Agent": self.user_agent,
+                "Accept": "text/html,application/pdf,application/xhtml+xml,*/*;q=0.8",
+            },
+            method="GET",
+        )
+        response = self._opener(request, timeout=self.timeout)
+        raw_status = getattr(response, "status", 200)
+        status_code = 200 if raw_status is None else int(raw_status)
+        headers = getattr(response, "headers", {})
+        content_type = str(headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+        body = response.read()
+        final_url = str(response.geturl() if hasattr(response, "geturl") else target.url)
+        return FetchedDocument(target, status_code, content_type, body, final_url)
+
+    def fetch_many(self, targets: tuple[DocumentTarget, ...]) -> tuple[FetchedDocument, ...]:
+        return tuple(self.fetch(target) for target in targets)
+
+
+===== src\iip\universal\taxonomy.py =====
+
+"""Universal asset taxonomy for funds and non-fund instruments."""
+
+from __future__ import annotations
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class AssetClass(StrEnum):
+    FUND = "fund"
+    EQUITY = "equity"
+    ETF = "etf"
+    BDR = "bdr"
+    ADR = "adr"
+    FIXED_INCOME = "fixed_income"
+    OTHER = "other"
+
+
+class FundStructure(StrEnum):
+    PAPEL = "Papel"
+    TIJOLO = "Tijolo"
+    HIBRIDO = "Híbrido"
+    FI_INFRA = "FI-Infra"
+    FI_AGRO = "FI-Agro"
+    HEDGE = "Hedge Fund"
+    MULTIMERCADO = "Multimercado"
+    OUTROS = "Outros"
+
+
+@dataclass(frozen=True)
+class AssetTaxonomy:
+    ticker: str
+    asset_class: AssetClass
+    structure: str | None = None
+    segment: str | None = None
+    indexers: tuple[str, ...] = ()
+    credit_type: str | None = None
+    risk_profile: str | None = None
+    manager: str | None = None
+
+
+def classify_fund(
+    ticker: str,
+    structure: FundStructure,
+    segment: str,
+    *,
+    indexers: tuple[str, ...] = (),
+    credit_type: str | None = None,
+    risk_profile: str | None = None,
+    manager: str | None = None,
+) -> AssetTaxonomy:
+    return AssetTaxonomy(
+        ticker=ticker.upper(),
+        asset_class=AssetClass.FUND,
+        structure=structure.value,
+        segment=segment.strip(),
+        indexers=tuple(dict.fromkeys(indexers)),
+        credit_type=credit_type,
+        risk_profile=risk_profile,
+        manager=manager,
+    )
+
+
+def classify_non_fund(
+    ticker: str,
+    asset_class: AssetClass,
+    *,
+    risk_profile: str | None = None,
+) -> AssetTaxonomy:
+    if asset_class == AssetClass.FUND:
+        raise ValueError("use classify_fund for funds")
+    return AssetTaxonomy(
+        ticker=ticker.upper(),
+        asset_class=asset_class,
+        risk_profile=risk_profile,
+    )
+
+
+===== src\iip\harvest\__init__.py =====
+
+"""Document harvesting utilities for IIP."""
+
+from .patria import DEFAULT_BASE, Document, harvest
+
+__all__ = ["DEFAULT_BASE", "Document", "harvest"]
+

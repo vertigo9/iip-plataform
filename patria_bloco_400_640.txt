@@ -1,0 +1,240 @@
+﻿            Document(
+                ticker=ticker,
+                year=year,
+                category=_category_for_link(node),
+                title=title or f"{ticker}_{year}_{len(documents)+1}",
+                url=url,
+            )
+        )
+
+    if not documents:
+        try:
+            mz_count = page.locator(
+                'a[href*="api.mziq.com/mzfilemanager/"]'
+            ).count()
+            href_count = page.locator("[href]").count()
+            print(
+                f"[DIAGNÃ“STICO] ano {year}: hrefs={href_count}, "
+                f"MZIQ={mz_count}, url={page.url}",
+                flush=True,
+            )
+        except Exception:
+            pass
+
+    return documents
+
+def _select_year(page, year: int) -> bool:
+    wanted = str(year)
+    sel = _find_year_select(page)
+
+    # A Central atual pode nÃ£o expor nenhum <select> no DOM. Nesse caso,
+    # nunca tente chamar .locator() sobre None: o caminho correto Ã© API/fallback.
+    if sel is None:
+        print(
+            f"[DIAGNÃ“STICO] sem <select> para o ano {year}; retorno para API/fallback.",
+            flush=True,
+        )
+        return False
+
+    network_urls: list[str] = []
+    api_payloads: list[tuple[str, str]] = []
+
+    def _on_response(response):
+        try:
+            u = response.url
+            lu = u.lower()
+            if (
+                "mziq" in lu
+                or "mzfilemanager" in lu
+                or "/api/" in lu
+                or "document" in lu
+                or "documento" in lu
+            ):
+                if u not in network_urls:
+                    network_urls.append(u)
+
+                if "/filter/categories/year/meta" in lu:
+                    try:
+                        body = response.text()
+                        api_payloads.append((u, body))
+                    except Exception as exc:
+                        print(
+                            f"[DIAGNÃ“STICO] nÃ£o consegui ler resposta da API: "
+                            f"{type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
+        except Exception:
+            pass
+
+    try:
+        page.on("response", _on_response)
+    except Exception as exc:
+        print(f"[DIAGNÃ“STICO] nÃ£o consegui instalar listener: {exc}", flush=True)
+
+    options = sel.locator("option")
+
+    for i in range(options.count()):
+        option = options.nth(i)
+        try:
+            text = (option.inner_text() or "").strip()
+            value = (option.get_attribute("value") or "").strip()
+
+            if text != wanted and value != wanted:
+                continue
+
+            target_value = value or text
+            print(
+                f"[DIAGNÃ“STICO] selecionando ano={year}, value={target_value!r}",
+                flush=True,
+            )
+
+            try:
+                sel.select_option(value=target_value)
+            except Exception:
+                sel.evaluate(
+                    "(el, v) => {"
+                    "el.value = v;"
+                    "el.dispatchEvent(new Event('input', {bubbles:true}));"
+                    "el.dispatchEvent(new Event('change', {bubbles:true}));"
+                    "}",
+                    target_value,
+                )
+
+            page.wait_for_timeout(5000)
+
+            debug_dir = Path.cwd() / "data" / "patria" / "debug"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            try:
+                (debug_dir / f"{wanted}_{stamp}.html").write_text(
+                    page.content(), encoding="utf-8"
+                )
+                (debug_dir / f"{wanted}_{stamp}.txt").write_text(
+                    page.locator("body").inner_text(), encoding="utf-8"
+                )
+                print(f"[DIAGNÃ“STICO] DOM salvo em: {debug_dir}", flush=True)
+            except Exception as exc:
+                print(
+                    f"[DIAGNÃ“STICO] nÃ£o consegui salvar DOM: {exc}",
+                    flush=True,
+                )
+
+            try:
+                mziq_count = page.locator(
+                    '[href*="mziq.com"], [data-href*="mziq.com"], '
+                    '[data-url*="mziq.com"]'
+                ).count()
+                print(
+                    f"[DIAGNÃ“STICO] apÃ³s ano {year}: "
+                    f"hrefs={page.locator('a[href]').count()}, "
+                    f"iframes={page.locator('iframe').count()}, "
+                    f"mziq={mziq_count}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f"[DIAGNÃ“STICO] contagem DOM falhou: {exc}", flush=True)
+
+            if network_urls:
+                print("[DIAGNÃ“STICO] URLs de rede relevantes:", flush=True)
+                for u in network_urls[:50]:
+                    print(f"  {u}", flush=True)
+            else:
+                print("[DIAGNÃ“STICO] nenhuma URL MZIQ/API capturada.", flush=True)
+
+            if api_payloads:
+                for idx, (url, body) in enumerate(api_payloads[:10], start=1):
+                    p = debug_dir / f"{wanted}_{stamp}_api_{idx}.txt"
+                    p.write_text(f"URL: {url}\n\n{body}", encoding="utf-8")
+                    print(f"[DIAGNÃ“STICO] resposta API salva: {p}", flush=True)
+                    print(
+                        f"[DIAGNÃ“STICO] tamanho resposta API: {len(body)} bytes",
+                        flush=True,
+                    )
+            else:
+                print(
+                    "[DIAGNÃ“STICO] nÃ£o foi capturado corpo de "
+                    "/filter/categories/year/meta.",
+                    flush=True,
+                )
+
+            return True
+
+        except Exception as exc:
+            print(
+                f"[DIAGNÃ“STICO] falha ao selecionar {year}: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return False
+
+    print(
+        f"[DIAGNÃ“STICO] ano {year} nÃ£o apareceu nas opÃ§Ãµes do seletor.",
+        flush=True,
+    )
+    return False
+
+
+def _capture_document_meta_payload(response, ticker: str, year_hint: int | None = None):
+    """Extrai document_metas diretamente das respostas MZIQ jÃ¡ observadas.
+
+    O diagnÃ³stico da pÃ¡gina mostrou que o endpoint /filter/categories/year/meta
+    jÃ¡ devolve `data.document_metas` no carregamento inicial. Portanto nÃ£o Ã©
+    necessÃ¡rio depender de um <select> nem de conseguir reconstruir o POST.
+    """
+    try:
+        u = response.url.lower()
+        if "mziq" not in u and "mzfilemanager" not in u:
+            return []
+        ctype = (response.headers.get("content-type") or "").lower()
+        if "json" not in ctype and "text" not in ctype and "javascript" not in ctype:
+            return []
+        try:
+            payload = response.json()
+        except Exception:
+            payload = json.loads(response.text())
+        meta = _extract_document_meta(payload)
+        if not meta:
+            return []
+        return meta
+    except Exception:
+        return []
+
+def harvest(
+    ticker: str,
+    years: range,
+    output_dir: Path,
+    headed: bool = False,
+    base_url: str = DEFAULT_BASE,
+) -> list[Document]:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError(
+            "Playwright nÃ£o estÃ¡ instalado. Execute: "
+            "python -m pip install -r .\\requirements-patria-harvester.txt "
+            "e depois: python -m playwright install chromium"
+        ) from exc
+
+    ticker = ticker.upper()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    results: list[Document] = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=not headed)
+        page = browser.new_page(accept_downloads=True)
+        api_templates: list[dict] = []
+        initial_document_metas: list[dict] = []
+
+        def _capture_api_request(request):
+            """Captura o POST exato feito pelo JavaScript da Central MZIQ."""
+            try:
+                u = request.url
+                if "/filter/categories/year/meta" not in u.lower():
+                    return
+                item = {
+                    "url": u,
+                    "method": request.method,
+                    "post_data": request.post_data,
+                    "headers": request.headers,
+                }

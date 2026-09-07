@@ -1,0 +1,223 @@
+{
+  "main": {
+    "id": "6774674ba7e799df",
+    "type": "split",
+    "children": [
+      {
+        "id": "c2c572d0191895d5",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "5a1685357f2e02a0",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Visualização em gráfico"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "a2265f8b09d99d8d",
+    "type": "split",
+    "children": [
+      {
+        "id": "169df471aa04ecf2",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b88211c673bcbdfc",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorador de arquivos"
+            }
+          },
+          {
+            "id": "77cd7d54e6c1213e",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Procurar"
+            }
+          },
+          {
+            "id": "9d7fac655b68c80e",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-bookmark",
+              "title": "Marcadores"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "5eda047986017f1b",
+    "type": "split",
+    "children": [
+      {
+        "id": "b161c170e4806583",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "456a753182eb6f02",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Links inversos"
+            }
+          },
+          {
+            "id": "afda2a451fdba5e4",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Links de saída"
+            }
+          },
+          {
+            "id": "447d65a7c15cbf38",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Etiquetas"
+            }
+          },
+          {
+            "id": "cfc2210e1a03e8e5",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Todas as propriedades"
+            }
+          },
+          {
+            "id": "fe241ad9319689fd",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Sumário"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Abrir a troca rápida": false,
+      "graph:Abrir visualização em gráfico": false,
+      "canvas:Criar novo canvas": false,
+      "daily-notes:Abrir a nota de hoje": false,
+      "templates:Inserir modelo": false,
+      "command-palette:Abrir paleta de comandos": false,
+      "bases:Criar nova base": false
+    }
+  },
+  "active": "5a1685357f2e02a0",
+  "lastOpenFiles": [
+    "04_Evidence/evidence_metric_50782adfb65270a6384c0a76.md",
+    "04_Evidence/evidence_metric_5296755a52816755630488ee.md",
+    "04_Evidence/evidence_metric_5f74192f77c0bd2b54e403c9.md",
+    "04_Evidence/evidence_metric_a4ca824661be96abfccd2175.md",
+    "04_Evidence/evidence_metric_1839756b51f343074b4e6b40.md",
+    "04_Evidence/evidence_metric_b7000635b7978875b2a8e4eb.md",
+    "04_Evidence/evidence_metric_7502144d6f1ee6eaf4254499.md",
+    "04_Evidence/evidence_metric_d76c0531cab7824c54b80631.md",
+    "04_Evidence/evidence_metric_18075520b84cdba71f78b102.md",
+    "04_Evidence/evidence_metric_1e097f81706d21ec3fd6ee58.md",
+    "04_Evidence/evidence_metric_b1e921c529022e80fe84f72e.md",
+    "04_Evidence/evidence_metric_27ad4e70208fe41817537110.md",
+    "04_Evidence/evidence_metric_5821c21d4bad7f19b3c6ccdf.md",
+    "04_Evidence/evidence_metric_e8cc69c38293857ff481840d.md",
+    "04_Evidence/evidence_metric_7d3d6ed59efd12bf3955a27e.md",
+    "04_Evidence/evidence_metric_f6d4201f1953d331227ecbbe.md",
+    "04_Evidence/evidence_metric_c7cc8c05e0b966c37b5001bd.md",
+    "04_Evidence/evidence_metric_bd58c2f60135e324bafca724.md",
+    "04_Evidence/evidence_metric_6d8cd3b7ba3e5f302f70b4f3.md",
+    "04_Evidence/evidence_metric_66989b045006192e29be03ce.md",
+    "04_Evidence/evidence_metric_1b8e592e5bca5d8fcbac8858.md",
+    "04_Evidence/evidence_metric_32ddbd29fed413d1b89887b7.md",
+    "04_Evidence/evidence_metric_a9e27280e8fe7f0e4d3ceb60.md",
+    "04_Evidence/evidence_metric_04fbeacce0898f6d3f6a6eee.md",
+    "04_Evidence/evidence_metric_2e4f82add5082a4fe90d894b.md",
+    "04_Evidence/evidence_metric_ac5b6c6a40b808df20ca0839.md",
+    "archive/portfolio-integrity-fix-0683-20260902_150331",
+    "archive/portfolio-integrity-pre-v0.1-20260902_150026",
+    "archive/portfolio-pre-position-load-v0.1-20260902_145312/POSITION_LOAD_MANIFEST.txt",
+    "archive/portfolio-pre-position-load-v0.1-20260902_145312",
+    "archive/pcip11-portfolio-context-pre-v0.1-20260902_142725/PORTFOLIO_CONTEXT_MANIFEST.txt",
+    "archive/pcip11-portfolio-context-pre-v0.1-20260902_142725",
+    "06_Exposures/PCIP11",
+    "archive/pcip11-knowledge-layer-pre-v0.1-20260902_141633/KNOWLEDGE_LAYER_MANIFEST.txt",
+    "archive/pcip11-knowledge-layer-pre-v0.1-20260902_141633",
+    "07_Research/PCIP11"
+  ]
+}

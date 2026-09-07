@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = ROOT
+TESTS_DIR = PROJECT_ROOT / "tests"
+
+
+def _discover(patterns: tuple[str, ...]) -> list[str]:
+    files: set[str] = set()
+    self_path = Path(__file__).resolve()
+    for path in TESTS_DIR.rglob("test_*.py"):
+        if not path.is_file():
+            continue
+        if path.resolve() == self_path:
+            # Este próprio arquivo contém, no seu código-fonte, todas as
+            # strings usadas como patterns abaixo (são elas mesmas!), o
+            # que fazia _discover incluir este arquivo em todo bundle —
+            # e test_integrated_execution_all_bundles_pass então rodava
+            # este mesmo teste via subprocess, que rodava outro
+            # subprocess, indefinidamente. Nunca incluir a si mesmo.
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except OSError:
+            continue
+        name = path.name.lower()
+        if any(p in name or p in text for p in patterns):
+            files.add(str(path.relative_to(PROJECT_ROOT)))
+    return sorted(files)
+
+
+BUNDLES = {
+    "analytics_decision": _discover(
+        (
+            "analysis_framework",
+            "agro_analyzer",
+            "infra_analyzer",
+            "portfolio_intelligence",
+            "decision_301_500",
+            "portfolio_decision",
+        )
+    ),
+    "knowledge_atlas": _discover(
+        (
+            "event_adapter",
+            "projection",
+            "synchronization",
+            "vault",
+            "atlas_",
+            "xpml11_full_e2e",
+        )
+    ),
+    "adaptive_operational": _discover(
+        (
+            "adaptive",
+            "anomaly",
+            "signal_fusion",
+            "portfolio_alerts",
+            "refresh_policy",
+            "run_registry",
+            "operational",
+            "production_integration",
+            "system_e2e",
+        )
+    ),
+}
+
+
+@pytest.mark.parametrize("bundle_name", tuple(BUNDLES))
+def test_integrated_bundle_is_nonempty(bundle_name: str) -> None:
+    files = BUNDLES[bundle_name]
+    assert files, f"No real test files discovered for bundle: {bundle_name}"
+
+
+@pytest.mark.parametrize(
+    ("bundle_name", "required_hint"),
+    (
+        ("analytics_decision", "decision"),
+        ("knowledge_atlas", "atlas"),
+        ("adaptive_operational", "adaptive"),
+    ),
+)
+def test_integrated_bundle_has_expected_surface(
+    bundle_name: str, required_hint: str
+) -> None:
+    files = BUNDLES[bundle_name]
+    joined = "\n".join(files).lower()
+    assert required_hint in joined, (
+        f"Bundle {bundle_name} did not discover the expected surface "
+        f"({required_hint}). Discovered: {files}"
+    )
+
+
+def test_integrated_execution_all_bundles_pass() -> None:
+    files: list[str] = []
+    for bundle in BUNDLES.values():
+        files.extend(bundle)
+
+    files = sorted(set(files))
+    assert files, "Integrated suite discovered no executable tests."
+
+    command = [sys.executable, "-m", "pytest", *files, "-q", "--no-cov"]
+    try:
+        result = subprocess.run(
+            command,
+            cwd=PROJECT_ROOT,
+            text=True,
+            capture_output=True,
+            encoding="utf-8",
+            errors="replace",
+            check=False,
+            timeout=300,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stdout = (exc.stdout or "")[-4000:]
+        stderr = (exc.stderr or "")[-4000:]
+        pytest.fail(
+            "Integrated regression suite did not finish within 300s "
+            f"(possible hang or infinite recursion).\n\nSTDOUT:\n{stdout}"
+            f"\n\nSTDERR:\n{stderr}"
+        )
+
+    if result.returncode != 0:
+        detail = (result.stdout + "\n" + result.stderr)[-12000:]
+        pytest.fail(
+            "Integrated regression suite failed with exit code "
+            f"{result.returncode}.\n\n{detail}"
+        )
+
+    assert "passed" in result.stdout.lower(), (
+        "Pytest completed without an explicit passed count.\n"
+        f"STDOUT:\n{result.stdout[-4000:]}"
+    )

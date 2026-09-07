@@ -1,0 +1,292 @@
+"""Portfolio-backed asset registry bootstrap.
+
+Source of the records: IIP DATABASE da Carteira v3.2.
+Classification fields are marked by provenance:
+- database: directly represented in the portfolio database;
+- user: classification explicitly supplied in the IIP discussion;
+- pending: intentionally not inferred.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class ClassificationProvenance(StrEnum):
+    DATABASE = "database"
+    USER = "user"
+    PENDING = "pending"
+
+
+@dataclass(frozen=True)
+class PortfolioAsset:
+    ticker: str
+    asset_class: str
+    subtype: str | None = None
+    structure: str | None = None
+    segment: str | None = None
+    manager: str | None = None
+    source_url: str | None = None
+    indexation: tuple[str, ...] = ()
+    risk_profile: str | None = None
+    strategy: str | None = None
+    classification_provenance: ClassificationProvenance = (
+        ClassificationProvenance.PENDING
+    )
+
+
+# This table deliberately avoids inventing classifications not supported by
+# the DATABASE or explicitly supplied by the user.
+PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
+    PortfolioAsset("BBSE3", "equity"),
+    PortfolioAsset("ISAE4", "equity"),
+    PortfolioAsset("CXSE3", "equity"),
+    PortfolioAsset("CPFE3", "equity"),
+    PortfolioAsset("ABCB4", "equity"),
+    PortfolioAsset("CMIG4", "equity"),
+    PortfolioAsset("SAUD3", "equity"),
+    PortfolioAsset("ALOS3", "equity"),
+    PortfolioAsset("CSUD3", "equity"),
+    PortfolioAsset("VBBR3", "equity"),
+    PortfolioAsset("KLBN4", "equity"),
+    PortfolioAsset("FESA4", "equity"),
+    PortfolioAsset("LEVE3", "equity"),
+    PortfolioAsset("PASS3", "equity"),
+    PortfolioAsset(
+        "BTLG11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Logístico",
+        manager="BTG Pactual",
+        source_url="https://btlg.btgpactual.com",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "TRXF11",
+        "fund",
+        subtype="FII",
+        structure="Híbrido",
+        manager="TRX",
+        source_url="https://trxf11.com.br/relatorios-gerenciais-2",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "HGRU11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Renda Urbana",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/hgru",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "CDII11",
+        "fund",
+        subtype="FI-Infra",
+        structure="Papel",
+        segment="Infraestrutura",
+        manager="Sparta",
+        source_url="https://sparta.com.br/sparta-cdii11",
+        indexation=("CDI",),
+        risk_profile="Baixo",
+        strategy="Crédito / Debêntures incentivadas",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "JURO11",
+        "fund",
+        subtype="FI-Infra",
+        manager="Sparta",
+        source_url="https://sparta.com.br/juro11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "CRAA11",
+        "fund",
+        subtype="FI-Agro",
+        structure="Papel",
+        segment="Crédito Agrícola",
+        manager="Sparta",
+        source_url="https://sparta.com.br/craa11",
+        indexation=("CDI", "IPCA"),
+        risk_profile="Alto",
+        strategy="CRA",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "BTCI11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        manager="BTG Pactual",
+        source_url="https://btgpactual.com/asset-management/.../BTCI11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "VGIP11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        manager="Valora Invest (fonte agregadora)",
+        source_url="https://valorainvest.com.br/fundo/vgip11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "PCIP11",
+        "fund",
+        subtype="FII",
+        structure="Híbrido",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/pcip11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "LVBI11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Logístico",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/lvbi11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "AFHI11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        source_url="https://afhi11.com.br/documentos",
+        indexation=("CDI", "IPCA"),
+        risk_profile="Médio",
+        strategy="CRI",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "CPTI11",
+        "fund",
+        subtype="FI-Infra",
+        manager="Capitânia",
+        source_url="https://capitaniainfra.com.br/cpti11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "MANA11",
+        "fund",
+        subtype="FII",
+        structure="Multiestratégia",
+        segment="Multiestratégia",
+        manager="Manati/ICM",
+        source_url="https://manaticm.com/fundo/mana11",
+        indexation=("Multi-indexador",),
+        risk_profile="Médio",
+        strategy="Hedge Fund",
+        classification_provenance=ClassificationProvenance.USER,
+    ),
+    PortfolioAsset(
+        "HSML11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Shopping",
+        manager="HSI",
+        source_url="https://hsml.hsifii.com",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "XPML11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Shopping",
+        manager="XP Asset",
+        source_url="https://xpasset.com.br/fundos/xp-malls",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "HGCR11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/hgcr11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "RBVA11",
+        "fund",
+        subtype="FII",
+        structure="Híbrido",
+        manager="Rio Bravo",
+        source_url="https://riobravo.com.br/rbva11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "PVBI11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Lajes",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/pvbi11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "ALZR11",
+        "fund",
+        subtype="FII",
+        structure="Híbrido",
+        manager="Alianza",
+        source_url="https://alzr11.alianza.com.br",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "KNRI11",
+        "fund",
+        subtype="FII",
+        structure="Híbrido",
+        manager="Kinea",
+        source_url="https://kinea.com.br/fundos/.../knri11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "HGBS11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Shopping",
+        manager="Hedge Investments",
+        source_url="https://hedgeinvest.com.br/fundos/hgbs",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "LFTB11",
+        "etf",
+        subtype="ETF Renda Fixa",
+        manager="Investo",
+        source_url="https://www.investoetf.com/etf/lftb11/",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+    PortfolioAsset(
+        "AXIA3",
+        "fixed_income",
+        subtype="Daycoval FMP FGTS / subjacente AXIA3",
+        manager="Daycoval",
+        classification_provenance=ClassificationProvenance.DATABASE,
+    ),
+)
+
+
+def get_asset(ticker: str) -> PortfolioAsset | None:
+    target = ticker.strip().upper()
+    return next((asset for asset in PORTFOLIO_ASSETS if asset.ticker == target), None)
+
+
+def assets_by_class(asset_class: str) -> tuple[PortfolioAsset, ...]:
+    target = asset_class.strip().lower()
+    return tuple(a for a in PORTFOLIO_ASSETS if a.asset_class == target)

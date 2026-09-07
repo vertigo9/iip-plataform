@@ -1,0 +1,46 @@
+# Python/cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Runtime/output data
+*.log
+.logs/
+*.tmp
+*.temp
+
+# Generated reports and local data
+reports/
+archive/
+data/*
+!data/.gitkeep
+
+# Local environments and editors
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+.vscode/
+.idea/
+
+# Backups and historical snapshots
+*.bak
+*backup*
+*BROKEN*
+*.orig
+*.rej
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large installers and archives
+*.exe
+*.zip

@@ -1,0 +1,18 @@
+IIP D-OBSIDIAN-01
+Canonical Asset -> Obsidian Vault Location
+
+Changed:
+src/iip/knowledge/vault.py
+src/iip/knowledge/repository.py
+src/iip/knowledge/__init__.py
+
+Added test:
+tests/knowledge/test_vault.py
+
+Design:
+- Canonical ticker normalization.
+- Deterministic asset-class to Obsidian folder mapping.
+- Path traversal protection for tickers.
+- Repository accessors without changing existing append-only persistence.
+- No historical vault files are modified.
+- No existing note content is rewritten.

@@ -1,0 +1,7 @@
+/pixeon restart-pacs router
+
+/pixeon test router
+
+/pixeon test main
+
+9299169-8239

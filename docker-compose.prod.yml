@@ -1,0 +1,23 @@
+﻿version: "3.9"
+
+services:
+  iip:
+    build: .
+    container_name: iip-platform
+    environment:
+      - IIP_ENVIRONMENT=production
+      - IIP_LOG_LEVEL=INFO
+    ports:
+      - "8080:8080"  # Future API port
+    healthcheck:
+      test: ["CMD", "iip", "health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    volumes:
+      - iip-data:/app/data
+
+volumes:
+  iip-data:

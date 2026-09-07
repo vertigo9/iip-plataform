@@ -1,0 +1,35 @@
+Olá pode atuar como um engenheiro de redes senior, especialista em equipamentos MikroTik  e ubiquiti, e auxiliar na montagem de uma rede wired e wifi com o seguinte diagrama:
+
+                   INTERNET
+				       |
+     	            [Link DHCP]
+                      │     
+           [Mikrotik RB5009UG+S+IN RouterOS 7.11.3 (stable)]
+                       │
+           [MikroTik CSS326-24G-2S+RM SwOS 4.23]
+                            │		   
+    ┌───────────────────────┼──────────────┬────────────────────────────┐
+    │        │              │              │              │             │
+VLAN 380   TRUNK        VLAN 400       VLAN 410        VLAN 500       VLAN 99
+untagged (todas VLANs)  untagged       untagged         untagged      untagged
+    │         │             │              │                │           │
+  Wi-Fi     Wi-Fi        PortalTM       Integra           Infra    gerenciamento
+    \         /             │              │                │           │           
+     \       /              │              │                │           │
+  8x UAP-AC-Lite        Wired LAN      Wired LAN       Wired LAN    Wired LAN
+         │                  │              │                │           │
+    ┌────┴────┐      [Switch burro] [Switch burro]   [Switch burro] [Switch burro]
+  WiFi      WiFi 
+Visitantes PortalTM - VLAN 400
+ VLAN 380  Integra  - VLAN 410
+           Infra    - VLAN 500
+
+Organização dos IPs
+VLAN	Rede
+99	10.99.0.0/24
+380	10.38.0.0/23
+400	10.40.0.0/24
+410	10.41.0.0/24
+500	10.50.0.0/24
+
+* Importante: Roteador Core é Mikrotik RB5009UG+S+IN RouterOS 7.11.3 (stable), Switch Distribuição é MikroTik CSS326-24G-2S+RM SwOS 4.23 e os access points Ubiquiti U7Pro, preciso de uma configuração com failover automatico            

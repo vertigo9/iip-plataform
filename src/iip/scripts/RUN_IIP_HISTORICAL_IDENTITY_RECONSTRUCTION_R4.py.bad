@@ -1,0 +1,672 @@
+@'
+from __future__ import annotations
+
+import csv
+import hashlib
+from collections import Counter, defaultdict
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[3]
+REPORTS = ROOT / "reports"
+
+INPUT_CSV = REPORTS / "IIP_HISTORICAL_IDENTITY_RECONSTRUCTION_R3.csv"
+OUTPUT_CSV = REPORTS / "IIP_HISTORICAL_IDENTITY_RECONSTRUCTION_R4.csv"
+OUTPUT_MD = REPORTS / "IIP_HISTORICAL_IDENTITY_RECONSTRUCTION_R4.md"
+
+
+def clean(value: object) -> str:
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def normalize_ticker(value: object) -> str:
+    value = clean(value).upper()
+    return "".join(ch for ch in value if ch.isalnum())
+
+
+def normalize_cnpj(value: object) -> str:
+    value = clean(value)
+    return "".join(ch for ch in value if ch.isdigit())
+
+
+def first_existing(row: dict, names: list[str]) -> str:
+    for name in names:
+        value = clean(row.get(name))
+        if value:
+            return value
+    return ""
+
+
+def make_group_key(ticker: str, cnpj: str, metric: str, period: str) -> str:
+    if cnpj:
+        basis = f"CNPJ|{cnpj}"
+    elif ticker:
+        basis = f"TICKER|{ticker}"
+    else:
+        basis = f"UNRESOLVED|{metric}|{period}"
+
+    digest = hashlib.sha1(basis.encode("utf-8")).hexdigest()[:16]
+    return f"IG-{digest}"
+
+
+def classify_ticker_role(ticker: str, ticker_set: set[str]) -> tuple[str, str]:
+    """
+    Conservative classification.
+
+    We deliberately do NOT declare a ticker an event ticker merely because
+    it is different from another ticker. A ticker change may represent:
+    - ordinary ticker change;
+    - corporate event;
+    - temporary/provisional negotiation code;
+    - subscription/bonus/right;
+    - another B3 lifecycle event.
+
+    Without explicit event evidence, the safe classification is TICKER_ALIAS
+    and the record remains reviewable.
+    """
+
+    if not ticker:
+        return "NO_TICKER", ""
+
+    if len(ticker_set) > 1:
+        return (
+            "TICKER_ALIAS",
+            "ticker differs within an identity candidate; preserve as historical alias",
+        )
+
+    return (
+        "PRIMARY_TICKER",
+        "ticker is the only observed ticker for this identity candidate",
+    )
+
+
+def classify_cnpj_role(cnpjs: set[str]) -> tuple[str, str]:
+    if not cnpjs:
+        return (
+            "NO_CNPJ",
+            "record has no usable CNPJ; identity must rely on other evidence",
+        )
+
+    if len(cnpjs) == 1:
+        return (
+            "PRIMARY_CNPJ",
+            "single CNPJ observed for the identity candidate",
+        )
+
+    return (
+        "RELATED_CNPJ",
+        "multiple CNPJs observed; relationship must not be interpreted as a new identity automatically",
+    )
+
+
+def confidence_for(
+    *,
+    cnpj: str,
+    ticker: str,
+    metric: str,
+    period: str,
+    multiple_cnpj: bool,
+    ticker_count: int,
+) -> tuple[str, str]:
+
+    if cnpj and ticker and metric and period and not multiple_cnpj:
+        return (
+            "HIGH",
+            "CNPJ + ticker + metric + period provide a coherent identity anchor",
+        )
+
+    if cnpj and ticker:
+        return (
+            "MEDIUM",
+            "CNPJ and ticker exist, but additional historical identity evidence is required",
+        )
+
+    if ticker and metric and period:
+        return (
+            "MEDIUM",
+            "ticker + metric + period provide temporal identity evidence without CNPJ",
+        )
+
+    if ticker:
+        return (
+            "LOW",
+            "ticker exists but identity evidence is incomplete",
+        )
+
+    return (
+        "LOW",
+        "insufficient identity evidence for automatic resolution",
+    )
+
+
+def detect_event_hints(row: dict, ticker: str, ticker_set: set[str]) -> tuple[str, str]:
+    """
+    Detect explicit hints only.
+
+    We never infer an event solely from a ticker change.
+    """
+
+    text_parts = []
+
+    for key, value in row.items():
+        key_upper = clean(key).upper()
+        if any(
+            token in key_upper
+            for token in (
+                "EVENT",
+                "CORPORATE",
+                "ACTION",
+                "STATUS",
+                "DESCRIPTION",
+                "NOTE",
+                "OBSERVATION",
+            )
+        ):
+            value_clean = clean(value)
+            if value_clean:
+                text_parts.append(value_clean.upper())
+
+    text = " ".join(text_parts)
+
+    event_terms = {
+        "EMISSAO": "ISSUANCE",
+        "EMISSÃO": "ISSUANCE",
+        "BONIFIC": "BONUS",
+        "SUBSCR": "SUBSCRIPTION",
+        "DIREITO": "RIGHTS",
+        "RIGHT": "RIGHTS",
+        "CONVERS": "CONVERSION",
+        "INCORPOR": "MERGER_OR_INCORPORATION",
+        "FUSAO": "MERGER_OR_INCORPORATION",
+        "FUSÃO": "MERGER_OR_INCORPORATION",
+        "AMORT": "AMORTIZATION",
+        "DESDOBR": "SPLIT",
+        "GRUPAMENTO": "REVERSE_SPLIT",
+        "RESGATE": "REDEMPTION",
+        "LIQUID": "LIQUIDATION",
+    }
+
+    for term, event_type in event_terms.items():
+        if term in text:
+            return (
+                event_type,
+                f"explicit event hint detected: {term}",
+            )
+
+    return "", ""
+
+
+def main() -> int:
+    print("=" * 90)
+    print("IIP HISTORICAL IDENTITY RECONSTRUCTION R4")
+    print("=" * 90)
+
+    if not REPORTS.exists():
+        print(f"ERROR: reports directory not found: {REPORTS}")
+        return 1
+
+    if not INPUT_CSV.exists():
+        print(f"ERROR: input not found: {INPUT_CSV}")
+        return 1
+
+    with INPUT_CSV.open(
+        "r",
+        encoding="utf-8-sig",
+        newline="",
+    ) as handle:
+        reader = csv.DictReader(handle)
+        input_rows = list(reader)
+
+    if not input_rows:
+        print("ERROR: input contains no records")
+        return 1
+
+    # ------------------------------------------------------------------
+    # Build broad historical groups.
+    # Prefer CNPJ when available. Otherwise use ticker + metric + period.
+    # ------------------------------------------------------------------
+
+    groups: dict[str, list[dict]] = defaultdict(list)
+
+    for row in input_rows:
+        ticker = normalize_ticker(
+            first_existing(
+                row,
+                [
+                    "historical_ticker",
+                    "Historical_Ticker",
+                    "ticker",
+                    "Ticker",
+                    "Original_Ticker",
+                    "original_ticker",
+                    "Derived_Canonical_Ticker",
+                ],
+            )
+        )
+
+        cnpj = normalize_cnpj(
+            first_existing(
+                row,
+                [
+                    "CNPJ",
+                    "cnpj",
+                    "CNPJ_Canonical",
+                    "Canonical_CNPJ",
+                    "Primary_CNPJ",
+                    "Historical_CNPJ",
+                ],
+            )
+        )
+
+        metric = clean(
+            first_existing(
+                row,
+                [
+                    "Metric_ID",
+                    "metric_id",
+                    "Metric",
+                    "Metric_Candidates",
+                    "Candidate_Metric",
+                    "metric_name",
+                ],
+            )
+        )
+
+        period = clean(
+            first_existing(
+                row,
+                [
+                    "Period",
+                    "period",
+                    "Content_Periods",
+                    "Document_Period_Manifest",
+                    "Resolved_Period",
+                ],
+            )
+        )
+
+        if cnpj:
+            group_key = f"CNPJ|{cnpj}"
+        elif ticker:
+            group_key = f"TICKER|{ticker}"
+        else:
+            group_key = f"UNRESOLVED|{metric}|{period}"
+
+        groups[group_key].append(row)
+
+    output = []
+
+    for group_key, records in groups.items():
+        tickers = set()
+        cnpjs = set()
+
+        for row in records:
+            ticker = normalize_ticker(
+                first_existing(
+                    row,
+                    [
+                        "historical_ticker",
+                        "Historical_Ticker",
+                        "ticker",
+                        "Ticker",
+                        "Original_Ticker",
+                        "original_ticker",
+                        "Derived_Canonical_Ticker",
+                    ],
+                )
+            )
+
+            cnpj = normalize_cnpj(
+                first_existing(
+                    row,
+                    [
+                        "CNPJ",
+                        "cnpj",
+                        "CNPJ_Canonical",
+                        "Canonical_CNPJ",
+                        "Primary_CNPJ",
+                        "Historical_CNPJ",
+                    ],
+                )
+            )
+
+            if ticker:
+                tickers.add(ticker)
+
+            if cnpj:
+                cnpjs.add(cnpj)
+
+        multiple_cnpj = len(cnpjs) > 1
+
+        for row in records:
+            ticker = normalize_ticker(
+                first_existing(
+                    row,
+                    [
+                        "historical_ticker",
+                        "Historical_Ticker",
+                        "ticker",
+                        "Ticker",
+                        "Original_Ticker",
+                        "original_ticker",
+                        "Derived_Canonical_Ticker",
+                    ],
+                )
+            )
+
+            cnpj = normalize_cnpj(
+                first_existing(
+                    row,
+                    [
+                        "CNPJ",
+                        "cnpj",
+                        "CNPJ_Canonical",
+                        "Canonical_CNPJ",
+                        "Primary_CNPJ",
+                        "Historical_CNPJ",
+                    ],
+                )
+            )
+
+            metric = clean(
+                first_existing(
+                    row,
+                    [
+                        "Metric_ID",
+                        "metric_id",
+                        "Metric",
+                        "Metric_Candidates",
+                        "Candidate_Metric",
+                        "metric_name",
+                    ],
+                )
+            )
+
+            period = clean(
+                first_existing(
+                    row,
+                    [
+                        "Period",
+                        "period",
+                        "Content_Periods",
+                        "Document_Period_Manifest",
+                        "Resolved_Period",
+                    ],
+                )
+            )
+
+            event_type, event_reason = detect_event_hints(
+                row,
+                ticker,
+                tickers,
+            )
+
+            ticker_role, ticker_reason = classify_ticker_role(
+                ticker,
+                tickers,
+            )
+
+            cnpj_role, cnpj_reason = classify_cnpj_role(cnpjs)
+
+            confidence, confidence_reason = confidence_for(
+                cnpj=cnpj,
+                ticker=ticker,
+                metric=metric,
+                period=period,
+                multiple_cnpj=multiple_cnpj,
+                ticker_count=len(tickers),
+            )
+
+            if event_type:
+                identity_status = "EVENT_TICKER"
+                resolution_reason = event_reason
+            elif len(tickers) > 1:
+                identity_status = "TICKER_ALIAS"
+                resolution_reason = (
+                    "multiple tickers observed within the same historical identity candidate"
+                )
+            elif multiple_cnpj:
+                identity_status = "AMBIGUOUS_IDENTITY"
+                resolution_reason = (
+                    "multiple CNPJs observed; requires relationship validation"
+                )
+            elif confidence == "HIGH":
+                identity_status = "IDENTITY_RESOLVED"
+                resolution_reason = confidence_reason
+            else:
+                identity_status = "IDENTITY_REVIEW"
+                resolution_reason = confidence_reason
+
+            canonical_identity_id = make_group_key(
+                ticker,
+                cnpj,
+                metric,
+                period,
+            )
+
+            output.append(
+                {
+                    "identity_group_id": canonical_identity_id,
+                    "canonical_identity_id": canonical_identity_id,
+                    "historical_ticker": ticker,
+                    "ticker_role": ticker_role,
+                    "event_type": event_type,
+                    "cnpj": cnpj,
+                    "cnpj_role": cnpj_role,
+                    "ticker_count_in_group": len(tickers),
+                    "cnpj_count_in_group": len(cnpjs),
+                    "identity_status": identity_status,
+                    "confidence": confidence,
+                    "resolution_reason": resolution_reason,
+                    "ticker_reason": ticker_reason,
+                    "cnpj_reason": cnpj_reason,
+                    "confidence_reason": confidence_reason,
+                    "source_metric": metric,
+                    "source_period": period,
+                }
+            )
+
+    fieldnames = [
+        "identity_group_id",
+        "canonical_identity_id",
+        "historical_ticker",
+        "ticker_role",
+        "event_type",
+        "cnpj",
+        "cnpj_role",
+        "ticker_count_in_group",
+        "cnpj_count_in_group",
+        "identity_status",
+        "confidence",
+        "resolution_reason",
+        "ticker_reason",
+        "cnpj_reason",
+        "confidence_reason",
+        "source_metric",
+        "source_period",
+    ]
+
+    with OUTPUT_CSV.open(
+        "w",
+        encoding="utf-8-sig",
+        newline="",
+    ) as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=fieldnames,
+        )
+        writer.writeheader()
+        writer.writerows(output)
+
+    status = Counter(row["identity_status"] for row in output)
+    confidence = Counter(row["confidence"] for row in output)
+
+    multi_ticker_groups = sum(
+        1
+        for records in groups.values()
+        if len(
+            {
+                normalize_ticker(
+                    first_existing(
+                        row,
+                        [
+                            "historical_ticker",
+                            "Historical_Ticker",
+                            "ticker",
+                            "Ticker",
+                            "Original_Ticker",
+                            "original_ticker",
+                            "Derived_Canonical_Ticker",
+                        ],
+                    )
+                )
+                for row in records
+            }
+            - {""}
+        )
+        > 1
+    )
+
+    event_records = sum(
+        1 for row in output
+        if row["identity_status"] == "EVENT_TICKER"
+    )
+
+    md = f"""# IIP Historical Identity Reconstruction R4
+
+## Purpose
+
+R4 introduces a reusable historical identity layer for B3 assets.
+
+Ticker is treated as a time-dependent trading identifier rather than as
+the definitive economic identity.
+
+CNPJ is strong evidence, but multiple CNPJs are not automatically treated
+as different identities.
+
+Ticker changes are preserved as aliases unless explicit corporate-event
+evidence exists.
+
+## Safety
+
+- Mode: READ-ONLY
+- Vault modified: NO
+- Persistence executed: NO
+- KnowledgeBridge executed: NO
+- Repository writes: NO
+
+## Input
+
+- `{INPUT_CSV}`
+- Input records: {len(input_rows)}
+
+## Result
+
+- Output records: {len(output)}
+- Identity groups: {len(groups)}
+- IDENTITY_RESOLVED: {status.get("IDENTITY_RESOLVED", 0)}
+- IDENTITY_REVIEW: {status.get("IDENTITY_REVIEW", 0)}
+- TICKER_ALIAS: {status.get("TICKER_ALIAS", 0)}
+- EVENT_TICKER: {status.get("EVENT_TICKER", 0)}
+- AMBIGUOUS_IDENTITY: {status.get("AMBIGUOUS_IDENTITY", 0)}
+
+## Confidence
+
+- HIGH: {confidence.get("HIGH", 0)}
+- MEDIUM: {confidence.get("MEDIUM", 0)}
+- LOW: {confidence.get("LOW", 0)}
+
+## Identity characteristics
+
+- Multi-ticker identity groups: {multi_ticker_groups}
+- Event-ticker records: {event_records}
+
+## Important rule
+
+A different ticker does NOT automatically mean a different asset identity.
+
+This allows historical chains such as:
+
+CVBI11 -> CVBI13 -> PCIP11
+
+to remain connected when the available evidence supports continuity.
+
+Temporary or event-related tickers are preserved rather than discarded.
+
+Multiple CNPJs are classified as RELATED_CNPJ/AMBIGUOUS_IDENTITY until
+their relationship can be established.
+
+## Next gate
+
+R4 is diagnostic only.
+
+No record is authorized for persistence merely because R4 classified it
+as resolved.
+
+The next stage must inspect the identity graph and validate the canonical
+identity mapping before historical evidence is persisted.
+"""
+
+    OUTPUT_MD.write_text(md, encoding="utf-8")
+
+    print(f"Input records              : {len(input_rows)}")
+    print(f"Output records             : {len(output)}")
+    print(f"Unique identity groups    : {len(groups)}")
+    print(
+        f"IDENTITY_RESOLVED          : "
+        f"{status.get('IDENTITY_RESOLVED', 0)}"
+    )
+    print(
+        f"IDENTITY_REVIEW            : "
+        f"{status.get('IDENTITY_REVIEW', 0)}"
+    )
+    print(
+        f"TICKER_ALIAS               : "
+        f"{status.get('TICKER_ALIAS', 0)}"
+    )
+    print(
+        f"EVENT_TICKER               : "
+        f"{status.get('EVENT_TICKER', 0)}"
+    )
+    print(
+        f"AMBIGUOUS_IDENTITY         : "
+        f"{status.get('AMBIGUOUS_IDENTITY', 0)}"
+    )
+    print(
+        f"HIGH confidence             : "
+        f"{confidence.get('HIGH', 0)}"
+    )
+    print(
+        f"MEDIUM confidence           : "
+        f"{confidence.get('MEDIUM', 0)}"
+    )
+    print(
+        f"LOW confidence              : "
+        f"{confidence.get('LOW', 0)}"
+    )
+    print(
+        f"Multi-ticker identities     : "
+        f"{multi_ticker_groups}"
+    )
+    print(
+        f"Event-ticker records        : "
+        f"{event_records}"
+    )
+
+    print(f"CSV                         : {OUTPUT_CSV}")
+    print(f"MD                          : {OUTPUT_MD}")
+    print()
+
+    print("Vault modified              : NO")
+    print("Persistence executed        : NO")
+    print("KnowledgeBridge executed   : NO")
+    print("Repository writes           : NO")
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+'@ | Set-Content ".\src\iip\scripts\RUN_IIP_HISTORICAL_IDENTITY_RECONSTRUCTION_R4.py" -Encoding UTF8

@@ -1,0 +1,39 @@
+D-OBSIDIAN-06.7 BATCH CLEANUP VERIFY
+No files are moved by this script.
+
+=== ROOT ===
+.dockerignore
+.env.example
+.gitignore
+analise_exemplo.py
+CHANGELOG.md
+ChatGPT Installer.exe
+CONTRIBUTING.md
+D-OBSIDIAN-06.7_BATCH_CLEANUP_VERIFY.txt
+docker-compose.prod.yml
+Dockerfile
+IIP_D-OBSIDIAN-02_MANIFEST.txt
+IIP_D-SOURCE-HEALTH-03_MANIFEST.txt
+MANIFEST.txt
+Microsoft.Services.Store.winmd
+patria_bloco_180_400.txt
+patria_bloco_400_640.txt
+patria_bloco_640_880.txt
+patria_code.txt
+PROJECT_SUMMARY.md
+pyproject.toml
+README.md
+requirements-patria-harvester.txt
+ROLLBACK_0672_BATCH_CLEANUP (1).ps1
+ROLLBACK_0672_BATCH_CLEANUP.ps1
+RUN_0671_BATCH_CLEANUP_INVENTORY.ps1
+Sem t??tulo.base
+Sem t?tulo.base
+test_health_extended_corrigido (1).py
+teste_analise.py
+xp_asset_mz_sites.html
+
+=== SOURCE BACKUP CHECK ===
+Remaining source backup candidates: 0
+
+=== PYTHON IMPORT SANITY ===
