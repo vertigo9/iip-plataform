@@ -255,16 +255,6 @@ def test_api_documents_for_year_handles_invalid_json_response():
 
 
 def test_api_documents_for_year_continues_after_exception():
-    payload = {
-        "data": {
-            "document_metas": [
-                {
-                    "file_year": 2024,
-                    "file_url": "https://example/recovered.pdf",
-                }
-            ]
-        }
-    }
 
     request = FakeRequest(exception=RuntimeError("network failure"))
 

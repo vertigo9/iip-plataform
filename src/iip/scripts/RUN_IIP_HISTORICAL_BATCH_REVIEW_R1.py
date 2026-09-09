@@ -43,16 +43,6 @@ def review_row(row: dict) -> dict:
     metric_id_field = (row.get("metric_id_field") or "").strip()
     knowledge_id_field = (row.get("knowledge_id_field") or "").strip()
     status_field = (row.get("status_field") or "").strip()
-
-    fields = {
-        "Ticker": ticker_field,
-        "Metric": metric_field,
-        "Period": period_field,
-        "Metric_ID": metric_id_field,
-        "Knowledge_ID": knowledge_id_field,
-        "Status": status_field,
-    }
-
     identity_fields = bool(ticker_field) and bool(metric_field) and bool(period_field)
 
     canonical_identity = (

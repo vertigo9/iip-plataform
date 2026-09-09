@@ -97,12 +97,8 @@ def test_synchronization_filters_informational_issue(tmp_path):
         def __init__(self, severity):
             self.severity = severity
 
-    fake = (
-        True,
-        [Issue("INFO"), Issue("WARNING")],
-    )
-    with patch("iip.health.SynchronizationHealthCheck.check") as mocked:
-        mocked.return_value = health.HealthResult(
+        with patch("iip.health.SynchronizationHealthCheck.check") as mocked:
+                 mocked.return_value = health.HealthResult(
             "synchronization", True, "1 sync issues detected"
         )
         result = health.SynchronizationHealthCheck().check(s)
