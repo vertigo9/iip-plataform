@@ -98,9 +98,9 @@ def test_synchronization_filters_informational_issue(tmp_path):
             self.severity = severity
 
         with patch("iip.health.SynchronizationHealthCheck.check") as mocked:
-                 mocked.return_value = health.HealthResult(
-            "synchronization", True, "1 sync issues detected"
-        )
+            mocked.return_value = health.HealthResult(
+                "synchronization", True, "1 sync issues detected"
+            )
         result = health.SynchronizationHealthCheck().check(s)
         assert result.healthy
         assert "synchronization" in result.name
