@@ -350,8 +350,6 @@ def main() -> int:
         reader = csv.DictReader(handle)
         input_rows = list(reader)
 
-        input_fields = reader.fieldnames or []
-
     records = []
 
     identity_groups = defaultdict(list)

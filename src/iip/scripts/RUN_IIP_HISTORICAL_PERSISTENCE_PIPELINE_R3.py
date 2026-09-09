@@ -326,7 +326,6 @@ def main() -> int:
             prepared, errors, existing, missing = validate_batch(rows, repository)
 
             bridge_ready = len(prepared) == len(rows) and not errors
-            repo_ready = bridge_ready
 
             print(f"Prepared rows               : {len(prepared)}")
             print(f"Blocked rows                : {len(rows) - len(prepared)}")

@@ -340,7 +340,6 @@ def test_xp_asset_provider_and_router_discovery():
     assert router.fallback_routes(asset) == ()
 
     good = FakeProvider((DocumentTarget("CPFE3", "fake", "p", "u", 2026),))
-    second = FakeProvider((DocumentTarget("CPFE3", "fake", "p2", "u2", 2026),))
     pr2 = ProviderRegistry()
     pr2.register(xp)
     pr2.register(good)
