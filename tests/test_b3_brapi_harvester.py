@@ -55,7 +55,7 @@ def test_fetch_many_preserves_order():
         return FakeResponse()
 
     harvester = BrapiHTTPHarvester(token="tok", opener=opener)
-    results = harvester.fetch_many((build_target(("petr4",)), build_target(("vale3",))))
+    results = harvester.fetch_many((build_target(("petr4",)), build_target(("aapl34",))))
 
     assert len(results) == 2
     assert all(isinstance(r, FetchedQuotes) for r in results)
