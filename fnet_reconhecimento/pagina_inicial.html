@@ -1,0 +1,343 @@
+<!DOCTYPE html><html style="background-color: white;" class=" js no-touch svg inlinesvg svgclippaths no-ie8compat"><head>
+	<meta charset="UTF-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<meta http-equiv="cache-control" content="max-age=0">
+	<meta http-equiv="cache-control" content="no-cache">
+	<meta http-equiv="expires" content="0">
+	<meta http-equiv="pragma" content="no-cache">
+	<meta name="description" content="">
+	<meta name="viewport" content="width=device-width, initial-scale=1">	
+	
+	<title>Fundos.NET</title>
+	<script type="text/javascript" src="/fnet/ruxitagentjs_ICANVfgqru_10343260715123811.js" data-dtconfig="app=97e61c3a8a7c6a0b|cuc=wj11fgxl|owasp=1|mel=100000|featureHash=ICANVfgqru|dpvc=1|lastModification=1788558373048|tp=500,50,0|rdnt=1|uxrgce=1|srbbv=2|agentUri=/fnet/ruxitagentjs_ICANVfgqru_10343260715123811.js|reportUrl=/fnet/rb_3e3688fc-2b0e-4bc4-bbfb-2999b956e3bd|rid=RID_1853160388|rpid=309738531|domain=bmfbovespa.com.br"></script><link rel="icon" href="/fnet/resources/img/favicon.svg" type="image/svg+xml">
+	<link rel="icon" href="/fnet/resources/img/favicon.ico" type="image/x-icon">
+<meta class="foundation-mq-small"><meta class="foundation-mq-medium"><meta class="foundation-mq-large"><style></style></head>
+<body>
+	
+
+
+
+
+<script type="text/javascript" src="/fnet/resources/js/script.min.js"></script>
+<link rel="stylesheet" href="/fnet/resources/css/estilos.min.css" media="screen" type="text/css">
+
+<div class="ajax-modal"></div>
+
+<br>
+<br>
+<script>
+	$(document).foundation();
+	// exibicao da tela de loading quando um ajax e executado
+	$(document).ajaxStart(function () {
+		$("body").addClass("loading");
+	});
+	$(document).ajaxStop(function () {
+		$("body").removeClass("loading");
+	});
+	$(document).submit(function () {
+		$("body").addClass("loading");
+	});
+	const csrf_token = $("meta[name='_csrf']").attr("content") || '';
+	const csrfHeader = $("meta[name='_csrf_header']").attr("content") || '';
+</script>
+	
+	<script type="text/javascript" src="/fnet/resources/js/paginas/publico/gerenciador-documentos-cvm.js"></script>
+	<div id="dialog-message" class="dialog-message" title="Mensagem"></div>
+
+	<!-- Modal Filtros - Inicio -->
+	<div id="myModalFiltros" class="reveal-modal medium" data-reveal="" aria-labelledby="modalFiltros" aria-hidden="true" role="dialog">
+		<h2 class="center">Filtros</h2>
+		<p class="lead">
+		</p><div class="row">
+			<form id="formListarDocumentosEnviadosCVM" name="formListarDocumentosEnviadosCVM" class="custom" method="GET">
+				
+
+				<input type="hidden" name="paginaCertificados" value="false" style="">
+                
+				<div id="filtros" class="large-12 large-centered columns">
+						<div class="row">
+							<div class="large-6 columns">
+								<label>Tipo de Fundo</label>
+								<div class="select2-container" id="s2id_tipoFundo" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-1">Tipo de Fundo</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen1" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-1" id="s2id_autogen1" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen1_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-1" id="s2id_autogen1_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-1">   </ul></div></div><select name="tipoFundo" id="tipoFundo" tabindex="-1" title="" style="display: none;">
+									<option value="">Tipo de Fundo</option>
+									
+										<option value="3">ETF</option>
+									
+										<option value="4">ETF RF</option>
+									
+										<option value="11">FIAGRO</option>
+									
+										<option value="2">FIDC</option>
+									
+										<option value="10">FIP</option>
+									
+										<option value="1">Fundo Imobiliário</option>
+									
+										<option value="7">Fundo Setorial</option>
+									
+								</select>
+							</div>
+							<div class="large-6 columns" style="float: left;">
+								<label>Administrador</label>
+                                <div class="select2-container" id="s2id_administrador" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice select2-default" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-7">Todos</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen7" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-7" id="s2id_autogen7" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen7_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-7" id="s2id_autogen7_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-7">   </ul></div></div><input type="hidden" id="administrador" name="administrador" value="" data-nome="" tabindex="-1" title="" style="display: none;">
+                            </div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="large-12 columns">
+								<label>Nome do Fundo</label>
+                                <div class="select2-container select2-container-multi" id="s2id_idFundo" style="width: 100%;"><ul class="select2-choices" style="">  <li class="select2-search-field">    <label for="s2id_autogen8" class="select2-offscreen"></label>    <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input select2-default" id="s2id_autogen8" tabindex="0" placeholder="" style="width: 100px;">  </li></ul><div class="select2-drop select2-drop-multi select2-display-none">   <ul class="select2-results">   <li class="select2-no-results">Nenhum resultado encontrado</li></ul></div></div><input type="hidden" id="idFundo" name="idFundo" multiple="multiple" value="" tabindex="-1" style="display: none;">
+                                <!-- carregar fundos para o filtro inicial, informado na URL (apenas para visualização) -->
+                                
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="large-12 columns">
+								<label>Categoria</label>
+								<div class="select2-container" id="s2id_categoriaDocumento" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-2">Todos</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen2" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-2" id="s2id_autogen2" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen2_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-2" id="s2id_autogen2_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-2">   </ul></div></div><select id="categoriaDocumento" name="idCategoriaDocumento" tabindex="-1" title="" style="display: none;">
+									<option value="0">Todos</option>
+									
+										<option value="25">Acordo de Acionista</option>
+									
+										<option value="19">Aditamento de Termo de Securitização</option>
+									
+										<option value="45">Aditamentos</option>
+									
+										<option value="48">Anexo ao Regulamento</option>
+									
+										<option value="2">Assembleia</option>
+									
+										<option value="46">Assembleia especial de investidores</option>
+									
+										<option value="37">Ata da Reunião do Conselho de Administração</option>
+									
+										<option value="47">Ata de Reunião da Diretoria</option>
+									
+										<option value="11">Atos de Deliberação do Administrador</option>
+									
+										<option value="18">Averbação ou Registro do Termo de Securitização</option>
+									
+										<option value="4">Aviso aos Cotistas</option>
+									
+										<option value="14">Aviso aos Cotistas - Estruturado</option>
+									
+										<option value="20">Aviso aos Investidores</option>
+									
+										<option value="26">Comunicação de alteração do auditor independente</option>
+									
+										<option value="3">Comunicado ao Mercado</option>
+									
+										<option value="27">Dados Econômico Financeiros </option>
+									
+										<option value="16">Documentos de Oferta de Distribuição Pública</option>
+									
+										<option value="44">Escritura/Instrumento de Emissão</option>
+									
+										<option value="28">Estatuto Social</option>
+									
+										<option value="29">Falência</option>
+									
+										<option value="1">Fato Relevante</option>
+									
+										<option value="39">Formulário Cadastral</option>
+									
+										<option value="30">Formulário de Referência</option>
+									
+										<option value="42">Informações da SPE subsidiária integral - exclusivo para S2</option>
+									
+										<option value="21">Informações para Registro de Oferta de CRA</option>
+									
+										<option value="22">Informações para Registro de Oferta de CRI</option>
+									
+										<option value="23">Informações para Registro Provisório de Oferta de CRI</option>
+									
+										<option value="31">Informe Mensal de Outros Títulos de Securitização</option>
+									
+										<option value="32">Informe Trimestral</option>
+									
+										<option value="6">Informes Periódicos</option>
+									
+										<option value="41">Instrumento de Emissão e aditamentos</option>
+									
+										<option value="13">Laudo de Avaliação (Conclusão de Negócio)</option>
+									
+										<option value="24">Listagem e  Admissão à  Negociação  de Cotas</option>
+									
+										<option value="12">Oferta Pública de Aquisição de Cotas</option>
+									
+										<option value="8">Oferta Pública de Distribuição de Cotas</option>
+									
+										<option value="43">Outras Demonstrações Financeiras </option>
+									
+										<option value="10">Outras Informações</option>
+									
+										<option value="40">Outros Títulos de Securitização</option>
+									
+										<option value="33">Política de Negociação de Valores Mobiliários</option>
+									
+										<option value="9">Políticas de Governança Corporativa</option>
+									
+										<option value="34">Recuperação Extrajudicial</option>
+									
+										<option value="35">Recuperação Judicial</option>
+									
+										<option value="5">Regulamento</option>
+									
+										<option value="15">Regulamento de Emissores B3</option>
+									
+										<option value="36">Relatório de agência classificadora de risco</option>
+									
+										<option value="7">Relatórios</option>
+									
+										<option value="17">Termo de Securitização</option>
+									
+										<option value="38">Valores mobiliários detidos </option>
+									
+								</select>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="large-12 columns">
+								<label>Tipo</label>
+								<div class="select2-container" id="s2id_tipoDocumento" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-3">Todos</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen3" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-3" id="s2id_autogen3" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen3_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-3" id="s2id_autogen3_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-3">   </ul></div></div><select id="tipoDocumento" name="idTipoDocumento" tabindex="-1" title="" style="display: none;">
+									<option value="0">Todos</option>
+									
+								</select>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="large-12 columns">
+								<label>Espécie</label>
+								<div class="select2-container" id="s2id_especieDocumento" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-4">Todos</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen4" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-4" id="s2id_autogen4" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen4_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-4" id="s2id_autogen4_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-4">   </ul></div></div><select id="especieDocumento" name="idEspecieDocumento" tabindex="-1" title="" style="display: none;">
+									<option value="0">Todos</option>
+									
+								</select>
+							</div>
+						</div>
+						<br>
+						<div class="row">
+							<div class="large-4 columns">
+								<label>Situação:</label>
+								<div class="select2-container" id="s2id_situacaoAssociacao" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-5">Todos</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen5" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-5" id="s2id_autogen5" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen5_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-5" id="s2id_autogen5_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-5">   </ul></div></div><select id="situacaoAssociacao" name="situacao" tabindex="-1" title="" style="display: none;">
+									<option value="">Todos</option>
+									<option value="A">Ativo</option>
+									<option value="I">Inativo</option>
+									<option value="C">Cancelado</option>
+								</select>
+							</div>
+							<div class="large-4 columns" style="float: left;">
+								<label for="cnpj">CNPJ:</label>
+								<input id="cnpj" name="cnpj" onkeypress="MascaraCNPJ(formListarDocumentosEnviados.cnpj);" maxlength="18" type="text" placeholder="__.___.___/____-__" value="" style="">
+							</div>
+						</div>
+
+						<div class="row">	
+							<div class="large-4 columns">
+								<label>Data de Referência:</label> 
+									<input id="data" name="dataReferencia" maxlength="10" type="text" value="" placeholder="__/__/____" autocomplete="off" style="">
+							</div>
+							<div class="large-4 columns" style="float: left; top: 25px">
+								<input type="checkbox" name="ultimaDataReferencia" id="checkUltimaDataReferencia" style=""> Última data de referência
+							</div>
+						</div>
+						<div class="row">
+							<div class="large-4 columns" style="float: left;">
+								<label>Período de Entrega De:</label> 
+									<input id="dataInicial" name="dataInicial" maxlength="10" type="text" value="" placeholder="__/__/____" autocomplete="off" style="">
+							</div>
+							<div class="large-4 columns" style="float: left;">
+								<label>Período de Entrega Até:</label> 
+									<input id="dataFinal" name="dataFinal" maxlength="10" type="text" value="" placeholder="__/__/____" autocomplete="off" style="">
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="large-4 columns">
+								<label>Modalidade de Envio:</label>
+								<div class="select2-container" id="s2id_modalidade" style="width: 100%;"><a href="javascript:void(0)" class="select2-choice" tabindex="-1">   <span class="select2-chosen" id="select2-chosen-6">Todos</span><abbr class="select2-search-choice-close"></abbr>   <span class="select2-arrow" role="presentation"><b role="presentation"></b></span></a><label for="s2id_autogen6" class="select2-offscreen"></label><input class="select2-focusser select2-offscreen" type="text" aria-haspopup="true" role="button" aria-labelledby="select2-chosen-6" id="s2id_autogen6" tabindex="0" style=""><div class="select2-drop select2-display-none select2-with-searchbox">   <div class="select2-search">       <label for="s2id_autogen6_search" class="select2-offscreen"></label>       <input type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" class="select2-input" role="combobox" aria-expanded="true" aria-autocomplete="list" aria-owns="select2-results-6" id="s2id_autogen6_search" placeholder="" style="">   </div>   <ul class="select2-results" role="listbox" id="select2-results-6">   </ul></div></div><select id="modalidade" name="idModalidade" tabindex="-1" title="" style="display: none;">
+									<option value="">Todos</option>
+									
+										<option value="1">Apresentação</option>
+									
+										<option value="2">Reapresentação por Exigência</option>
+									
+										<option value="3">Reapresentação Espontânea</option>
+									
+								</select>
+							</div>
+						</div>
+						<p>
+						</p><div class="row">
+							<div class="large-8 columns">
+								<label>Palavra chave:</label>
+								<input type="text" name="palavraChave" id="palavraChave" maxlength="100" value="" style="">
+							</div>
+						</div>
+						<p>
+                        </p><div class="row quadroCaptcha" style="display: none;">
+                            <div class="large-4 columns">
+                                <img id="captchaAnexoBImg" src="/fnet/publico/captcha" style="height: 50px; width: 200px;">
+                                <br>
+                                <br>
+                                <label>Digite o texto da imagem acima:</label>
+                                <input type="text" name="respostaCaptcha" value="" style="">
+                            </div>
+                        </div>
+						<div class="row">
+							<div align="left" class="large-12 columns">
+								<input id="filtrar" name="filtrar" type="button" value="Filtrar" class="small button radius" style="">
+							</div>
+						</div>
+						<p>
+					</p></div>
+				</form>	
+			</div>
+			<a class="close-reveal-modal" aria-label="Close">×</a>
+	</div>
+    <!-- Modal Filtros - Fim -->
+    
+	<form id="formListaDocumentosCVM">
+		
+
+		<div class="row">
+			<div class="large-12 large-centered columns">
+				<div class="large-12 columns">
+					<button type="button" id="showFiltros" class="small button success radius" style="float: left; margin-right: 5px;">
+						EXIBIR FILTROS
+                    </button>
+                    <div class="relatorios" style="float: right;">
+                        <button type="button" id="btnExport" class="small button success radius">
+                            EXPORTAR GRID
+                        </button>
+                        <button type="button" id="btnAnexoB" class="small button success radius">
+                            EXTRAIR INF. MENSAL
+                        </button>
+                        <button type="button" id="btnPLTotal" class="small button success radius">
+                            EXTRAIR PL. TOTAL FII
+                        </button>
+                    </div>
+				</div>
+				<div class="large-12 columns">
+					<div class="row">
+						<div class="large-12 columns">
+							<div id="tblDocumentosEnviados_wrapper" class="dataTables_wrapper no-footer"><div class="dataTables_length" id="tblDocumentosEnviados_length"><label>Mostrar <select name="tblDocumentosEnviados_length" aria-controls="tblDocumentosEnviados" class=""><option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option></select> registros</label></div><div id="tblDocumentosEnviados_filter" class="dataTables_filter"><label>Buscar:<input type="search" class="" placeholder="" aria-controls="tblDocumentosEnviados" style=""></label></div><div id="tblDocumentosEnviados_processing" class="dataTables_processing" style="display: none;"></div><table id="tblDocumentosEnviados" class="dataTable no-footer" role="grid" aria-describedby="tblDocumentosEnviados_info">
+								<caption style="text-align: center;">Documentos</caption>
+								<thead>
+									<tr role="row"><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Nome do Fundo: clique para usar ordem crescente">Nome do Fundo</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Fundo/Classe: clique para usar ordem crescente">Fundo/Classe</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Categoria: clique para usar ordem crescente">Categoria</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Tipo: clique para usar ordem crescente">Tipo</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Espécie: clique para usar ordem crescente">Espécie</th><th class="sorting_desc" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-sort="descending" aria-label="Data de Referência: clique para usar ordem crescente">Data de Referência</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Data de Entrega: clique para usar ordem crescente">Data de Entrega</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Status: clique para usar ordem crescente">Status</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Versão: clique para usar ordem crescente">Versão</th><th class="sorting" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Modalidade de Envio: clique para usar ordem crescente">Modalidade de Envio</th><th style="width: 45px;" class="sorting_disabled" tabindex="0" aria-controls="tblDocumentosEnviados" rowspan="1" colspan="1" aria-label="Ações: clique para usar ordem decrescente">Ações</th></tr>
+								</thead>
+								<tbody>
+									
+								<tr class="odd"><td valign="top" colspan="11" class="dataTables_empty">Não há dados disponíveis</td></tr></tbody>
+							</table><div class="dataTables_info" id="tblDocumentosEnviados_info" role="status" aria-live="polite">Mostrando de 0 até 0 de 0 registros</div><div class="dataTables_paginate paging_simple_numbers" id="tblDocumentosEnviados_paginate"><a class="paginate_button previous disabled" aria-controls="tblDocumentosEnviados" data-dt-idx="0" tabindex="0" id="tblDocumentosEnviados_previous">Anterior</a><span></span><a class="paginate_button next disabled" aria-controls="tblDocumentosEnviados" data-dt-idx="1" tabindex="0" id="tblDocumentosEnviados_next">Seguinte</a></div></div>
+						</div>
+					</div>	
+				</div>
+			</div>
+		</div>
+	</form>	
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a38b8219ef0b181d',t:'MTc4OTAxMjY0Mg=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><iframe height="1" width="1" style="position: absolute; top: 0px; left: 0px; border-width: medium; border-style: none; border-color: currentcolor; border-image: none; visibility: hidden;"></iframe>
+ 
+<span role="status" aria-live="polite" class="select2-hidden-accessible"></span></body></html>
