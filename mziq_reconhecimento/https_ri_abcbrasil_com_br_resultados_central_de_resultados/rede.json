@@ -1,0 +1,615 @@
+[
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://ri.abcbrasil.com.br/resultados/central-de-resultados/",
+    "resource_type": "document"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://ri.abcbrasil.com.br/resultados/central-de-resultados/",
+    "content_type": "text/html; charset=UTF-8"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://www.googletagmanager.com/gtag/js?id=G-KV7DQ8WYM7",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-includes/css/dist/block-library/style.min.css",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/style.css",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.css",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/sitepress-multilingual-cms/res/js/cookies/language-cookie.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/google-analytics-for-wordpress/assets/js/frontend-gtag.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/moment-2.29.4.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-3.7.1.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/slick-1.9.0/slick.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/main.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/acessibilidade.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/lodash.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mz.util.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mziq.cmsint.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/ics.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mzcalendar.datepicker.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mziqcalendar.pastevents.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/i18n/datepicker-pt-BR.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://s3.amazonaws.com/mz-prd-stockinfo/assets/js/mziq_stockinfo.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn.cookie-script.com/s/601ccecc9b6ee68cac9d66b4612c7323.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/logo-frame.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/Group.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-facebook.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-twitter.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-linkedin.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-youtube.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-instagram.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://www.google.com/recaptcha/api.js?onload=wp_recaptchaLoadCallback&render=explicit",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300..800;1,300..800&display=swap",
+    "content_type": "text/css; charset=utf-8"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/style.css",
+    "content_type": "text/css"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mziq.cmsint.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-3.7.1.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/ics.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/moment-2.29.4.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/lodash.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mz.util.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-includes/css/dist/block-library/style.min.css",
+    "content_type": "text/css"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/main.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mzcalendar.datepicker.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/i18n/datepicker-pt-BR.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.css",
+    "content_type": "text/css"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/logo-frame.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/acessibilidade.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/slick-1.9.0/slick.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/Group.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mziqcalendar.pastevents.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://www.googletagmanager.com/gtag/js?id=G-KV7DQ8WYM7",
+    "content_type": "application/javascript; charset=UTF-8"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-KV7DQ8WYM7&gtm=45je6990h2v888752651za200zd888752651&_p=1789015583244&gcd=13l3l3l3l1l1&npa=0&dma=0&gdid=dZGIzZG&are=1&cid=824262163.1789015584&frm=0&ngs=1&pscdl=noapi&rcb=17&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B151.0.7922.34%7CNot%253DA%253FBrand%3B99.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=pt-br&_s=1&tag_exp=115616985~115938465~115938469~118897920~118897930~120213116~120385423~120469145~120469153&sid=1789015583&sct=1&seg=0&dl=https%3A%2F%2Fri.abcbrasil.com.br%2Fresultados%2Fcentral-de-resultados%2F&dt=Central%20de%20Resultados%20-%20Banco%20ABC%20Brasil&en=page_view&_fv=1&_nsi=1&_ss=1&_ee=1&ep.forceSSL=true&ep.link_attribution=true&tfd=672",
+    "resource_type": "fetch",
+    "post_data": null
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-twitter.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 204,
+    "url": "https://www.google-analytics.com/g/collect?v=2&tid=G-KV7DQ8WYM7&gtm=45je6990h2v888752651za200zd888752651&_p=1789015583244&gcd=13l3l3l3l1l1&npa=0&dma=0&gdid=dZGIzZG&are=1&cid=824262163.1789015584&frm=0&ngs=1&pscdl=noapi&rcb=17&sr=1280x720&uaa=x86&uab=64&uafvl=Chromium%3B151.0.7922.34%7CNot%253DA%253FBrand%3B99.0.0.0&uam=&uamb=0&uap=Windows&uapv=19.0.0&uaw=0&ul=pt-br&_s=1&tag_exp=115616985~115938465~115938469~118897920~118897930~120213116~120385423~120469145~120469153&sid=1789015583&sct=1&seg=0&dl=https%3A%2F%2Fri.abcbrasil.com.br%2Fresultados%2Fcentral-de-resultados%2F&dt=Central%20de%20Resultados%20-%20Banco%20ABC%20Brasil&en=page_view&_fv=1&_nsi=1&_ss=1&_ee=1&ep.forceSSL=true&ep.link_attribution=true&tfd=672",
+    "content_type": "text/plain"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-linkedin.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://s3.amazonaws.com/mz-prd-stockinfo/assets/js/mziq_stockinfo.min.js",
+    "content_type": "application/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-facebook.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn.cookie-script.com/s/601ccecc9b6ee68cac9d66b4612c7323.js",
+    "content_type": "application/javascript"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/6a58f3130b6c8e4c0088062f814d6d33-scaled.jpeg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/icons/arrow_select.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2",
+    "resource_type": "font"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_up.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_down.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/sitepress-multilingual-cms/res/js/cookies/language-cookie.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://fonts.gstatic.com/s/opensans/v44/memvYaGs126MiZpBA-UvWbX2vVnXBbObj2OVTS-muw.woff2",
+    "content_type": "font/woff2"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-youtube.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-instagram.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://www.google.com/recaptcha/api.js?onload=wp_recaptchaLoadCallback&render=explicit",
+    "content_type": "text/javascript; charset=utf-8"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/google-analytics-for-wordpress/assets/js/frontend-gtag.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/icons/arrow_select.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://www.gstatic.com/recaptcha/releases/8x-4t2pegToiW8KmThtO4AQt/recaptcha__pt_br.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/6a58f3130b6c8e4c0088062f814d6d33-scaled.jpeg",
+    "content_type": "image/jpeg"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_down.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_up.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://www.gstatic.com/recaptcha/releases/8x-4t2pegToiW8KmThtO4AQt/recaptcha__pt_br.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "content_type": "application/javascript"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "resource_type": "xhr",
+    "post_data": "{\"sensor_data\":\"3;0;1;0;8888888;TTKqoURM6+s9atZzSBJbd0yHn9bm5r8BDSchQXobuH4=;18,0,0,0,3,0;\\\"3\\\"F\\\"yzj\\\"65m{d\\\"r0\\\"h-/\\\"tgv\\\"5\\\"PAB(\\\"e\\\"pVt\\\"<\\\"nP]xo4_[D`JQwhTyZvqZV[VW|@L^U2lyjUgR!#LQ#o&]]v\\\"!P \\\"eTJ\\\".\\\"\\\"I\\\";if\\\"AP8rd$-^\\\"%S|\\\"f_#I.#v]#n\\\"hdW\\\"3UP\\\"doV\\\"i:2Vl1vi\\\"gs9d(\\\"*ISg(\\\"37t\\\"ieq\\\"+\\\"\\\"7d>\\\"ex\\\"-:\\\"F.YW\\\"_\\\"eY\\\"D\\\"y(B\\\"]\\\"5UQ&9(7v0hZ(^\\\"q\\\"tXe\\\"L\\\"\\\"4\\\"3x \\\"gl~./0\\\"ndxs&cb/l-9lJM\\\"Rh$\\\"Tbw\\\"Y~^y}\\\"{r3\\\"D\\\"\\\"TH:\\\">am\\\"igbrsw/ZS!y\\\"hB`uH7E\\\"ndo(3\\\"tUIS\\\"/\\\"H}Z9J(K;/+Jo#SJV#0<&E0&U71;y6f+m:O%VqpXL]lu~^;:|$~Fcj#!-M+_wf}yD/3p`yW2%qVf~JS8:uOz6_2,M7eR5}F==`m>vZ*j?x+\\\"=\\\"K u\\\"^R%sKVWYuWGu~skp~whQy\\\"|O#\\\"ec$lV\\\"qiI\\\"q}N\\\"ckP\\\"A\\\"7d*\\\"9\\\"O/~\\\"Eb[tH\\\"if8V\\\"{Pt?h-q-[\\\"+Js\\\"C\\\"\\\"J\\\"]Ee\\\"~(d\\\"6=U\\\"|\\\"@*^24\\\"{k?\\\"F+Y7D\\\",LL\\\"d=N\\\"w\\\"\\\"`\\\"8&?\\\"-\\\"\\\"K_n\\\"0NP\\\"3|XX9\\\"stGx\\\"!ZPblK^Jr\\\"*d\\\">N_H+$w\\\"giU\\\"w|fi;&.V;\\\"6K5Ob\\\"5o\\\"o^n\\\"eT2\\\"Y2-\\\"n^q\\\"/]>My]*KbM#iI=|tK1MrN^r\\\"nMi\\\"5\\\"\\\"$\\\"Q@\\\"c[M{5\\\"A-y\\\"5CB\\\";clf\\\"3\\\"\\\"k\\\"dh \\\"H)# W2$N]??s[lTZ-2J%Ayd*Lc(GFHmp%v]-u|BJyn^e?YnD.F]}>CrZ?5_`H\\\"h\\\"xWo\\\"I\\\"\\\"1\\\"@-/\\\"b\\\"$ym@ Q?.VXe=-H^9\\\"z\\\"S0%\\\"p>%jhd\\\"en\\\"1\\\"NC\\\"MK{\\\"v0@ \\\"%\\\"1@e_J\\\"JCn\\\"a^\\\"OOa\\\"4xV\\\"e\\\"UYTOcr1c] uEY]VD`.ARnFR(k.YF^^G;.Uh?F-c+W]Ss\\\"J\\\"qiP\\\"(\\\"\\\"`n(\\\" tj\\\"%oS\\\"j4b6\\\"j$Hqu\\\"[wMH\\\"hpy<^\\\"$6H\\\"W{-;{\\\">*m\\\"0N\\\"NX(\\\">h)2m\\\"2X^\\\"}\\\"P\\\"I2.\\\"ACY\\\"(VB`Uy\\\"m+:0\\\"mWGpl\\\"Y|\\\"J\\\"\\\"Z\\\"wXY\\\"XuUqmB\\\"J/l+\\\"a=p\\\"Zz0\\\"Y\\\"|a}@Ao<p$~\\\"}ZQ\\\"*\\\"Q=\\\"-FA\\\"^Z^>\\\"RpO!e!KYT-}#\\\"U${O\\\"[\\\"/vD);H/u\\\"wbr\\\"fZz\\\"Y\\\"-B!k&4uQBy,gvZO$d|4td}+Z#s=2mHvLcldf\\\"$\\\"1pr\\\")%k_C-KgX(GNb\\\"t\\\"*yS\\\"C_t\\\"=ua\\\"otX\\\"2:xoeKq\\\"1}Db\\\"_h1\\\"`R$\\\"EmH]q\\\"%BR\\\"01@(5lf.]]O%BfS:\\\"[LR\\\"8Tnzc\\\"QK5\\\"Xmq4~~yX\\\"GGP\\\"eJ#cSUidB!Qu\\\"yFy\\\" \\\"+\\\"?ra\\\"]Kl\\\" \\\"O\\\"cYP\\\"9)|\\\"*Nx/(\\\".#\\\"^\\\"\\\"!\\\"1??\\\"G\\\"\\\"!\\\"u[c\\\"z\\\"5hV<{OP6 LS<]@z5Ic*$3H.q$b?@=)[!%TJHgLx0d9a:af.4l~,HbZTj}]EG~Dhy2<&kFv*C+*[!TnE!B#nw1uTFcH,84GMpx%WlR:e%3%4Oe7o\\\"Qs@\\\"D.:\\\"@\\\"it{?BjyB1I;xLuoZs8WvRzV+Sh)pt9abE]c6\\\"V\\\"gx<\\\"Fn92&/R{\\\"~S2\\\"_t$!v\\\"g`Tt\\\"g}3Y}\\\"9#*T\\\"Y\\\"|(_=Y%*}EpAszGrIz:HnXh/[[JBFw]B>ry1bK9tNA<aebptx HPfpZ\\\"L\\\"enf\\\"T\\\"{5:H{SA Rj@V05gx\\\"D\\\"p]z\\\"R$9\\\"VP5\\\"WZ258?,kg?0Q\\\"7>(\\\"KEq\\\"U~\\\"dEm5+M&\\\"(1`\\\"`;@-|]Q%\\\"]wn\\\"<(Y3\\\"7zY7\\\"emjcO\\\"!B\\\"S7/ w\\\"R:[+\\\"n\\\"|i;_R;u_Or;[$wh*W/jlakQbfZC)SpT_zU\\\"^\"}"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/categoryInternalName/document/language/years",
+    "resource_type": "xhr",
+    "post_data": "{\"categoryInternalNames\":[\"central-resultados-earnings-release\",\"central-resultados-dfp\",\"central-resultados-itr\",\"central-resultados-df-prudencial\",\"central-resultados-df\",\"central-resultados-apresentacao\",\"central-resultados-fact-sheet\",\"central-resultados-teleconferencia-slides\",\"central-resultados-teleconferencia\",\"central-resultados-transcricao\",\"central-resultados-series-historicas\"],\"language_code\":\"pt_BR\"}"
+  },
+  {
+    "tipo": "response",
+    "status": 201,
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "content_type": "application/json"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/faviconNew2.png",
+    "resource_type": "other"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/faviconNew2.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/categoryInternalName/document/language/years",
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/filter/categories/year/meta",
+    "resource_type": "xhr",
+    "post_data": "{\"year\":\"2026\",\"categories\":[\"central-resultados-earnings-release\",\"central-resultados-dfp\",\"central-resultados-itr\",\"central-resultados-df-prudencial\",\"central-resultados-df\",\"central-resultados-apresentacao\",\"central-resultados-fact-sheet\",\"central-resultados-teleconferencia-slides\",\"central-resultados-teleconferencia\",\"central-resultados-transcricao\",\"central-resultados-series-historicas\"],\"language\":\"pt_BR\",\"published\":true}"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "blob:https://ri.abcbrasil.com.br/a76cf207-46df-4274-be5a-f74fbc95c40e",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "resource_type": "xhr",
+    "post_data": "{\"sensor_data\":\"3;0;1;0;8888888;TTKqoURM6+s9atZzSBJbd0yHn9bm5r8BDSchQXobuH4=;7,63,0,1,2,120;V&e,jCF1\\\"j|C\\\"r\\\"9U:ial:?|H_o;4rDhqP@Jat;g+>U#YxECYv8v3C9/$<yG}3.4AvPvd\\\"3\\\"Vv0\\\"bD$V,Q\\\"S\\\"swW\\\"/iD\\\"zy_}[\\\"(}Y\\\"-w3\\\"vHDj\\\"z7\\\"Zy]n}\\\"E\\\"[Z\\\"#\\\"fd0?/\\\"Q\\\".^\\\"O^\\\"}6&*\\\"B\\\"Qswo7-|TE_`\\\"?\\\"#^Cejn=\\\" RC\\\")bl\\\"W\\\"UYj7a]FXh%%FJNEBpL[f\\\"U\\\"_{e\\\"&0h6o3puK\\\"cY\\\"Lku?;T@M%dr,Aq-sobEFckc.o/$e3\\\"+8\\\"A\\\"{3\\\"-|y\\\"c2lP\\\";\\\"<UShLM%o\\\"*uL\\\"9rx\\\"5\\\"h*7A+j)<~Z[Oek(/N92pb{<.s$%BU.M 4op kWs5vbed|#?EggfX=k(t\\\"t\\\"4I8\\\"MbC3@EI`2wRf^\\\"t4Mo\\\"H-s(H1c\\\"|\\\"p\\\"a^,U\\\"9}m;O\\\",EJ\\\"K\\\"\\\"<\\\"J9,\\\"T<=0HL\\\"lbOuM_:Z%JD)#rxCN 5FecFTN.SPu,hOk^<=f6x#|I,zY\\\"%`v\\\"g7:\\\"1\\\"T3B\\\"d\\\"A&j\\\"b\\\")}FM]Li}u>C{W+RuUeUgU%-8p7xSa,urK.\\\"d2oOVFz2\\\"&g*\\\"U& 2tQkqNwbLLozL\\\"M2G\\\"w\\\"a\\\".X4\\\";fS\\\"f\\\"V>(H}*]WD<&]tn`w=S;I]m?KIWn ,9/{W~64v:-nqRhL_\\\"+~,\\\"3z0\\\"Z\\\"`74sV|c|>2}GiK/2w&*&~%X?e3&~FWF%\\\"D\\\"VC0\\\"Nm_b!\\\"{bg_\\\"48$>ri0XJC%QVK<yu^P;%C30+TqwYym}[>@\\\"Fg6^db!wi?By1JQ:!P1)8Co@2CFb|yR!p2ZA+.{H)i4N^OE~~Ld4B5yof{}O;d3PGFw;D7nC89`}-&030|y:J.]!(FGu)VY|ym{q,9|Zyqyq*-=\\\"gM0\\\"9#r\\\">)U\\\"!^g/0\\\"V\\\"U`J\\\"w\\\"p6ER\\\"c\\\"Bt4[D11:h~MhFW,.<4v(T=u&z;Bdn)%)lTyJ\\\"s\\\"fAi\\\".Sx\\\"K\\\"@Oz?\\\"tvk;-\\\"Hn8\\\"A#K%=E\\\"a,b\\\"+\\\"\\\"T\\\"^dS\\\"o\\\"S`l1<q{@KfN\\\"f9-\\\";E#\\\"^(a1n}D86l\\\"2\\\"#M))\\\"}\\\"P\\\"I_}\\\"K9X\\\"(U<\\\"CpQ\\\"^\\\"N)\\\"GSb\\\"?L B\\\"Sl^D|uUW#F8TV0)r-e,O+ sULv2k6Rx[|]1<zgkd>3G~JbW:#F#{*yc#\\\"T\\\"+D8\\\"i\\\"\\\"L\\\"zgz\\\"%H>gk?\\\"mM-b\\\"Q/j\\\"mOj\\\"?u>\\\"2jb\\\"0m-#u>\\\"R`SS\\\"T\\\"#R~SEZ`Y-pA&dtP,4QM@gG9:<,*|0a>{jGjh8O [weWz`Dj3_uWl0rW<>|8.,tB|n&N$n!9wF^ZkKT,w-!3Ee&pnzp&&7 0j_vw.$M{QVQ;2tsM\\\"P\\\"duKt\\\"Y\\\"4K\\\"(\\\"t}lC\\\"~\\\"Z6ul:\\\"eZM\\\"m;ld6\\\"?\\\"u%+GOrs\\\"r\\\"{oy*\\\"1\\\"dg\\\"U\\\".($S\\\"=:aJ<\\\"9Cg\\\"TPj`c-sl\\\"Vqn\\\"$p JpAAI\\\"\\\"3\\\"*,\\\"o\\\"t7JbJk/\\\"DVj@\\\"J\\\"c5CFJG9v^s(lCO&\\\"%\\\"O8Qv\\\"([?cd\\\")t\\\"VLPgj\\\"T:~4\\\"^9EM(!`u\\\"Tyy\\\"B~7^1\\\"wi2,\\\"$\\\"5\\\"jcn\\\"wdi\\\"q\\\"i+k|NOjURn2,j%\\\":\\\"Le%\\\"V:x\\\"SED\\\"7\\\"2]^`1:PcMuCIx]f6\\\"3\\\"_}(\\\"I\\\"q;3+\\\"R\\\"-tR\\\".Td1r\\\":V`\\\";\\\"\\\"y\\\"4qt\\\"VBx<\\\"*q.g\\\"0\\\"\\\"bEV\\\"c~5\\\"H6Q\\\"v4X\\\"~\\\"\\\"=\\\"](3\\\"7E-hP.sO;^!&6m.C1\\\"Q0Y\\\")|R\\\"`uC+7\\\"8\\\"\\\"e@S\\\"Yq\\\"w\\\"xgHI\\\"t\\\"X4|K\\\"G\\\"*_Br,2(x9h!Z_nZ}Yp|>\\\"=\\\"Z6{J\\\"d\\\"P6E\\\"\\\"q>5\\\"D-~\\\"/\\\"m\\\"(oj\\\"kBq\\\"t8 U@zO|H\\\"MLK\\\"F\\\"J\\\"&;q\\\"]O*\\\"VjfUgtRk\\\"*!R\\\":\\\".<>yH0)vjZob!@FSIb3}~) tN]:8^T;#3I])]vZ8?94Hbs}^SmIG5T?}kT7{N0kWhZx3a15&6L(:Q@@ZJxPHHxE%d_x/{shJ3gap4ho\\\"b\\\"a$PJ\\\"N\\\"*2-/n%3DkK{ep~q6g|o@x`EV2Z,NXnYz~vwX~Wq_ZVcLA\\\"|V)\\\"DdR\\\"p\\\"1jf9@h\\\"X\\\"l4M$\\\"f\\\"RZ_a\\\"Y\\\"uz)@\\\"q\\\"\\\"y=S\\\")2k\\\"3taXnrS:\\\"<!X\\\"( j[.\\\"`H0:\\\"%\\\"c)Pn8@F@+GfM364<L {/(7q^z>3z9?c,]{T#\\\"H\\\"9yX\\\"(\\\"&*LQra(J^>*SwX?+>[t^}?1shUN7eDV[=Sp%?S#m@*!Kxzg7:jTa5s5 Q#kh&L>%mHCMf%?w`&#F7#7Hd1\\\"A(\\\"&T\\\"h\\\";woql};^!S J_y<y{-.-#rg)G$F}0SO]_iEKn1wTJNAs_WV-1m%TP!kDa?lz2%W.\\\"p%`\\\"l:^\\\"C_2PlU/\\\"2DU\\\" `D\\\"aN9\\\"(\\\"-|W{S0e v8?s\\\"H!9F*=\\\"\\\"6\\\"=r \\\"8\\\"{g_a jdi\\\"m\\\"i&|W6e2\\\"*\\\"xRjM0\\\"w6p\\\"VG,\\\"I\\\"w&IhqKC60rE$_ 7xu@k\\\"_ah50\\\"f\\\"..W!\\\"l#?qlgEvZV(dp2Nt=áJ}09p|@Cã!$&Uo4,70íU.14\\\"m\\\"];=A\\\"8dYVG#\\\"#;M;\\\"`w$\\\";J2\\\"I\\\"3zhE2h28\\\"Qk&\\\"o5KW\\\"w#d:u#z%9zR\\\"2u4}\\\",\\\"@p~,c@70:Hlx;8\\\"8:b\\\"APw\\\"p\\\"b^fT`AIvLXdN,\\\"t\\\"5h,G\\\"#\\\"pL0\\\"M\\\"M`X_\\\"!e~m[1e\\\"/rAT\\\"8Ai,DH+8?vX{+dD=\\\"/8RA&\\\"*\\\"%8[9\\\"F\\\"b:q(\\\"n\\\"$4+8h\\\"8ys\\\"&t\\\"o\\\"+G i-)w5M?i2`fA._XjXLL+9d7@Fa9q:j0fbpH7|HW$N+V<_%%k!z?`jv1~NKny)eAjPb7$N3qFnp-z7hw\\\"4\\\"R>6#\\\"Rp\\\"Md \\\"6*;\\\"TLIs%p6uO+\\\"06n\\\"3\\\"70(\\\"U\\\"$|:l\\\"B+}e)\\\"*@\\\"w/)q\\\"{U%=\\\"u\\\"0*$P\\\"+O~\\\"y @\\\"|D#vzo8w`BmUJC\\\"??H\\\"i\\\"]BX;\\\"J_?EpZG\\\"7~\\\"UyoAC}&gS|Yh}\\\"-JA\\\"~g)$F\\\"s\\\"e9+i(1zD\\\"4\\\"qYOHfJZ\\\"2\\\"\\\"3\\\"pkG8\\\"W\\\"h4Y=$9yt{b la0)uJ);O\\\"/\\\"F<iT\\\"}aLZII\\\"N7]#[IN\\\"l\\\"\\\"H\\\"`Zd\\\"]\\\"7/\\\"3#aO1%\\\">\\\"Wwo1\\\"J\\\">_gsydf|$[2$fJsT)\\\"~\\\"T[>|\\\"m\\\"5Sx1 lfu][P|12J5p]1q^eAg.@^LehSjoK3,gp.9[E2H\\\"y\\\"_|{\\\"B\\\"jj_7XQB^c.`uyx$uR% zoMmT_afz#Z,)j=immD_TP(lO$?d%v_~_Z/~}P[5u*kq>\\\"TTU\\\"O<M\\\"+\\\"ehMCQp-\\\"w\\\"Gz-0\\\"_@YA# 4\\\"7a`r\\\"rM2\\\"L(_\\\"N5j\\\"@~-\\\"7\\\"%g)\\\"tp^\\\"Wt$8;\\\"{\\\"4\\\"s\\\"8lvB\\\"6\\\"[80|O<C*~}YDTY(qViwcn`%_8wAn)Iwp4P6W?BI%zfoY!^cD3`W5_9gn4>ML?gKFV,cM3XFg{ pc1Ko et)U.+SwVn9;%SDo_ Z|KI@y^Q\\\"c\\\"q5k\\\".,K,D)eUW)DtP2\\\"P,_\\\"wu+X\\\"w8Vq\\\"iCa>Iooc29C\\\"v3!Y\\\",\\\"9<n?\\\"]\\\"mqvI\\\"3\\\"yE&\\\"//0uN\\\"Y R\\\"P\\\" ~TIlSSuV?K\\\"r?s\\\"z50\\\"<\\\"*cv=q0Nv\\\"!\\\"VVG+\\\"w\\\"qR\\\"gR_\\\"kUwz\\\"A&\\\"#5Rf\\\".\\\"$E>k[M/8<o[\\\"+\\\"W~pD-v^\\\".\\\"XD6]w[=\\\"#\\\"of[\\\"e\\\"\\\"wzb\\\"-pR\\\"5.\\\"Y\\\"J#KA\\\"d|r_P1U:\\\"38 \\\"e\\\" q\\\"Y\\\"PqQO\\\"0]Ce\\\"h,],\\\"^\\\"R\\\"n\\\"g6xv\\\"jnh.>9f\\\"E<5\\\"9A\\\"oH\\\"?rbS\\\"<d^t\\\"w5\\\"N@KB\\\"Q?$bbW\\\"?(u<\\\"M\\\"#\\\"I\\\"8]#)\\\"X\\\"~8ki \\\"W\\\"jjkf\\\"o4G\\\"e1E\\\"d. $1\\\"XT,\\\"vAI,X &t4K4VYcPg@\\\"zV(\\\"#T]e $Nd\\\"#O\\\"!W+N_\\\"k^V\\\"B\\\"E\\\"CV{\\\"f:c\\\"*]zI#*(\\\"Cm}e\\\"j\\\"UZW\\\"^\\\"o2P>\\\"/o\\\"M\\\"l:Wq\\\"j&`$R^_6Uo0xNTn0/Sdt_4on\\\"~ d B+&i~f0xr ~w\\\"!\\\"=L[\\\"U\\\"1\\\"AeA\\\"Lv!\\\"]k0FvEX\\\"Xd)%|Aujc} K`\\\"M\\\"bnq\\\"d\\\"\\\"tpV\\\"L<X\\\">{5WR` XL\\\"SU\\\"wGZ)=`VV-QWV\\\"0xD0\\\"\"}"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/filter/categories/year/meta",
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-193-1.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-194.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-193.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-193-2.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "response",
+    "status": 201,
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "content_type": "application/json"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-194.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-193.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-193-1.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://ri.abcbrasil.com.br/wp-content/uploads/sites/1376/2024/07/Frame-193-2.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "resource_type": "xhr",
+    "post_data": "{\"sensor_data\":\"3;0;1;0;3684665;TTKqoURM6+s9atZzSBJbd0yHn9bm5r8BDSchQXobuH4=;5,63,0,0,1,120;\\\"4U\\\"pUt\\\"e<-B\\\"v4TO?\\\"*iM8\\\">TH/$9*\\\"e]/w\\\"m\\\"\\\"h-#\\\"eb|\\\"*-Qp\\\"+B)8\\\"!\\\"Ex8\\\">r8\\\"k,y>?\\\"5D,9] =5\\\"*qe\\\"r\\\"\\\"^ =\\\"2:B\\\"~hVmh\\\"9EZ\\\"5.]7\\\"B5eb\\\"RKQM>B#\\\" $C\\\"20xx0J_VYvITb?LbCknM\\\"HV\\\"A#{1uypD2E<>d)\\\"^v9\\\"f\\\"R%ET05 oc.w\\\"P\\\"|Ou8u`o\\\"j+Jt9Rn\\\"%pM\\\"Uhc\\\"V|s?7\\\"+[X\\\"_vt\\\"8=ec?Yep<=?e\\\"\\\"|$S\\\"et2\\\"!\\\"gvVa39(uvz>&.m1nx HXNJTr/o8iAL.Q`~%(6n$b4&Ey\\\"w\\\"cD`\\\"B\\\"q\\\"%*4\\\"Sx;\\\"VL[YP\\\"D>\\\"+\\\"eTF\\\"(gGT);3\\\"R\\\"9l*d\\\"Kd,\\\"K86\\\"yv 5kY.\\\" H\\\",OQW%=kH\\\"7\\\"bL,O\\\"?U[\\\"/K_\\\"v\\\"u\\\"9#b\\\"/Ku\\\"Y\\\"Kim3TR\\\":i[0`\\\"A5g\\\"|H\\\"7\\\"\\\"E\\\"jh3\\\"5\\\">p{6\\\"t\\\"t~L-\\\"(7?*y}#q6\\\"XjWA[\\\"+Yw6qZxv\\\"eX\\\"7.:\\\"uFC@)\\\"3\\\"^~vaceBoO.ASLr@U%d](42-!r{A86?=*oA$<ov$&T?xnq_y#yGwx$ylI0=`kJ cO>=*{pg]gKT>&(.[.po&vrYGB7^ x}IqcGKr;?Pcftt?pji@\\\"N\\\"hn#f\\\"R\\\"[/+.\\\"1\\\"c/0J\\\"ts\\\"j\\\"{{&(\\\"-kM\\\"(;)\\\">\\\"R&,3qNF>SY~xOPiZa8sr(^0/jyhxz$gj8m,:\\\"J\\\";@_\\\"Vz%C=Lsfy/hD&i>:\\\"}0qzY^Da@|<KXX*R\\\"H\\\"MWA\\\"i\\\"\\\":\\\"gy}\\\"i|`BIDMnW4\\\"9]uF\\\"_\\\"29]=u<V?#3#FJu\\\"0\\\"sUK\\\"L\\\"8l D`<v W#X_Qp>S3~4k\\\">\\\"VAHG\\\")\\\"uv`\\\"~\\\"`R)f\\\"^\\\" \\\"k\\\"IQT[\\\"5\\\"cm\\\"6\\\")=n/\\\"1\\\"c8cJ\\\"K\\\"#Hk\\\"1\\\"9YAkl2LJ(cz}arY&$\\\"i\\\"G2$S\\\"lEP%z\\\"Rbu\\\"We5\\\"btR\\\"Q\\\"UT+)8^>C@)#hBPt<4B~;R)Bff)3Q*?[#LL(RW2|n1#i_q\\\" ]S\\\"C}}\\\"z2uG ,~&\\\"Jc3\\\"[\\\"3iH:-rgP<o;\\\"VIw\\\",_~\\\"M8g?j5/M!\\\"qz\\\"a\\\";<v(ic,hxF,\\\" 2`\\\"g(-\\\"j\\\"f;_T9KqX\\\"9\\\"#crWE+m\\\"o[Acn\\\"bP+\\\"$\\\"\\\"l\\\"#:&K\\\"S0wuo\\\"rT\\\"dNc~#e\\\"=zj\\\"<\\\"qs/u,W\\\"J\\\"} lm\\\"|u{\\\"SI(\\\"L\\\"7\\\"y\\\"}8{z\\\"[.b3F\\\"Ij+\\\"@\\\"=LVigxSR|MNN{H6kvXU5C(lAf`i<afPY_y)AA_HClLOZ{VE+)n#st]N \\\"Z\\\"sKW\\\"}\\\"%7XV\\\")\\\":5SN\\\"f\\\"<=>\\\";\\\"s(g<\\\"]7nxt(6fs->Q\\\"=&gb\\\".\\\"S=KO_]jZL3jy8%l_j;A^$OW#|.oWs+oFI:Sc\\\"n\\\"NN:\\\"du_GXg *kp\\\"Qiv\\\"I\\\"\\\"T\\\"mby\\\"R\\\"o/&*yYz\\\"&\\\"w<j3\\\"#\\\"w\\\"Dd>\\\"BbN\\\"u\\\"5\\\"To{\\\"|pI\\\"h\\\"cmQKf!^*AL`Q#z-w\\\"/\\\"&Xi\\\"j$(@7!Htsk%@(HqD}\\\"myW\\\"m\\\"RaV\\\"g\\\"={Iq\\\"3\\\"}Qx)\\\"3V*\\\"7]B\\\"%DgR[(\\\"L=nj\\\" ^j\\\"@RS\\\"K\\\"+0U}Z/sYPz_xLEU3f|l>\\\"y\\\"G(G\\\"XIR\\\"XKj\\\" `+&]\\\"r_2V\\\"J\\\"r;=e*\\\"9-I\\\"6J_\\\"r\\\"a}EEhHET$]wKS.H3<$Y(r0R7r|qLOXC0H(7cRp93W?jkD*o)H4@A5VLFK_(/=Qo-\\\"&h4\\\"cla\\\"wn;e 5eAdzEh].\\\"@&Z\\\"{3&y\\\"F<)%\\\")s}SR%<B\\\"Yf#J\\\"R\\\"Mwbx+3Jl~p^/\\\"\\\"BCI\\\"<5<\\\"A\\\"{\\\"c3M\\\"d]E\\\"I\\\"m\\\"Z7$\\\"8aa\\\"vn%0JD7%o\\\"hgK3\\\"n\\\"<y{qfR8\\\"0\\\"o<s\\\",77ADX\\\"cK?pFMZ\\\"&\\\"XO\\\"?\\\"({{I\\\"!*^:9~)BT\\\"cm,&\\\"~2BOy`E68CB^jO6Y%7x\\\"?gbq{Kmb:HdfHJno?}xMi?R?!!ExPsw *RB02aA!|6?Ak\\\"]%b\\\"1u7\\\"p\\\"\\\"jDR\\\"1u\\\"H_Z&>f&Ym9=J7o9A\\\"Ldf\\\"I\\\"i({%qRw2+v)2Z}\\\"b?J\\\"w4p\\\"]\\\")#EQ7]2?ttqkb|N-4EY)J\\\"1p$\\\"FJC\\\"BnjF\\\"..=[vS\\\"^^a&\\\"QH]^*j+S?hGY)qucen[0nSz:Cw#61tJ42DDbLxf|}a{2~cYG!lhx4i1r\\\"b\\\"pdv\\\"MI:s#\\\"&xSD\\\"{\\\"*@S~heQC[9OzQY{>>S7o}U/uoF<) :]4x=G-Rby=P%nxE /Mao95NxU iAB0sUi=t$4O3-;autiq9*V<7rzt{5f[O=9~)i_!mlTP?OuC0pA@YP!\\\"FdM\\\"AKK\\\"=\\\"[SJ@b\\\"t\\\"B=r\\\"Gs?\\\"-|\\\"5c3\\\"O8K\\\"Mr\\\"E-B\\\"b\\\"|bKkc{o=Y4bZ8_naF##Hne.27[yT)^/e,M^gG&DS$BFx,\\\"RW$\\\"/G=\\\"=]E\\\"wl9\\\"o\\\"F-QtFDOuB ^^NHl3Aa*Q&X5a rNS7B:7>`X2,8o@=^qj1hY(8&Q]8:zO|oW$zUsI\\\"Kz{u\\\"yV\\\"iVU\\\"T3G9\\\")\\\"b\\\"N\\\"r/KM\\\"+\\\"wZW|i:]=jK8\\\"a\\\"XBXE:s_\\\"O\\\"]ih-7h\\\"H\\\"l~1l\\\"z\\\"/_u>g-o>>+8STP%2J*_IH4)}pB6@N5ZKE&8YEUh(2~zK^w<@r{26{ez%vW8mCRS6jWQsw+^lonoHcm=W~eCbO;-yx^mq|y.bMGR_(0Ts 6J@\\\"E\\\"MOr\\\"!\\\"1N<mm,Pg`>mA&A;?0Ys7kfVNw}my4Oj<&B[!o0MHKg/3|jMn4x|/$H\\\"?\\\"+;+\\\"V+PQxoB&=Vv/\\\"75\\\"Kj,\\\"x1n+\\\"y\\\"H&=>l)tUJ#sO7\\\"-\\\"1fT\\\"!\\\"_3a;^;[)01qUhpPteC;$}Y<uGSmS,FR(\\\"q\\\"h90\\\"4AA)k\\\"xnT\\\"4%od;D%Tm0tQhsPy\\\"$\\\"08e/\\\"e:z@O\\\"YJB\\\"YR6lE>s0 c+-\\\"qcS8\\\"*\\\"Co<B4\\\"w\\\"|3,?\\\"@&t\\\"$DZ\\\"$\\\"bIqpLuXlS);^M+O<5hiZgFv0wzk}Ji/UK:p`:?1nVI]$2#R(aMr.OAUh40d0MGO]`d|gCFuHYk8] qKf^H\\\"W\\\"m<<G\\\"Aj8@4UH8\\\"%!,!n6/!aXV1_E.u%9Cg`Tv(CCYL3s6$XakiWMHjOhlM/.$H>[0 4?8XIF6T A:qXzZFMD!,>y+mhZo~%W\\\"&D\\\"VQ\\\"Q\\\"\\\"E\\\"hRm\\\"M\\\"`XP4p5F3\\\"y[I\\\"}J%@\\\"o\\\".Ed gOEQ^c}&G7x\\\"k\\\"/@.M\\\"},n.LeGQn>9i\\\"V<M@\\\"DYd\\\"gb\\\"n\\\"5+2X|\\\"L\\\"=5R.\\\"_\\\"5\\\"&\\\"F|z@\\\"#\\\"KMaZPnCH\\\">_%\\\"zN-\\\"_8^U]$u\\\"Cy+P\\\"9\\\"\\\"w\\\"[c.\\\"0\\\"$B\\\"_\\\"hh5}\\\"e{A\\\">6;L\\\"Rk@Mj<a\\\"V+]\\\"e\\\"1)`V\\\" P3M`L#\\\"fkl\\\"w\\\"_\\\"O,>\\\"IL0\\\">7l2tD8j\\\"-uD\\\"?\\\"(cel1P6J)^1Wu!.mY_c?^Y31ucQ;h0CU@2.8j b2(I$G #(~gx._.$^dXR@(]:GWS@Mi0O9e^4p:g~= ]+H,cJ*3~*~sA HdY5`lG%[9~ZQtXj tl4H2jeZ_FYBT$t,PQD_tW.{bQ!~@-Fr]N)B>fqoys.syRFv<4&UvS)+mbO6nPx8B;k:{k}ov~=8C( BlnnBcQ%#sxUS:zRrlmKpf`kk%2?KH>2vFCKzK5~~ezR[@9X3BG%MT3RO~&FNU]L$]j%O$x^YZX]jSKfI[e<})y=<_h::aReAj*=rKB6>ENNTF8qYipYCGFSm?X$8SFU9(CI0imWol*38@.uDbtdUdZ#Fo(d~8JG6|;L;+*x4AWQ|ms[\\\"^\\\"E5@\\\"G\\\"+R0Kjw5}v1OE%\\\"/\\\";y0F\\\"]?/<,#uf#MdCXL$}2áA,Y<SWjvãC+w<c-R7ní/~5r\\\"m\\\"^b4o\\\">3<_*}a|x\\\"Ms=]\\\"R\\\"&a+\\\"{\\\"O<lS\\\"#\\\"y<^T\\\"$\\\"6-^\\\"Ue6H37hKLS8i\\\"/J4k\\\"~\\\"*$Hx\\\"-d5~-?\\\"p8u,\\\"MZT^3\\\"ft>\\\"tG9lmHr@a\\\"]Y/\\\"]\\\"9p5k>Bq@<L<p.pE:?prKPuEvX*A!T_$Bc4+@g?Xt6@sk3YCi_B?)yhwF,6RzY`i=^YZ_2|G9Ax|q7JxzzckNRB4rITIR=Y{D=,WRxj8\\\"#\\\"|#Ji\\\"5%k!vvqP*,Q\\\"\\\"U\\\"jQ~\\\"w\\\"C<e<Tyzw1VB *\\\"| {\\\"[N+b!\\\"??kE|bCA6;cm7K7>Z\\\"e?}\\\".+\\\"6\\\"m$Ls\\\"#\\\"\\\"O\\\"V?\\\"_\\\"QTeV(\\\"5gP\\\"8Gc^;\\\"U?;b:A2Z@6=\\\"[8\\\"J7%K\\\"btA \\\"V@\\\"Hj/5\\\"E>r68i;cc;;%IO\\\"Be.ly}zzA1pi6u:>QIOq\\\"[\\\"8.&v\\\"x\\\"5ge^1k%)\\\"r\\\"^o,Uc3K\\\"&(oHJ#f?D2f4\\\"-@G\\\"Hq?\\\"8\\\"q*`a\\\"^\\\";W_\\\"M\\\":b3\\\"Me@\\\"S]u\\\">\\\"\\\"u?t\\\"[oI\\\"W\\\"yjS\\\"0v&W.\\\"9\\\"$J\\\"/\\\".7_qX\\\"(\\\";e\\\"){\\\"d[!_\\\"\"}"
+  },
+  {
+    "tipo": "response",
+    "status": 201,
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "content_type": "application/json"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "resource_type": "xhr",
+    "post_data": "{\"sensor_data\":\"3;0;1;0;3684665;TTKqoURM6+s9atZzSBJbd0yHn9bm5r8BDSchQXobuH4=;5,63,0,0,1,120;\\\"4U\\\"pUt\\\"e<-B\\\"v4TO?\\\"*iM8\\\">TH/$9*\\\"e]/w\\\"m\\\"\\\"h-#\\\"eb|\\\"*-Qp\\\"+B)8\\\"!\\\"Ex8\\\">r8\\\"k,y>?\\\"5D,9] =5\\\"*qe\\\"r\\\"\\\"^ =\\\"2:B\\\"~hVmh\\\"9EZ\\\"5.]7\\\"B5eb\\\"RKQM>B#\\\" $C\\\"20xx0J_VYvITb?LbCknM\\\"HV\\\"A#{1uypD2E<>d)\\\"^v9\\\"f\\\"R%ET05 oc.w\\\"P\\\"|Ou8u`o\\\"j+Jt9Rn\\\"%pM\\\"Uhc\\\"V|s?7\\\"+[X\\\"_vt\\\"8=ec?Yep<=?e\\\"\\\"|$S\\\"et2\\\"!\\\"gvVa39(uvz>&.m1nx HXNJTr/o8iAL.Q`~%(6n$b4&Ey\\\"w\\\"cD`\\\"B\\\"q\\\"%*4\\\"Sx;\\\"VM[YP\\\"D>\\\"+\\\"eTF\\\"(gGT);3\\\"R\\\"9l*d\\\"Kd,\\\"K86\\\"yv 5kY.\\\" H\\\",OQW%=kH\\\"7\\\"bL,O\\\"?U[\\\"/K_\\\"v\\\"u\\\"9#b\\\"/Ku\\\"Y\\\"Kim3TR\\\":i[0`\\\"A5g\\\"|H\\\"7\\\"\\\"E\\\"jh3\\\"5\\\">p{6\\\"t\\\"t~L-\\\"(26+s(#q6\\\"XjWA[\\\"+^t6wZxv\\\"eX\\\"7.:\\\"uFC@)\\\"3\\\"^~vaceBoO.ASLr@U%d](42-!r{A86?=*oA$<ov$&T?xnq_y#yGwx$ylI0=`kJ cO>=*{pg]gKT>&(.[.po&vrYGB7^ x}IqcGKr;?Pcftt?pji@\\\"N\\\"hn#f\\\"R\\\"[/+.\\\"1\\\"c/0J\\\"ts\\\"j\\\"{{&(\\\"-kM\\\"(;)\\\">\\\"R&,3qNF>SY~xOPiZa8sr(^0/jyhxz$gj8m,:\\\"J\\\";@_\\\"Vz%C=Lsfy/hD&i>:\\\"}0qzY^Da@|<KXX*R\\\"H\\\"MWA\\\"i\\\"\\\":\\\"gy}\\\"i|`BIDMnW4\\\"9]uF\\\"_\\\"29]=u<V?#3#FJu\\\"0\\\"sUK\\\"L\\\"8l D`<v W#X_Qp>S3~4k\\\">\\\"VAHG\\\")\\\"uv`\\\"~\\\"`R)f\\\"^\\\" \\\"k\\\"IQT[\\\"5\\\"cm\\\"6\\\")=n/\\\"1\\\"c8cJ\\\"K\\\"#Hk\\\"1\\\"9YAkl2LJ(cz}arY&$\\\"i\\\"G2$S\\\"lEP%z\\\"Rbu\\\"We5\\\"btR\\\"Q\\\"UT+)8^>C@)#hBPt<4B~;R)Bff)3Q*?[#LL(RW2|n1#i_q\\\" ]S\\\"C}}\\\"z2uG ,~&\\\"Jc3\\\"[\\\"3iH:-rgP<o;\\\"VIw\\\",_~\\\"M8g?j5/M!\\\"qz\\\"a\\\";<v(ic,hxF,\\\" 2`\\\"g(-\\\"j\\\"f;_T9KqX\\\"9\\\"#crWE+m\\\"o[Acn\\\"bP+\\\"$\\\"\\\"l\\\"#:&K\\\"S0wuo\\\"rT\\\"dUd~#e\\\"=zj\\\"<\\\"qs/u,W\\\"J\\\"} lm\\\"|u{\\\"SI(\\\"L\\\"7\\\"y\\\"}8{z\\\"[.b3F\\\"Ij+\\\"@\\\"=LVigxSR|MNN{H6kvXU5C(lAf`i<afPY_y)AA_HClLOZ{VE+)n#st]N \\\"Z\\\"sKW\\\"}\\\"%7XV\\\")\\\":5SN\\\"f\\\"<=>\\\";\\\"s(g<\\\"]7nxt(6fs->Q\\\"=&gb\\\".\\\"S=KO_]jZL3jy8%l_j;A^$OW#|.oWs+oFI:Sc\\\"n\\\"NN:\\\"du_GXg *kp\\\"Qiv\\\"I\\\"\\\"T\\\"mby\\\"R\\\"o/&*yYz\\\"&\\\"w<j3\\\"#\\\"w\\\"Dd>\\\"BbN\\\"u\\\"5\\\"To{\\\"|pI\\\"h\\\"cmQKf!^*AL`Q#z-w\\\"/\\\"&Xi\\\"j$(@7!Htsk%@(HqD}\\\"myW\\\"m\\\"RaV\\\"g\\\"={Iq\\\"3\\\"}Qx)\\\"3V*\\\"7]B\\\"%DgR[(\\\"L=nj\\\" ^j\\\"@RS\\\"K\\\"+0U}Z/sYPz_xLEU3f|l>\\\"y\\\"G(G\\\"XIR\\\"XKj\\\" `+&]\\\"r_2V\\\"J\\\"r;=e*\\\"9-I\\\"6J_\\\"r\\\"a}EEhHET$]wKS.H3<$Y(r0R7r|qLOXC0H(7cRp93W?jkD*o)H4@A5VLFK_(/=Qo-\\\"&h4\\\"cla\\\"wn;e 5eAdzEh].\\\"@&Z\\\"{3&y\\\"F<)%\\\")s}SR%<B\\\"Yf#J\\\"R\\\"Mwbx+3Jl~p^/\\\"\\\"BCI\\\"<5<\\\"A\\\"{\\\"c3M\\\"d]E\\\"I\\\"m\\\"Z7$\\\"8aa\\\"vl(.K=Ow}3\\\"ca(O\\\"G\\\"u!qfM=W\\\"0\\\"Hrl\\\":9R8gZ\\\"UAiSBS/\\\"w\\\"Q@\\\"1\\\"avIw\\\".Z8:|BHVjz\\\"#u~Z\\\"q@ aC48;4IERDqFKI#2\\\":y~MY}K/FIN{?tQ}{noNyQY@oPXvylEd)psgrQ#H?D.sf\\\"d@5\\\"<$J\\\"/\\\"\\\"FlK\\\"7G\\\"[+Bj$Rk>CC1+FCDg\\\"Vs \\\"s\\\"s|rQy7*z%3byL{\\\"L0$\\\" o%\\\"l\\\"$:Xws$Uf!iS|H=:6O*X%J\\\"0mq\\\"QD[\\\"fNiX\\\"`^ 6:t\\\"D{KP\\\"hxMP3}=h8Z(i|@n-QqymO:kvq=2 Z%!&T,Aib2%7%WWU Fpsi%DZ T{e\\\",\\\"p<,\\\"Tw%m/\\\"RDoV\\\"t\\\"&&vb]!*:T)Y#:(CR#kuzYD58?)rH@Jbp#(e$e#^8U*t%:baeR.%T7{gFF(&d?zk}<q^JQby`).{#J~&W4Et:p<%79(*i_!mx1o-Oi;sF=>_TxK]\\\"OJS\\\"Bgu\\\"3\\\"HB/l{\\\"U\\\"t@J\\\"Q-X\\\"VF\\\"5[g\\\":Z+\\\"mJ\\\"F~<\\\"R\\\"Gb9)y5T0`a3.o_.;;VOL.X8fyR)[/f,K^aG*DR$JFs,c^\\\"& 7\\\"LJg\\\"S86\\\"3*J\\\"y\\\"&DFKPt<!`UOM?/<_`TSX]dV@}#dseb@7+.YjBmh`w8^n/R6WQ/;hzIJB)%yXFy8^\\\"{:Y)\\\" z\\\"W`^\\\"S,{_\\\"l\\\"R\\\"+\\\"*Gz(\\\"c\\\"2P>8[hKO50;\\\"l\\\"]7CwYd%\\\"g\\\"h-7h%L\\\"$\\\"njVs\\\"m\\\"`>_Px)*L=iT+*$GxgGD@1Yx}C(Jn>!P]9$LfgpzU*!PT<E|k&m2(rp)y?K?R`7j1a_if?Gk4wE^D9A~WH(JK=09jR,%_9iMFH`-=Sf&3F4+N!\\\"p\\\"wQ!\\\"[\\\"m6Qv2?zmVIeJv1L9FDgIr)VSH?E.WJQ5fB0MHK$NV.C]rakx`k|P@#\\\"T\\\"c/^\\\"Z|jG!Omrq:>>\\\"Xo\\\"J6F\\\"%MBY\\\"5\\\"Bg-pZE(oT3`-:\\\"-\\\"SM$\\\"A\\\"6^G`)01qUhpPteC;$}Y<uGSmS,FRv4vW\\\"^\\\"G_$\\\"7$x<o\\\"}t#\\\" XAh8p6nUk{Jv^+y\\\"3\\\"r>c:\\\"Nb9ue\\\"@!0\\\"DsS=^d}2Ag9y\\\"0`f&\\\"@\\\"gk5~X\\\"/\\\"{&:.\\\"mDY\\\"g_q\\\"5\\\"eU=}c|eEkUCw/h@shoixjRR^aT[JfKK6QNH1uNIG$1#Nuh`oK]~[ffNI2p`k}CxMz2a8%n<A<kj)y`d`]q\\\"8\\\",A>j\\\"IFlDzVwl\\\"uw[Sw,7a>g^UhXoMthwxb|yL0=fQ5Xr1ZlVHqGhVM..~8En-?A|>V{eyVDYU4<1,Y<_CgRJ4LSSL4(so8A\\\"`v\\\".2\\\"S\\\"\\\"x\\\"ww~\\\"Y\\\"={3H1q*/\\\"JgF\\\"|Yk$\\\"N\\\"LlJJLc^$ L3L$oc\\\";\\\"+Ix3\\\"8_#F@IQIw}dW\\\"Kd~1\\\"2(&\\\"Ef\\\"N\\\")@0cJ\\\"1\\\"n6W<\\\"d\\\"u\\\"x\\\"#Ww%\\\"W\\\"YPmFA+Nj\\\"MEV\\\"G::\\\"#O~WS5u\\\"5[4F\\\"(\\\"\\\"~\\\"ed]\\\"m\\\"H2\\\"d\\\"[4[V\\\"4/L\\\"K[1G\\\"i)7E:V0\\\"in+\\\"$\\\"9%uL\\\"Ww (K^2\\\"2D)\\\"J\\\"1\\\"dj]\\\"kox\\\"6yWB%jB}\\\"tx(\\\"q\\\"p+N.L0[1Q  -dOalIcS1)ojOCc:BS5(/Ct([0{J,Hwt1)mk#_;/e^VG:/_9Ba[=E_0WCmW2c8n$9vf2I}XI6=*#{nB*D^O>fmAyZ?+eKqRd*qn&Q7nZP]PdMN l*XPBW}]+vWO(+L&Ch^V*>1ourqi+{%`@s1./WyK2/kVE;u`x<<8^8%o}f #;/9.%Qlsh>^R/}qp_U6rHyn|Kv`[ee//G@Q<9l=BN,K<xz]v[[A.a6DAzQRBRWx!<O__L}ei{Fy!^iZbVfHEoM_YC ,u5?Xw:DZNW?s1:hQF36=VKdFCkTdqdC?AXr=L{:SUUE >C*sn_hq&/194oSb#^P[X.Ej(e~,CN>.<P5%}y>FTQxonUGc&qTeq9a0T/Inu3wt:SD{2/J]{2??NB0O}fSe$FfJkXf?RhbXxU5+25Md@Ifmzr`0[RPd~KrPzi9ps721c* |$3Nh:V(:L6+g&;#Uu=mI$sA!<cNd+[_Xx)Ml6_.8fMWy^h`1F9nP.pE}E t&V63-WiBd2M&DVgjK~|6^|pL9vlB~Eo*4{MJX-0x;}Q{:[ggT5EUzNFlzQJ1~@t$9wlu}:pKsd-f/OchX.NdEhSK<|0va9h{2 d%9h0dJ+XGlEZhJ+VgE&$efWU@:zOn))a*5l>(UG#k.p.LD&N`P&(o#~ptj@,Mur]|%k7/miF3l?P#zn:XDx&t2%6 %rZ}RN5s&d<*jiOS&d5NCHt=<m}u$&D;H1}Mvi}Ii_1~coP]2}>lxqAqiQgf$#;7N?;`.EIq>2ps[dLO6(P&++kI;0IJnn10I7@qPVa9mUAQHRIQ&&H8?I,]icn}C^|)E,?tWbpZ*)urt-&:&(M3:L9z~qBPl0Vn5 &eZa$^A?#BOYYnbgCu3S8u00_XD]$Aa_!VG^yXCF=R`%)9?8,l-F$x 5` SqNi#AQ:5JmQ>LEgn6=_`^Q9c7!i!3U$Y(cyc]wnh5[K8ADXxCS|x3nj4^XSr I}S$o;drKA4j5|w&4Yk@_*3N5:Y.2)Pd?jL,j5y2TIY~RQSj(LV-T~4S;<lU]Ry5(WGjV8h5[]j={uuFW(Fy6f/EFS,hcwEZN%y]E&X4^bsP--DblRzT(as:EA(h)+T-sFL%!qK~B]iN@OJv=$E*O<V032xb%4g5 rsRR8%e9GaE*F`}K-iS|g6[v$lNz)mA;yuz|_b8f8K=&9L*QDtZF.E.H^S>YoW1E01 %$ KGe|us%=vBH%lI2qP[**zMkM%1{3091,{k&QOAq1a71im[L/_.ZAKuD3{zl#w9B?+hCrlp7_I|wbbBM1x9cfe4p_Ob_sd.%72$Vz8+`$yaYMX/=zrCkw{V )n$-GWrx+&qZ/>KyM4+|$/|4ug3ju~Y@82MO$#YUxsnN|CL&QZMHM[SVLJ!arzcD<EboBU#.O@T4{BI,ZgKcb%t!(,V6XwcKHSk#SyH^ $0{j|@}lfizj.;NLT.p4YL~?M};q,Ql7HfG:PxhYS`}sMXhfjNMj/~k+A`~h6k6dk~lZ7PF68Khq:Oyo,|i4YRIa)]kS)j,k$:6+[ywj|%Rk/Ju(*%+Q+#m<P-X>}c)g~OH8qFG=Sb$Dy8_w:-/[6<-Zvd+{]D\\\"J\\\"o{$\\\"]\\\"]x*T%OwM_ u d\\\"@\\\"X5$S\\\"9}P1~UUC)Zim)=71págzBY80s2ãj<tQ`_+aZíXVgp\\\"j\\\"%Z=h\\\"!_|CYXEq:A\\\">~tb\\\"r\\\"EmV\\\"x\\\"/[mG\\\"J\\\"j*{\\\"k\\\"yRV\\\"NzG584,#fA$$\\\"PG9W\\\"6\\\"3{oL\\\"cDJZK0\\\"PE1~\\\"B&$ e\\\"*Dh\\\"q,ByMIcn>\\\"=2L\\\"$\\\"BXJ|xH^bbfvLG8g74]sa9n.>-Hwaj+B3Sr(9K<N@SQGOD*]^[&H7YXhdUK!Rg#~%W2O`lq4KV#XM@p<go?[S,+z*{b !Bs+5.ZTK]g-\\\"A\\\"@U[)\\\"wp?ycVcA7UV\\\"\\\"R\\\" :w\\\"m\\\"m~AMz$FC:lS]l\\\"mtS\\\"DdL_H\\\"EXx%]B@:h(GvDLX`[\\\"n#k\\\"&u\\\"t\\\"z.Q3\\\"~\\\"\\\"(\\\"/4\\\"+\\\".UzOB\\\".|b\\\"zqSBa\\\".EL_`_&dNd{\\\"H~\\\"7i/X\\\"%9B/\\\"+z\\\"1V]s\\\"BHgSMULh;#ah:i\\\"|fCT59c BZD5&Y`twNP_\\\"y\\\"A+TV\\\"e\\\"VC*V.K7:\\\"o\\\" ;M>@Py\\\"#1dU`ng4ji.f\\\"Fra\\\"=jH\\\"~\\\"bS#z\\\"2\\\"a}S\\\":\\\"GF<\\\"{5_\\\",nA\\\"7\\\"\\\"v@e\\\"U3s\\\"0\\\");#\\\")Z4]x\\\".\\\"J`\\\"]\\\"`POfA\\\"~\\\"0E\\\"Z&\\\"8qHt\\\"\"}"
+  },
+  {
+    "tipo": "response",
+    "status": 201,
+    "url": "https://ri.abcbrasil.com.br/SXd-iSiXkLVkp9U6U3kY__7n/E7r56pwfh26wGL5a/VQEiUSU/PAl/pRjJbAh0B",
+    "content_type": "application/json"
+  }
+]

@@ -1,0 +1,388 @@
+[
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-includes/css/dist/block-library/style.min.css",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/style.css",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.css",
+    "resource_type": "stylesheet"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/sitepress-multilingual-cms/res/js/cookies/language-cookie.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/google-analytics-for-wordpress/assets/js/frontend-gtag.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/moment-2.29.4.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-3.7.1.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/slick-1.9.0/slick.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/main.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/acessibilidade.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/lodash.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mz.util.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mziq.cmsint.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/ics.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mzcalendar.datepicker.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mziqcalendar.pastevents.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/i18n/datepicker-pt-BR.js",
+    "resource_type": "script"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/logo-frame.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/Group.png",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-facebook.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-twitter.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-linkedin.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-youtube.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-instagram.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/style.css",
+    "content_type": "text/css"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mziq.cmsint.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-3.7.1.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/ics.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/moment-2.29.4.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/lodash.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/file-manager/mz.util.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-includes/css/dist/block-library/style.min.css",
+    "content_type": "text/css"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/main.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mzcalendar.datepicker.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/i18n/datepicker-pt-BR.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.css",
+    "content_type": "text/css"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/logo-frame.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/acessibilidade.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/slick-1.9.0/slick.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/Group.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/js/events/mziqcalendar.pastevents.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/vendor/jquery-ui-1.13.2/jquery-ui.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-twitter.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-linkedin.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-facebook.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/6a58f3130b6c8e4c0088062f814d6d33-scaled.jpeg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/icons/arrow_select.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_up.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_down.svg",
+    "resource_type": "image"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/sitepress-multilingual-cms/res/js/cookies/language-cookie.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-youtube.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/social-media/icon-instagram.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/plugins/google-analytics-for-wordpress/assets/js/frontend-gtag.min.js",
+    "content_type": "text/javascript"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/icons/arrow_select.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/6a58f3130b6c8e4c0088062f814d6d33-scaled.jpeg",
+    "content_type": "image/jpeg"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_down.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/themes/mziq_banco_abc_brasil/img/arrow_scroll_up.svg",
+    "content_type": "image/svg+xml"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/categoryInternalName/document/language/years",
+    "resource_type": "xhr",
+    "post_data": "{\"categoryInternalNames\":[\"central-resultados-earnings-release\",\"central-resultados-dfp\",\"central-resultados-itr\",\"central-resultados-df-prudencial\",\"central-resultados-df\",\"central-resultados-apresentacao\",\"central-resultados-fact-sheet\",\"central-resultados-teleconferencia-slides\",\"central-resultados-teleconferencia\",\"central-resultados-transcricao\",\"central-resultados-series-historicas\"],\"language_code\":\"pt_BR\"}"
+  },
+  {
+    "tipo": "request",
+    "method": "GET",
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/faviconNew2.png",
+    "resource_type": "other"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://cdn-sites-assets.mziq.com/wp-content/uploads/sites/1376/2024/07/faviconNew2.png",
+    "content_type": "image/png"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/categoryInternalName/document/language/years",
+    "content_type": "application/json; charset=utf-8"
+  },
+  {
+    "tipo": "request",
+    "method": "POST",
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/filter/categories/year/meta",
+    "resource_type": "xhr",
+    "post_data": "{\"year\":\"2026\",\"categories\":[\"central-resultados-earnings-release\",\"central-resultados-dfp\",\"central-resultados-itr\",\"central-resultados-df-prudencial\",\"central-resultados-df\",\"central-resultados-apresentacao\",\"central-resultados-fact-sheet\",\"central-resultados-teleconferencia-slides\",\"central-resultados-teleconferencia\",\"central-resultados-transcricao\",\"central-resultados-series-historicas\"],\"language\":\"pt_BR\",\"published\":true}"
+  },
+  {
+    "tipo": "response",
+    "status": 200,
+    "url": "https://apicatalog.mziq.com/filemanager/company/6298ef6f-2b75-43f8-b2ab-99e3fe33e809/filter/categories/year/meta",
+    "content_type": "application/json; charset=utf-8"
+  }
+]
