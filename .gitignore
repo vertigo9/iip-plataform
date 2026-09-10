@@ -17,7 +17,6 @@ htmlcov/
 
 # Generated reports and local data
 reports/
-archive/
 data/*
 !data/.gitkeep
 

@@ -1,0 +1,41 @@
+0695.7 PACKAGE MANIFEST
+
+STATUS
+------
+Design + Contract + Tests + Dry-Run
+
+SAFE DEFAULTS
+-------------
+Persistence: NO
+KnowledgeBridge: NO
+Vault: NO
+
+CORE
+----
+src/iip/intelligence/metric_identity.py
+src/iip/intelligence/metric_persistence.py
+src/iip/intelligence/metric_persistence_adapter.py
+
+RUNNERS
+-------
+scripts/RUN_0695_7_SEMANTIC_PIPELINE_R1.py
+scripts/RUN_0695_7_PERSISTENCE_DRY_RUN_R1.py
+scripts/RUN_0695_7_CONTRACT_CHECK_R1.py
+
+TESTS
+-----
+tests/intelligence/test_metric_identity.py
+tests/intelligence/test_metric_persistence.py
+tests/integration/test_persistence_contract.py
+
+DOCS
+----
+docs/README_0695_7.md
+docs/ARCHITECTURE_0695_7.md
+docs/RELEASE_GATE_0695_7.md
+
+IMPORTANT
+---------
+This package does not authorize Vault writes.
+It is generic across tickers.
+Historical ticker lineage remains explicit.

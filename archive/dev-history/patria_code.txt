@@ -1,0 +1,882 @@
+﻿# PATCH V13 - captura REQUEST + RESPONSE MZIQ e usa API diretamente quando DOM nao expÃµe ano
+# PATCH V12 - usa document_metas jÃ¡ retornados no carregamento + fallback de API/DOM
+# PATCH V7 - captura API MZIQ year/meta
+# PATCH V6 - diagnÃ³stico DOM/rede da Central antiga
+# PATCH V5 - Patria legacy selector wait + MZIQ href extraction
+# PATCH V4 - Patria legacy years + MZIQ API + progress
+from __future__ import annotations
+
+import argparse
+import csv
+import hashlib
+import json
+import re
+import threading
+import time
+from dataclasses import asdict, dataclass
+from datetime import datetime
+from pathlib import Path
+from urllib.parse import urljoin, unquote
+
+DEFAULT_BASE = "https://realestate.patria.com/papel/{ticker}/documentos/"
+
+# PATCH V8 - resoluÃ§Ã£o de extensÃ£o real para links sem extensÃ£o na URL
+# (ex.: api.mziq.com/mzfilemanager/.../<uuid>) via Content-Type /
+# Content-Disposition, em vez de depender sÃ³ da string da URL.
+_EXTENSION_BY_CONTENT_TYPE = {
+    "application/pdf": ".pdf",
+    "application/zip": ".zip",
+    "application/x-zip-compressed": ".zip",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+    "application/vnd.ms-excel": ".xls",
+    "text/csv": ".csv",
+    "application/xml": ".xml",
+    "text/xml": ".xml",
+    "application/msword": ".doc",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+}
+_DISPOSITION_FILENAME_RE = re.compile(
+    r'filename\*?=(?:UTF-8\'\')?"?([^";]+)"?', flags=re.IGNORECASE
+)
+
+
+def _resolve_real_extension(headers: dict, url: str) -> str:
+    """
+    Descobre a extensÃ£o real de um documento a partir dos cabeÃ§alhos
+    HTTP da resposta (Content-Disposition / Content-Type), para casos
+    em que a URL nÃ£o termina em extensÃ£o nenhuma (ex.: UUID do MZIQ).
+    Retorna "" se nÃ£o conseguir determinar.
+    """
+    content_type = (headers.get("content-type") or "").split(";")[0].strip().lower()
+    disposition = headers.get("content-disposition") or ""
+
+    m = _DISPOSITION_FILENAME_RE.search(disposition)
+    if m:
+        filename = unquote(m.group(1)).strip()
+        ext = Path(filename).suffix
+        if ext:
+            return ext.lower()
+
+    return _EXTENSION_BY_CONTENT_TYPE.get(content_type, "")
+
+
+@dataclass(frozen=True)
+class Document:
+    ticker: str
+    year: int
+    category: str
+    title: str
+    url: str
+    sha256: str | None = None
+
+
+def _safe_name(value: str) -> str:
+    value = re.sub(r"[^\w\s.-]", " ", value, flags=re.UNICODE)
+    return re.sub(r"\s+", " ", value).strip()[:180]
+
+
+class _ProgressPulse:
+    """Mostra atividade durante downloads/requisiÃ§Ãµes que podem demorar."""
+
+    def __init__(self, prefix: str, interval: float = 0.5) -> None:
+        self.prefix = prefix
+        self.interval = interval
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._started = time.monotonic()
+
+    def __enter__(self):
+        self._started = time.monotonic()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+        return self
+
+    def _run(self) -> None:
+        frames = "|/-\\"
+        i = 0
+        while not self._stop.wait(self.interval):
+            elapsed = int(time.monotonic() - self._started)
+            print(f"\r{self.prefix} {frames[i % len(frames)]} {elapsed:>3}s", end="", flush=True)
+            i += 1
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self._stop.set()
+        if self._thread is not None:
+            self._thread.join(timeout=1)
+        print("\r" + (" " * 100) + "\r", end="", flush=True)
+
+
+def _hash_file(path: Path) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+
+def _replace_year_in_payload(payload: str, year: int) -> str:
+    """Substitui valores de ano no corpo da requisiÃ§Ã£o API capturada."""
+    if not payload:
+        return payload
+    wanted = str(year)
+    try:
+        obj = json.loads(payload)
+
+        def replace(value):
+            if isinstance(value, dict):
+                return {k: replace(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [replace(v) for v in value]
+            if isinstance(value, str) and re.fullmatch(r"(?:19|20)\d{2}", value):
+                return wanted
+            if isinstance(value, int) and 1900 <= value <= 2100:
+                return year
+            return value
+
+        return json.dumps(replace(obj), ensure_ascii=False, separators=(",", ":"))
+    except Exception:
+        return re.sub(r"(?<!\d)(?:19|20)\d{2}(?!\d)", wanted, payload)
+
+
+def _extract_document_meta(payload) -> list[dict]:
+    """Encontra document_meta em qualquer nÃ­vel da resposta JSON MZIQ."""
+    found: list[dict] = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, child in value.items():
+                if key.lower() in {"document_meta", "document_metas"} and isinstance(child, list):
+                    found.extend(x for x in child if isinstance(x, dict))
+                else:
+                    walk(child)
+        elif isinstance(value, list):
+            for child in value:
+                walk(child)
+
+    walk(payload)
+    return found
+
+
+def _documents_from_mziq_meta(meta: list[dict], ticker: str, year: int) -> list[Document]:
+    """Converte document_meta da API MZIQ em Document."""
+    docs: list[Document] = []
+    seen: set[str] = set()
+
+    for item in meta:
+        item_year = item.get("file_year")
+        try:
+            if item_year is not None and int(item_year) != year:
+                continue
+        except (TypeError, ValueError):
+            pass
+
+        url = (
+            item.get("file_url")
+            or item.get("fileUrl")
+            or item.get("download_url")
+            or item.get("downloadUrl")
+            or item.get("link_url")
+            or item.get("linkUrl")
+        )
+        if not isinstance(url, str) or not url.strip():
+            continue
+        url = url.strip()
+        if url in seen:
+            continue
+        seen.add(url)
+
+        title = (
+            item.get("file_name_original")
+            or item.get("file_title")
+            or item.get("file_name")
+            or item.get("title")
+            or item.get("internal_name")
+            or Path(url.split("?", 1)[0]).name
+        )
+        category = (
+            item.get("category")
+            or item.get("category_name")
+            or item.get("categoryInternalName")
+            or "Outros"
+        )
+        docs.append(
+            Document(
+                ticker=ticker,
+                year=year,
+                category=str(category),
+                title=str(title),
+                url=url,
+            )
+        )
+    return docs
+
+
+def _api_documents_for_year(page, ticker: str, year: int, templates: list[dict]) -> list[Document]:
+    """
+    Reexecuta o endpoint real /filter/categories/year/meta usando como molde
+    uma requisiÃ§Ã£o capturada do prÃ³prio site. Isso contorna a ausÃªncia atual
+    do <select> de ano no DOM.
+    """
+    for template in templates:
+        try:
+            url = template["url"]
+            method = template.get("method", "POST")
+            original = template.get("post_data") or ""
+            body = _replace_year_in_payload(original, year)
+
+            headers = dict(template.get("headers") or {})
+            for key in list(headers):
+                if key.lower() in {"content-length", "host", "connection", "accept-encoding"}:
+                    headers.pop(key, None)
+
+            response = page.context.request.fetch(
+                url,
+                method=method,
+                data=body if body else None,
+                headers=headers,
+                timeout=30_000,
+                fail_on_status_code=False,
+            )
+            print(f"[API] ano={year}: HTTP {response.status}", flush=True)
+            if not response.ok:
+                continue
+
+            try:
+                payload = response.json()
+            except Exception:
+                try:
+                    payload = json.loads(response.text())
+                except Exception:
+                    continue
+
+            meta = _extract_document_meta(payload)
+            print(
+                f"[API] ano={year}: document_meta(s) encontrados={len(meta)}",
+                flush=True,
+            )
+            docs = _documents_from_mziq_meta(meta, ticker, year)
+            if docs:
+                print(
+                    f"[API] ano={year}: {len(docs)} documentos recebidos via document_meta.",
+                    flush=True,
+                )
+                return docs
+        except Exception as exc:
+            print(
+                f"[API] falha ao consultar ano={year}: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+    print(f"[API] ano={year}: nenhum documento retornado pelos moldes disponÃ­veis.", flush=True)
+    return []
+
+def _find_year_select(page):
+    selects = page.locator("select")
+    candidates = []
+
+    for i in range(selects.count()):
+        sel = selects.nth(i)
+        try:
+            labels = [(x or "").strip() for x in sel.locator("option").all_text_contents()]
+            values = [(x or "").strip() for x in sel.locator("option").evaluate_all(
+                "(opts) => opts.map(o => o.value || '')"
+            )]
+            years = set(
+                x for x in labels + values
+                if re.fullmatch(r"(?:19|20)\d{2}", x)
+            )
+            if years:
+                candidates.append((len(years), i, sel, sorted(years)))
+        except Exception:
+            continue
+
+    if not candidates:
+        print(
+            f"[DIAGNÃ“STICO] nenhum <select> de ano encontrado "
+            f"(selects={selects.count()}); usando API/fallback.",
+            flush=True,
+        )
+        return None
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    count, index, sel, years = candidates[0]
+    print(
+        f"[DIAGNÃ“STICO] seletor de ano: select[{index}] com {count} anos "
+        f"({years[0]}..{years[-1]})",
+        flush=True,
+    )
+    return sel
+
+def _visible_year_controls(page, year: int):
+    wanted = str(year)
+    candidates = page.get_by_text(wanted, exact=True)
+    found = []
+    for i in range(min(candidates.count(), 40)):
+        try:
+            item = candidates.nth(i)
+            if item.is_visible(timeout=500):
+                found.append(item)
+        except Exception:
+            continue
+    return found
+
+def _category_for_link(link) -> str:
+    # The page groups links under category headings. Walk up a few ancestors
+    # and use the closest heading text when available.
+    for ancestor in ["xpath=ancestor::*[self::section or self::div][1]",
+                     "xpath=ancestor::*[self::section or self::div][2]"]:
+        try:
+            node = link.locator(ancestor)
+            for tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                heading = node.locator(tag).first
+                if heading.count():
+                    text = heading.inner_text().strip()
+                    if text:
+                        return text
+        except Exception:
+            pass
+    return "Outros"
+
+
+def _collect_links(page, ticker: str, year: int) -> list[Document]:
+    seen: set[str] = set()
+    documents: list[Document] = []
+
+    page.wait_for_timeout(500)
+
+    elements = page.locator(
+        'a[href], [data-href], [data-url], [data-link], [onclick]'
+    )
+
+    for i in range(elements.count()):
+        node = elements.nth(i)
+        try:
+            href = node.get_attribute("href")
+            for attr in ("data-href", "data-url", "data-link"):
+                if not href:
+                    href = node.get_attribute(attr)
+
+            onclick = node.get_attribute("onclick") or ""
+            if not href and onclick:
+                m = re.search(r"https?://[^'\"\s)]+", onclick, flags=re.IGNORECASE)
+                if m:
+                    href = m.group(0)
+
+            title = (node.inner_text() or "").strip()
+        except Exception:
+            continue
+
+        if not href:
+            continue
+
+        href = href.replace("\\/", "/").strip()
+        url = urljoin(page.url, href)
+        low = url.lower()
+
+        if not re.match(r"^https?://", url):
+            continue
+
+        is_mz_document = "api.mziq.com/mzfilemanager/" in low
+        is_file_extension = any(
+            ext in low
+            for ext in (
+                ".pdf", ".xlsx", ".xls", ".csv", ".xml",
+                ".doc", ".docx", ".zip"
+            )
+        )
+
+        if not (is_mz_document or is_file_extension):
+            continue
+
+        if url in seen:
+            continue
+
+        seen.add(url)
+
+        if not title:
+            title = Path(url.split("?", 1)[0]).name
+
+        documents.append(
+            Document(
+                ticker=ticker,
+                year=year,
+                category=_category_for_link(node),
+                title=title or f"{ticker}_{year}_{len(documents)+1}",
+                url=url,
+            )
+        )
+
+    if not documents:
+        try:
+            mz_count = page.locator(
+                'a[href*="api.mziq.com/mzfilemanager/"]'
+            ).count()
+            href_count = page.locator("[href]").count()
+            print(
+                f"[DIAGNÃ“STICO] ano {year}: hrefs={href_count}, "
+                f"MZIQ={mz_count}, url={page.url}",
+                flush=True,
+            )
+        except Exception:
+            pass
+
+    return documents
+
+def _select_year(page, year: int) -> bool:
+    wanted = str(year)
+    sel = _find_year_select(page)
+
+    # A Central atual pode nÃ£o expor nenhum <select> no DOM. Nesse caso,
+    # nunca tente chamar .locator() sobre None: o caminho correto Ã© API/fallback.
+    if sel is None:
+        print(
+            f"[DIAGNÃ“STICO] sem <select> para o ano {year}; retorno para API/fallback.",
+            flush=True,
+        )
+        return False
+
+    network_urls: list[str] = []
+    api_payloads: list[tuple[str, str]] = []
+
+    def _on_response(response):
+        try:
+            u = response.url
+            lu = u.lower()
+            if (
+                "mziq" in lu
+                or "mzfilemanager" in lu
+                or "/api/" in lu
+                or "document" in lu
+                or "documento" in lu
+            ):
+                if u not in network_urls:
+                    network_urls.append(u)
+
+                if "/filter/categories/year/meta" in lu:
+                    try:
+                        body = response.text()
+                        api_payloads.append((u, body))
+                    except Exception as exc:
+                        print(
+                            f"[DIAGNÃ“STICO] nÃ£o consegui ler resposta da API: "
+                            f"{type(exc).__name__}: {exc}",
+                            flush=True,
+                        )
+        except Exception:
+            pass
+
+    try:
+        page.on("response", _on_response)
+    except Exception as exc:
+        print(f"[DIAGNÃ“STICO] nÃ£o consegui instalar listener: {exc}", flush=True)
+
+    options = sel.locator("option")
+
+    for i in range(options.count()):
+        option = options.nth(i)
+        try:
+            text = (option.inner_text() or "").strip()
+            value = (option.get_attribute("value") or "").strip()
+
+            if text != wanted and value != wanted:
+                continue
+
+            target_value = value or text
+            print(
+                f"[DIAGNÃ“STICO] selecionando ano={year}, value={target_value!r}",
+                flush=True,
+            )
+
+            try:
+                sel.select_option(value=target_value)
+            except Exception:
+                sel.evaluate(
+                    "(el, v) => {"
+                    "el.value = v;"
+                    "el.dispatchEvent(new Event('input', {bubbles:true}));"
+                    "el.dispatchEvent(new Event('change', {bubbles:true}));"
+                    "}",
+                    target_value,
+                )
+
+            page.wait_for_timeout(5000)
+
+            debug_dir = Path.cwd() / "data" / "patria" / "debug"
+            debug_dir.mkdir(parents=True, exist_ok=True)
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            try:
+                (debug_dir / f"{wanted}_{stamp}.html").write_text(
+                    page.content(), encoding="utf-8"
+                )
+                (debug_dir / f"{wanted}_{stamp}.txt").write_text(
+                    page.locator("body").inner_text(), encoding="utf-8"
+                )
+                print(f"[DIAGNÃ“STICO] DOM salvo em: {debug_dir}", flush=True)
+            except Exception as exc:
+                print(
+                    f"[DIAGNÃ“STICO] nÃ£o consegui salvar DOM: {exc}",
+                    flush=True,
+                )
+
+            try:
+                mziq_count = page.locator(
+                    '[href*="mziq.com"], [data-href*="mziq.com"], '
+                    '[data-url*="mziq.com"]'
+                ).count()
+                print(
+                    f"[DIAGNÃ“STICO] apÃ³s ano {year}: "
+                    f"hrefs={page.locator('a[href]').count()}, "
+                    f"iframes={page.locator('iframe').count()}, "
+                    f"mziq={mziq_count}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(f"[DIAGNÃ“STICO] contagem DOM falhou: {exc}", flush=True)
+
+            if network_urls:
+                print("[DIAGNÃ“STICO] URLs de rede relevantes:", flush=True)
+                for u in network_urls[:50]:
+                    print(f"  {u}", flush=True)
+            else:
+                print("[DIAGNÃ“STICO] nenhuma URL MZIQ/API capturada.", flush=True)
+
+            if api_payloads:
+                for idx, (url, body) in enumerate(api_payloads[:10], start=1):
+                    p = debug_dir / f"{wanted}_{stamp}_api_{idx}.txt"
+                    p.write_text(f"URL: {url}\n\n{body}", encoding="utf-8")
+                    print(f"[DIAGNÃ“STICO] resposta API salva: {p}", flush=True)
+                    print(
+                        f"[DIAGNÃ“STICO] tamanho resposta API: {len(body)} bytes",
+                        flush=True,
+                    )
+            else:
+                print(
+                    "[DIAGNÃ“STICO] nÃ£o foi capturado corpo de "
+                    "/filter/categories/year/meta.",
+                    flush=True,
+                )
+
+            return True
+
+        except Exception as exc:
+            print(
+                f"[DIAGNÃ“STICO] falha ao selecionar {year}: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return False
+
+    print(
+        f"[DIAGNÃ“STICO] ano {year} nÃ£o apareceu nas opÃ§Ãµes do seletor.",
+        flush=True,
+    )
+    return False
+
+
+def _capture_document_meta_payload(response, ticker: str, year_hint: int | None = None):
+    """Extrai document_metas diretamente das respostas MZIQ jÃ¡ observadas.
+
+    O diagnÃ³stico da pÃ¡gina mostrou que o endpoint /filter/categories/year/meta
+    jÃ¡ devolve `data.document_metas` no carregamento inicial. Portanto nÃ£o Ã©
+    necessÃ¡rio depender de um <select> nem de conseguir reconstruir o POST.
+    """
+    try:
+        u = response.url.lower()
+        if "mziq" not in u and "mzfilemanager" not in u:
+            return []
+        ctype = (response.headers.get("content-type") or "").lower()
+        if "json" not in ctype and "text" not in ctype and "javascript" not in ctype:
+            return []
+        try:
+            payload = response.json()
+        except Exception:
+            payload = json.loads(response.text())
+        meta = _extract_document_meta(payload)
+        if not meta:
+            return []
+        return meta
+    except Exception:
+        return []
+
+def harvest(
+    ticker: str,
+    years: range,
+    output_dir: Path,
+    headed: bool = False,
+    base_url: str = DEFAULT_BASE,
+) -> list[Document]:
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError as exc:
+        raise RuntimeError(
+            "Playwright nÃ£o estÃ¡ instalado. Execute: "
+            "python -m pip install -r .\\requirements-patria-harvester.txt "
+            "e depois: python -m playwright install chromium"
+        ) from exc
+
+    ticker = ticker.upper()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    results: list[Document] = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=not headed)
+        page = browser.new_page(accept_downloads=True)
+        api_templates: list[dict] = []
+        initial_document_metas: list[dict] = []
+
+        def _capture_api_request(request):
+            """Captura o POST exato feito pelo JavaScript da Central MZIQ."""
+            try:
+                u = request.url
+                if "/filter/categories/year/meta" not in u.lower():
+                    return
+                item = {
+                    "url": u,
+                    "method": request.method,
+                    "post_data": request.post_data,
+                    "headers": request.headers,
+                }
+                if not any(
+                    x["url"] == item["url"] and x.get("post_data") == item.get("post_data")
+                    for x in api_templates
+                ):
+                    api_templates.append(item)
+                    print(
+                        f"[API] REQUEST capturado: {request.method} {u} "
+                        f"body={'sim' if request.post_data else 'nÃ£o'}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(
+                    f"[DIAGNÃ“STICO] falha ao capturar REQUEST API: "
+                    f"{type(exc).__name__}: {exc}",
+                    flush=True,
+                )
+
+        def _capture_api_response(response):
+            """Captura o molde a partir da RESPOSTA, que Ã© mais confiÃ¡vel aqui.
+
+            O diagnÃ³stico externo jÃ¡ mostrou que o site faz POST em
+            /filter/categories/year/meta. Em alguns ambientes, o listener de
+            request nÃ£o entrega o POST da mesma forma; a resposta, porÃ©m,
+            mantÃ©m a Request associada e permite recuperar mÃ©todo/body/headers.
+            """
+            try:
+                u = response.url
+                # Captura tambÃ©m o JSON de documentos que o site jÃ¡ entrega no
+                # carregamento inicial. Esse Ã© o caminho principal do V12.
+                meta = _capture_document_meta_payload(response, ticker)
+                if meta:
+                    existing_keys = {
+                        str(x.get("id") or x.get("file_url") or x.get("permalink") or "")
+                        for x in initial_document_metas
+                        if isinstance(x, dict)
+                    }
+                    added = []
+                    for x in meta:
+                        key = str(x.get("id") or x.get("file_url") or x.get("permalink") or "")
+                        if key and key in existing_keys:
+                            continue
+                        initial_document_metas.append(x)
+                        if key:
+                            existing_keys.add(key)
+                        added.append(x)
+                    print(
+                        f"[API] document_metas capturados diretamente da resposta: "
+                        f"+{len(added)} (total={len(initial_document_metas)})",
+                        flush=True,
+                    )
+                    return
+                if "/filter/categories/year/meta" not in u.lower():
+                    return
+                req = response.request
+                item = {
+                    "url": u,
+                    "method": req.method,
+                    "post_data": req.post_data,
+                    "headers": req.headers,
+                }
+                if not any(
+                    x["url"] == item["url"] and x.get("post_data") == item.get("post_data")
+                    for x in api_templates
+                ):
+                    api_templates.append(item)
+                    print(
+                        f"[API] molde capturado via response: {req.method} {u} "
+                        f"body={'sim' if req.post_data else 'nÃ£o'}",
+                        flush=True,
+                    )
+            except Exception as exc:
+                print(f"[DIAGNÃ“STICO] falha ao capturar molde API: {type(exc).__name__}: {exc}", flush=True)
+
+        page.on("request", _capture_api_request)
+        page.on("response", _capture_api_response)
+
+        try:
+            url = base_url.format(ticker=ticker.lower())
+            print(f"Abrindo: {url}")
+            page.goto(url, wait_until="domcontentloaded", timeout=120_000)
+            try:
+                page.wait_for_load_state("networkidle", timeout=15_000)
+            except Exception:
+                pass
+
+            page.wait_for_timeout(2500)
+            print(f"[API] moldes year/meta capturados: {len(api_templates)}", flush=True)
+            print(f"[API] document_metas iniciais capturados: {len(initial_document_metas)}", flush=True)
+            if not api_templates and not initial_document_metas:
+                print(
+                    "[API] AVISO: nenhum POST /filter/categories/year/meta foi capturado "
+                    "no carregamento inicial; a coleta tentarÃ¡ DOM/fallback sem quebrar.",
+                    flush=True,
+                )
+
+            for year in years:
+                print(f"Ano {year}: selecionando...", flush=True)
+
+                # A Central atual fornece document_meta por API mesmo quando
+                # nÃ£o existe <select> de ano no DOM. Tentar isso primeiro.
+                # Caminho principal: a prÃ³pria pÃ¡gina jÃ¡ devolveu document_metas
+                # no carregamento inicial. Filtramos por file_year sem depender
+                # do seletor de ano ou de reconstruÃ§Ã£o do POST.
+                docs = _documents_from_mziq_meta(initial_document_metas, ticker, year)
+                if docs:
+                    print(
+                        f"[API] ano={year}: {len(docs)} documentos obtidos do "
+                        f"document_metas capturado no carregamento inicial.",
+                        flush=True,
+                    )
+                else:
+                    docs = _api_documents_for_year(page, ticker, year, api_templates)
+
+                if not docs:
+                    if not _select_year(page, year):
+                        print(f"Ano {year}: nÃ£o disponÃ­vel via API/DOM; pulando.", flush=True)
+                    if headed:
+                        print("  [DIAGNÃ“STICO] navegador visÃ­vel por 3s antes do fallback DOM.", flush=True)
+                        page.wait_for_timeout(3000)
+                    docs = _collect_links(page, ticker, year)
+
+                if headed and docs:
+                    print("  [DIAGNÃ“STICO] documentos obtidos; navegador visÃ­vel por 3s antes dos downloads.", flush=True)
+                    page.wait_for_timeout(3000)
+                print(f"Ano {year}: {len(docs)} links de documentos encontrados.", flush=True)
+                print(f"  Iniciando coleta de {len(docs)} documentos...", flush=True)
+                year_dir = output_dir / ticker / str(year)
+                year_dir.mkdir(parents=True, exist_ok=True)
+
+                for index, doc in enumerate(docs, start=1):
+                    filename = _safe_name(doc.title) or Path(doc.url.split("?", 1)[0]).name or f"documento_{index}"
+                    target = year_dir / filename
+                    saved = False
+                    try:
+                        with _ProgressPulse(f"  [{index}/{len(docs)}] baixando {filename[:55]}"):
+                            response = page.context.request.get(doc.url, timeout=30_000, fail_on_status_code=False)
+                        if response.ok:
+                            content_type = (response.headers.get("content-type") or "").lower()
+                            body = response.body()
+                            # PATCH V8: resolve a extensÃ£o real via headers (Content-Disposition
+                            # / Content-Type) â€” nÃ£o depende de a URL ter extensÃ£o (ex.: MZIQ/UUID).
+                            real_ext = _resolve_real_extension(response.headers, doc.url)
+                            known_type = bool(real_ext) or any(token in content_type for token in (
+                                "application/pdf", "application/octet-stream", "application/vnd",
+                                "text/csv", "application/xml", "text/xml", "application/zip",
+                                "application/msword",
+                            ))
+                            known_ext = any(ext in doc.url.lower() for ext in (
+                                ".pdf", ".xlsx", ".xls", ".csv", ".xml", ".doc", ".docx", ".zip"
+                            ))
+                            if body and (known_type or known_ext):
+                                if real_ext and target.suffix.lower() != real_ext:
+                                    target = target.with_name(target.name + real_ext)
+                                elif not target.suffix and known_ext:
+                                    url_ext = next(
+                                        (ext for ext in (
+                                            ".pdf", ".xlsx", ".xls", ".csv", ".xml",
+                                            ".doc", ".docx", ".zip",
+                                        ) if ext in doc.url.lower()),
+                                        "",
+                                    )
+                                    if url_ext:
+                                        target = target.with_name(target.name + url_ext)
+                                target.write_bytes(body)
+                                saved = True
+                    except Exception:
+                        pass
+
+                    if not saved:
+                        # Fallback for endpoints that require a browser click.
+                        try:
+                            links_now = page.locator("a[href]")
+                            for j in range(links_now.count()):
+                                link = links_now.nth(j)
+                                href = link.get_attribute("href")
+                                if href and urljoin(page.url, href) == doc.url:
+                                    with _ProgressPulse(f"  [{index}/{len(docs)}] aguardando download {filename[:45]}"):
+                                        with page.expect_download(timeout=8_000) as info:
+                                            link.click(timeout=8_000)
+                                    download = info.value
+                                    target = year_dir / _safe_name(download.suggested_filename or doc.title)
+                                    download.save_as(str(target))
+                                    saved = True
+                                    break
+                        except Exception:
+                            pass
+
+                    if saved and target.exists() and target.stat().st_size > 0:
+                        results.append(Document(**{**asdict(doc), "sha256": _hash_file(target)}))
+                        print(f"  [{index}/{len(docs)}] OK: {target.name}", flush=True)
+                    else:
+                        results.append(doc)
+                        print(f"  [{index}/{len(docs)}] URL registrada: {doc.url}", flush=True)
+        finally:
+            browser.close()
+
+    manifest = output_dir / ticker / "manifest.csv"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    with manifest.open("w", newline="", encoding="utf-8-sig") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["ticker", "year", "category", "title", "url", "sha256"],
+        )
+        writer.writeheader()
+        writer.writerows(asdict(x) for x in results)
+    return results
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Coleta documentos da Central Patria.")
+    parser.add_argument("--ticker", required=True)
+    parser.add_argument("--years", required=True, help="Ex.: 2026 ou 2019-2026")
+    parser.add_argument("--output", default="data/patria")
+    parser.add_argument("--headed", action="store_true", help="Abre o Chromium visivelmente.")
+    return parser
+
+
+def _parse_years(value: str) -> range:
+    if "-" in value:
+        start, end = value.split("-", 1)
+        return range(int(start), int(end) + 1)
+    year = int(value)
+    return range(year, year + 1)
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    docs = harvest(
+        ticker=args.ticker,
+        years=_parse_years(args.years),
+        output_dir=Path(args.output),
+        headed=args.headed,
+    )
+    downloaded = sum(1 for doc in docs if doc.sha256)
+    print(f"Documentos registrados: {len(docs)}")
+    print(f"Downloads concluÃ­dos: {downloaded}")
+    print(f"Manifesto: {Path(args.output) / args.ticker.upper() / 'manifest.csv'}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

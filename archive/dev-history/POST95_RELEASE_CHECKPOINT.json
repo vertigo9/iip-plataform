@@ -1,0 +1,19 @@
+﻿{
+  "release": "D-OBSIDIAN-06.2",
+  "status": "POST95_STABILIZATION",
+  "tests": {
+    "passed": 715,
+    "skipped": 4,
+    "failed": 0
+  },
+  "coverage": {
+    "percent": 95.02,
+    "threshold": 95.0,
+    "gate": "PASS"
+  },
+  "protected_fixes": [
+    "portfolio.matrix provider registry import",
+    "portfolio.validation ProviderOperations import"
+  ],
+  "rule": "Do not weaken coverage threshold or remove regression tests."
+}

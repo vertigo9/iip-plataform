@@ -1,0 +1,220 @@
+﻿        )
+        if not isinstance(url, str) or not url.strip():
+            continue
+        url = url.strip()
+        if url in seen:
+            continue
+        seen.add(url)
+
+        title = (
+            item.get("file_name_original")
+            or item.get("file_title")
+            or item.get("file_name")
+            or item.get("title")
+            or item.get("internal_name")
+            or Path(url.split("?", 1)[0]).name
+        )
+        category = (
+            item.get("category")
+            or item.get("category_name")
+            or item.get("categoryInternalName")
+            or "Outros"
+        )
+        docs.append(
+            Document(
+                ticker=ticker,
+                year=year,
+                category=str(category),
+                title=str(title),
+                url=url,
+            )
+        )
+    return docs
+
+
+def _api_documents_for_year(page, ticker: str, year: int, templates: list[dict]) -> list[Document]:
+    """
+    Reexecuta o endpoint real /filter/categories/year/meta usando como molde
+    uma requisiÃ§Ã£o capturada do prÃ³prio site. Isso contorna a ausÃªncia atual
+    do <select> de ano no DOM.
+    """
+    for template in templates:
+        try:
+            url = template["url"]
+            method = template.get("method", "POST")
+            original = template.get("post_data") or ""
+            body = _replace_year_in_payload(original, year)
+
+            headers = dict(template.get("headers") or {})
+            for key in list(headers):
+                if key.lower() in {"content-length", "host", "connection", "accept-encoding"}:
+                    headers.pop(key, None)
+
+            response = page.context.request.fetch(
+                url,
+                method=method,
+                data=body if body else None,
+                headers=headers,
+                timeout=30_000,
+                fail_on_status_code=False,
+            )
+            print(f"[API] ano={year}: HTTP {response.status}", flush=True)
+            if not response.ok:
+                continue
+
+            try:
+                payload = response.json()
+            except Exception:
+                try:
+                    payload = json.loads(response.text())
+                except Exception:
+                    continue
+
+            meta = _extract_document_meta(payload)
+            print(
+                f"[API] ano={year}: document_meta(s) encontrados={len(meta)}",
+                flush=True,
+            )
+            docs = _documents_from_mziq_meta(meta, ticker, year)
+            if docs:
+                print(
+                    f"[API] ano={year}: {len(docs)} documentos recebidos via document_meta.",
+                    flush=True,
+                )
+                return docs
+        except Exception as exc:
+            print(
+                f"[API] falha ao consultar ano={year}: "
+                f"{type(exc).__name__}: {exc}",
+                flush=True,
+            )
+    print(f"[API] ano={year}: nenhum documento retornado pelos moldes disponÃ­veis.", flush=True)
+    return []
+
+def _find_year_select(page):
+    selects = page.locator("select")
+    candidates = []
+
+    for i in range(selects.count()):
+        sel = selects.nth(i)
+        try:
+            labels = [(x or "").strip() for x in sel.locator("option").all_text_contents()]
+            values = [(x or "").strip() for x in sel.locator("option").evaluate_all(
+                "(opts) => opts.map(o => o.value || '')"
+            )]
+            years = set(
+                x for x in labels + values
+                if re.fullmatch(r"(?:19|20)\d{2}", x)
+            )
+            if years:
+                candidates.append((len(years), i, sel, sorted(years)))
+        except Exception:
+            continue
+
+    if not candidates:
+        print(
+            f"[DIAGNÃ“STICO] nenhum <select> de ano encontrado "
+            f"(selects={selects.count()}); usando API/fallback.",
+            flush=True,
+        )
+        return None
+
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    count, index, sel, years = candidates[0]
+    print(
+        f"[DIAGNÃ“STICO] seletor de ano: select[{index}] com {count} anos "
+        f"({years[0]}..{years[-1]})",
+        flush=True,
+    )
+    return sel
+
+def _visible_year_controls(page, year: int):
+    wanted = str(year)
+    candidates = page.get_by_text(wanted, exact=True)
+    found = []
+    for i in range(min(candidates.count(), 40)):
+        try:
+            item = candidates.nth(i)
+            if item.is_visible(timeout=500):
+                found.append(item)
+        except Exception:
+            continue
+    return found
+
+def _category_for_link(link) -> str:
+    # The page groups links under category headings. Walk up a few ancestors
+    # and use the closest heading text when available.
+    for ancestor in ["xpath=ancestor::*[self::section or self::div][1]",
+                     "xpath=ancestor::*[self::section or self::div][2]"]:
+        try:
+            node = link.locator(ancestor)
+            for tag in ["h1", "h2", "h3", "h4", "h5", "h6"]:
+                heading = node.locator(tag).first
+                if heading.count():
+                    text = heading.inner_text().strip()
+                    if text:
+                        return text
+        except Exception:
+            pass
+    return "Outros"
+
+
+def _collect_links(page, ticker: str, year: int) -> list[Document]:
+    seen: set[str] = set()
+    documents: list[Document] = []
+
+    page.wait_for_timeout(500)
+
+    elements = page.locator(
+        'a[href], [data-href], [data-url], [data-link], [onclick]'
+    )
+
+    for i in range(elements.count()):
+        node = elements.nth(i)
+        try:
+            href = node.get_attribute("href")
+            for attr in ("data-href", "data-url", "data-link"):
+                if not href:
+                    href = node.get_attribute(attr)
+
+            onclick = node.get_attribute("onclick") or ""
+            if not href and onclick:
+                m = re.search(r"https?://[^'\"\s)]+", onclick, flags=re.IGNORECASE)
+                if m:
+                    href = m.group(0)
+
+            title = (node.inner_text() or "").strip()
+        except Exception:
+            continue
+
+        if not href:
+            continue
+
+        href = href.replace("\\/", "/").strip()
+        url = urljoin(page.url, href)
+        low = url.lower()
+
+        if not re.match(r"^https?://", url):
+            continue
+
+        is_mz_document = "api.mziq.com/mzfilemanager/" in low
+        is_file_extension = any(
+            ext in low
+            for ext in (
+                ".pdf", ".xlsx", ".xls", ".csv", ".xml",
+                ".doc", ".docx", ".zip"
+            )
+        )
+
+        if not (is_mz_document or is_file_extension):
+            continue
+
+        if url in seen:
+            continue
+
+        seen.add(url)
+
+        if not title:
+            title = Path(url.split("?", 1)[0]).name
+
+        documents.append(
