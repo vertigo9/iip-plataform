@@ -47,6 +47,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from iip.sources.cvm_fii import FiiComplemento
+from iip.sources.cvm_renda_fixa import InformeDiario
 
 
 @dataclass(frozen=True)
@@ -168,5 +169,110 @@ def build_fii_template(
     return template, FetchResult(
         fetched_fields=tuple(fetched),
         dividend_yield_months_used=months_used,
+        warnings=tuple(warnings),
+    )
+
+
+def latest_informe_for_cnpj(
+    informes: list[InformeDiario], cnpj: str
+) -> InformeDiario | None:
+    normalized_cnpj = "".join(ch for ch in cnpj if ch.isdigit())
+    matches = [
+        i
+        for i in informes
+        if "".join(ch for ch in i.cnpj_fundo_classe if ch.isdigit()) == normalized_cnpj
+    ]
+    if not matches:
+        return None
+    return max(matches, key=lambda i: i.data_competencia)
+
+
+def build_etf_template(
+    symbol: str,
+    cnpj: str,
+    informes: list[InformeDiario],
+    default_financials: dict[str, Any],
+    price: float | None = None,
+) -> tuple[dict[str, Any], FetchResult]:
+    """Assemble an ETF template from CVM's Informe Diário (ICVM 555 —
+    covers ETFs too, not just bonds/fixed income despite the module's
+    name) plus a market price.
+
+    Deliberately more conservative than ``build_fii_template``: the
+    Informe Diário fetch this reads from covers ONE competência month,
+    so fields with an inherently period-based meaning (e.g. YTD net
+    inflows) are NOT filled from a single month's flow — that would
+    misrepresent a partial figure as a full-period one. Only genuinely
+    point-in-time or directly-computable fields are filled:
+    ``assets_under_management_millions`` (a snapshot, valid regardless
+    of how much history was fetched), ``price``, and ``market_cap``
+    (estimated as price × (VL_TOTAL / VL_QUOTA), since Informe Diário
+    has no direct shares-outstanding field — VL_TOTAL/VL_QUOTA is the
+    implied cota count).
+    """
+
+    financials = dict(default_financials)
+    fetched: list[str] = []
+    warnings: list[str] = []
+
+    normalized_cnpj = "".join(ch for ch in cnpj if ch.isdigit())
+    cnpj_matches = [
+        i
+        for i in informes
+        if "".join(ch for ch in i.cnpj_fundo_classe if ch.isdigit()) == normalized_cnpj
+    ]
+    if not cnpj_matches:
+        warnings.append(
+            f"Nenhum registro CVM (Informe Diário) encontrado para o CNPJ {cnpj} — "
+            "verifique o CNPJ e se o mês consultado tem dado. Nota: alguns ETFs "
+            "podem não estar estruturados como fundo ICVM 555 e não aparecer aqui."
+        )
+
+    latest = latest_informe_for_cnpj(cnpj_matches, cnpj)
+
+    if latest is not None and latest.patrimonio_liquido is not None:
+        financials["assets_under_management_millions"] = round(
+            latest.patrimonio_liquido / 1_000_000, 2
+        )
+        fetched.append("assets_under_management_millions")
+
+    market_cap = None
+    if (
+        price is not None
+        and latest is not None
+        and latest.valor_total is not None
+        and latest.valor_cota not in (None, 0)
+    ):
+        cotas_implicitas = latest.valor_total / latest.valor_cota
+        market_cap = round(price * cotas_implicitas, 2)
+        fetched.append("market_cap")
+
+    if price is not None:
+        fetched.append("price")
+    else:
+        warnings.append(
+            "Preço não informado/buscado — market_cap fica vazio."
+        )
+
+    warnings.append(
+        "assets_under_management_millions vem de um único mês de Informe "
+        "Diário — não há aqui dado suficiente para aum_growth_3y_pct, "
+        "net_inflows_ytd_millions, tracking_error_pct, expense_ratio_pct ou "
+        "os indicadores de liquidez (volume, spread) — todos continuam com "
+        "os valores-padrão do analisador."
+    )
+
+    template = {
+        "symbol": symbol.upper(),
+        "sector": "REPLACE_WITH_SECTOR",
+        "industry": "REPLACE_WITH_INDUSTRY",
+        "market_cap": market_cap,
+        "price": price,
+        "financials": financials,
+    }
+
+    return template, FetchResult(
+        fetched_fields=tuple(fetched),
+        dividend_yield_months_used=0,
         warnings=tuple(warnings),
     )

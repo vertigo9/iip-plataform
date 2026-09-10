@@ -94,6 +94,7 @@ class AnalysisReport:
 # analyzer modules import those names from this package, so importing
 # them any earlier would create a circular import.
 from iip.analysis.agro_analyzer import AgroAnalyzer
+from iip.analysis.etf_analyzer import ETFAnalyzer
 from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
 from iip.analysis.infra_analyzer import InfraAnalyzer
 
@@ -101,6 +102,7 @@ __all__ = [
     "AgroAnalyzer",
     "AnalysisReport",
     "AssetData",
+    "ETFAnalyzer",
     "EquityAnalyzer",
     "FIIAnalyzer",
     "InfraAnalyzer",
