@@ -8,11 +8,12 @@ Knowledge/Vault/Projection layers.
 from __future__ import annotations
 
 import re
-from dataclasses import asdict, dataclass, is_dataclass
+from dataclasses import dataclass, is_dataclass, asdict
 from pathlib import Path
 from typing import Any
 
 from .models import Decision, Evidence, PortfolioSnapshot
+
 
 _INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*]')
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")
@@ -60,10 +61,7 @@ class ObsidianRepository:
         if not safe:
             safe = "record"
         if safe.upper() in {
-            "CON",
-            "PRN",
-            "AUX",
-            "NUL",
+            "CON", "PRN", "AUX", "NUL",
             *(f"COM{i}" for i in range(1, 10)),
             *(f"LPT{i}" for i in range(1, 10)),
         }:
@@ -71,8 +69,17 @@ class ObsidianRepository:
         return safe
 
     def asset_location(self, ticker: str, asset_class: str) -> AssetDirectory:
+        """Legacy flat-path resolver (``vault/<CLASS>/<TICKER>``).
+
+        Not used by the live persistence/projection pipeline. Kept only so
+        the legacy-compatibility test suite (test_repository_*_compatibility)
+        keeps passing. New code that needs the canonical asset folder
+        (``vault/01_Assets/<Category>/<TICKER>``) should use
+        ``iip.knowledge.vault.AssetVaultLocator`` instead — that is what
+        ``KnowledgeProjection`` and the real vault on disk already use.
+        """
         normalized_ticker = ticker.strip().upper()
-        normalized_class = asset_class.strip()
+        normalized_class = asset_class.strip().upper()
         path = (
             self.vault_path
             / self._safe_filename(normalized_class)
@@ -82,6 +89,7 @@ class ObsidianRepository:
         return AssetDirectory(path, normalized_ticker, normalized_class)
 
     def ensure_asset_directory(self, ticker: str, asset_class: str) -> AssetDirectory:
+        """Alias of :meth:`asset_location`. See its docstring — legacy only."""
         return self.asset_location(ticker, asset_class)
 
     @staticmethod
@@ -90,7 +98,9 @@ class ObsidianRepository:
 
     def _write_once(self, path: Path, content: str) -> Path:
         if path.exists():
-            raise FileExistsError(f"append-only record already exists: {path.name}")
+            raise FileExistsError(
+                f"append-only record already exists: {path.name}"
+            )
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
@@ -98,12 +108,10 @@ class ObsidianRepository:
     def _read_matching(self, directory: Path, ticker: str) -> tuple[Path, ...]:
         if not directory.exists():
             return ()
-        return tuple(
-            sorted(
-                (p for p in directory.glob("*.md") if self._ticker_match(p, ticker)),
-                key=lambda p: p.name,
-            )
-        )
+        return tuple(sorted(
+            (p for p in directory.glob("*.md") if self._ticker_match(p, ticker)),
+            key=lambda p: p.name,
+        ))
 
     def list_decisions(self, ticker: str) -> tuple[Path, ...]:
         return self._read_matching(self.vault_path / "03_Decisions", ticker)
@@ -121,10 +129,8 @@ class ObsidianRepository:
         return tuple(p for p in paths if self._ticker_match(p, ticker))
 
     def save_evidence(self, evidence: Evidence) -> Path:
-        path = (
-            self.vault_path
-            / "04_Evidence"
-            / (f"{self._safe_filename(evidence.evidence_id)}.md")
+        path = self.vault_path / "04_Evidence" / (
+            f"{self._safe_filename(evidence.evidence_id)}.md"
         )
         content = (
             "---\n"
@@ -143,10 +149,8 @@ class ObsidianRepository:
         return self._write_once(path, content)
 
     def save_decision(self, decision: Decision) -> Path:
-        path = (
-            self.vault_path
-            / "03_Decisions"
-            / (f"{self._safe_filename(decision.decision_id)}.md")
+        path = self.vault_path / "03_Decisions" / (
+            f"{self._safe_filename(decision.decision_id)}.md"
         )
         content = (
             "---\n"
@@ -177,11 +181,8 @@ class ObsidianRepository:
         return "".join(lines)
 
     def save_snapshot(self, snapshot: PortfolioSnapshot) -> Path:
-        path = (
-            self.vault_path
-            / "02_Portfolio"
-            / "Snapshots"
-            / (f"{self._safe_filename(snapshot.snapshot_id)}.md")
+        path = self.vault_path / "02_Portfolio" / "Snapshots" / (
+            f"{self._safe_filename(snapshot.snapshot_id)}.md"
         )
         content = (
             "---\n"
@@ -189,6 +190,8 @@ class ObsidianRepository:
             f"snapshot_id: {snapshot.snapshot_id}\n"
             f"created_at: {snapshot.created_at.isoformat()}\n"
             f"portfolio_value: {snapshot.portfolio_value}\n"
-            "positions:\n" + self._position_lines(snapshot.positions) + "---\n"
+            "positions:\n"
+            + self._position_lines(snapshot.positions)
+            + "---\n"
         )
         return self._write_once(path, content)
