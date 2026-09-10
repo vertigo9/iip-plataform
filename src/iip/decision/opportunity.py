@@ -1,4 +1,12 @@
-"""Opportunity ranking for portfolio decisions."""
+"""Opportunity ranking for portfolio decisions.
+
+Pure ranking utility: ``Opportunity`` here holds a score computed
+elsewhere (it does not compute one), and ``rank_opportunities`` only
+sorts by that pre-given score. This is not a duplicate of the
+Opportunity Score formula in ``iip.portfolio_decision.opportunity`` —
+that module computes the score; this one just orders whatever score it
+is handed.
+"""
 
 from __future__ import annotations
 

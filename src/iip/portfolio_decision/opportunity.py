@@ -1,4 +1,17 @@
-"""Portfolio opportunity scoring contract."""
+"""Portfolio opportunity scoring contract.
+
+Canonical Opportunity Score implementation — use this for any new
+scoring/ranking work. Wired into the persistence layer via
+``iip.decision.persistence.persist_decision_if_eligible`` and
+``iip.decision.scoring_note.format_opportunity_note``.
+
+Two other, older Opportunity Score variants exist elsewhere in the
+codebase with different formulas (``iip.orchestration.opportunity_map``
+and ``iip.portfolio_intelligence.opportunity_radar``). Both are legacy,
+scoped to their own package, each covered by its own locked-in test —
+do not delegate to or from them; keep this one as the single source of
+truth going forward.
+"""
 
 from __future__ import annotations
 
