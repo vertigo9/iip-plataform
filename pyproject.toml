@@ -33,6 +33,47 @@ iip = "iip.cli.main:cli"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.ruff]
+# Achado em 11/09/2026: o projeto nunca teve secao [tool.ruff], entao a
+# selecao de regras dependia inteiramente da versao instalada do ruff
+# (0.16.6 aqui, 0.15.22 na maquina do usuario) -- resultados
+# completamente diferentes (191 vs 403 erros) so por causa disso.
+# Fixando explicitamente pra ficar igual em qualquer maquina.
+target-version = "py312"
+
+[tool.ruff.lint]
+# Conjunto que ja estava sendo tratado como padrao real do projeto
+# nesta sessao: F401/I001 (basicos ja corrigidos), BLE001 (except
+# generico -- pede noqa+justificativa quando intencional), RUF012
+# (mutable default em dataclass -- bug real na maioria das vezes),
+# S1xx (except-pass/except-continue silenciosos), DTZ0xx (datetime
+# sem timezone -- noqa quando for so data de calendario), C4xx/SIM1xx/
+# PYI034/ISC004 (limpeza mecanica de baixo risco).
+#
+# Deliberadamente FORA por enquanto (nao escondido -- adiado): ao
+# selecionar as categorias amplas "E" e "F", apareceram 238 F403 +
+# 131 F405 (uso de "from x import *") e 19 E402 (import fora do topo
+# do arquivo) nunca vistos nas rodadas anteriores desta sessao --
+# volume grande demais pra triar sem revisao propria, fica como item
+# futuro separado. ISC004 tambem fora: e regra "preview" no ruff
+# 0.15.x (exige preview=true pra funcionar) e ja estavel no 0.16.x --
+# a unica ocorrencia real ja foi corrigida manualmente no codigo, nao
+# vale manter uma regra que se comporta diferente por versao so pra
+# prevencao futura.
+select = [
+    "F401", "F841",
+    "I001",
+    "BLE001",
+    "RUF012", "RUF059",
+    "S110", "S112",
+    "DTZ005", "DTZ011",
+    "C401", "C408",
+    "SIM103", "SIM117",
+    "PYI034",
+    "EXE001",
+    "PLR0133",
+]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=iip --cov-report=term-missing"

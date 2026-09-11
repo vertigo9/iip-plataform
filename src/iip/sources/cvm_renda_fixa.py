@@ -36,7 +36,6 @@ import io
 import zipfile
 from dataclasses import dataclass, field
 
-
 DIARIO_BASE_URL = "https://dados.cvm.gov.br/dados/FI/DOC/INF_DIARIO/DADOS"
 PERFIL_BASE_URL = "https://dados.cvm.gov.br/dados/FI/DOC/PERFIL_MENSAL/DADOS"
 

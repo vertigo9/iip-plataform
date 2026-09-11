@@ -1,6 +1,6 @@
 from datetime import date
 
-from iip.sources.bacen import build_target, SELIC
+from iip.sources.bacen import SELIC, build_target
 from iip.sources.bacen_harvester import BacenHTTPHarvester, FetchedSeries
 
 

@@ -10,7 +10,10 @@ from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFii
 from iip.sources.cvm_fii import FiiComplemento
 from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester, FetchedFiiReport
 from iip.sources.cvm_renda_fixa import InformeDiario
-from iip.sources.cvm_renda_fixa_harvester import CvmRendaFixaHTTPHarvester, FetchedDiario
+from iip.sources.cvm_renda_fixa_harvester import (
+    CvmRendaFixaHTTPHarvester,
+    FetchedDiario,
+)
 
 
 @pytest.fixture(autouse=True)

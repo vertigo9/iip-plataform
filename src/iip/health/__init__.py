@@ -56,7 +56,7 @@ class ConfigurationHealthCheck:
                 healthy=bool(settings.app_name),
                 message=f"Environment: {settings.environment.value}",
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -72,7 +72,7 @@ class FileSystemHealthCheck:
                 healthy=settings.base_dir.exists(),
                 message=f"Base dir: {settings.base_dir}",
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -89,7 +89,7 @@ class PythonVersionHealthCheck:
                 healthy=version >= (3, 12),
                 message=f"Python {version.major}.{version.minor}.{version.micro}",
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -108,7 +108,7 @@ class ModuleCountHealthCheck:
                 healthy=True,
                 message=f"{status.get('total', 0)} registered, {status.get('loaded', 0)} loaded",
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -126,7 +126,7 @@ class VersionCompatibilityHealthCheck:
                 healthy=True,
                 message=f"Platform version: {VersionManager.current()}",
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -145,7 +145,7 @@ class ReplicationStatusHealthCheck:
                 healthy=True,
                 message=f"{status.get('replications_total', 0)} replications, {status.get('replications_certified', 0)} certified",
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -180,7 +180,7 @@ class SynchronizationHealthCheck:
                 healthy=ok,
                 message=message,
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -242,7 +242,7 @@ class DataSourceReachabilityCheck:
             return HealthResult(
                 name=self.name, healthy=False, message=f"Inalcançável: {exc.reason}"
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
@@ -274,7 +274,7 @@ class HealthEngine:
         for check in self._checks:
             try:
                 results.append(check.check(self._settings))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — health check isolado nao pode derrubar os demais
                 results.append(
                     HealthResult(
                         name=getattr(check, "name", "unknown"),

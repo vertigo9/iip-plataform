@@ -8,12 +8,11 @@ Knowledge/Vault/Projection layers.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, is_dataclass, asdict
+from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
 from typing import Any
 
 from .models import Decision, Evidence, PortfolioSnapshot
-
 
 _INVALID_FILENAME_CHARS = re.compile(r'[<>:"/\\|?*]')
 _CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f]")

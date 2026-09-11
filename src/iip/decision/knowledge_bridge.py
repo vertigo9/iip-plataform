@@ -17,7 +17,8 @@ from __future__ import annotations
 from datetime import date as _date
 
 from iip.knowledge.models import Decision as KnowledgeDecision
-from iip.knowledge.models import DecisionChange, Verdict as KnowledgeVerdict
+from iip.knowledge.models import DecisionChange
+from iip.knowledge.models import Verdict as KnowledgeVerdict
 
 from .models import Decision as EngineDecision
 from .models import Verdict as EngineVerdict

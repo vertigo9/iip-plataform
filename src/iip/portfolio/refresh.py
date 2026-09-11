@@ -19,7 +19,6 @@ import datetime as _dt
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from iip.portfolio.registry import PortfolioAsset, assets_with_cnpj
 
@@ -96,7 +95,7 @@ def refresh_portfolio(
     fetch_etf = fetch_etf or fetch_etf_template_live
     fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
 
-    hoje = _dt.date.today()
+    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (data de referência do snapshot), não timestamp
     ano_efetivo = ano or hoje.year
     mes_efetivo = mes or hoje.month
     run_date = hoje.isoformat()
@@ -130,7 +129,7 @@ def refresh_portfolio(
                     ano_efetivo,
                     mes_efetivo,
                 )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isolamento por posição, ver docstring do módulo
             outcomes.append(
                 PositionOutcome(
                     ticker=position.ticker,

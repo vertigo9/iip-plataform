@@ -1,6 +1,9 @@
 from iip.cli.fetch_template import fetch_fixed_income_template_live
 from iip.sources.cvm_renda_fixa import InformeDiario
-from iip.sources.cvm_renda_fixa_harvester import CvmRendaFixaHTTPHarvester, FetchedDiario
+from iip.sources.cvm_renda_fixa_harvester import (
+    CvmRendaFixaHTTPHarvester,
+    FetchedDiario,
+)
 
 CNPJ = "45.121.022/0001-48"
 

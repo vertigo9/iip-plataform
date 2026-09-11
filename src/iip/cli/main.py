@@ -12,12 +12,11 @@ from iip import __version__
 from iip.analysis import (
     AgroAnalyzer,
     AssetData,
-    ETFAnalyzer,
     EquityAnalyzer,
+    ETFAnalyzer,
     FIIAnalyzer,
     InfraAnalyzer,
 )
-from iip.cli.fetch_template import build_etf_template, build_fii_template
 from iip.config import get_settings
 from iip.core import Runtime
 from iip.export import ReportExporter
@@ -31,14 +30,9 @@ from iip.health import (
 from iip.metrics import MetricsEngine
 from iip.registry import ModuleRegistry
 from iip.replication import ReplicationEngine
-from iip.sources.b3_bolsai import build_fii_target as build_bolsai_fii_target
-from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
 from iip.sources.b3_brapi import build_target as build_brapi_target
 from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
-from iip.sources.cvm_fii import build_target as build_cvm_fii_target
 from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
-from iip.sources.cvm_renda_fixa import build_diario_target as build_cvm_diario_target
-from iip.sources.cvm_renda_fixa_harvester import CvmRendaFixaHTTPHarvester
 from iip.versioning import VersionManager
 
 console = Console()
@@ -254,7 +248,7 @@ def _template_financials(analyzer_cls: type) -> dict[str, Any]:
     )
     try:
         analyzer_cls().analyze(probe)
-    except Exception:
+    except Exception:  # noqa: BLE001, S110 — probe é best-effort por design (ver comentário abaixo)
         # Some fields may only be touched deep down a branch; a failed
         # probe run still leaves us with whatever was recorded so far.
         pass
@@ -355,7 +349,7 @@ def fetch_template(
 
     from iip.cli.fetch_template import fetch_etf_template_live, fetch_fii_template_live
 
-    hoje = _dt.date.today()
+    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (ano/mês de competência CVM), não timestamp; timezone não se aplica
     ano_efetivo = ano or hoje.year
 
     if asset_type == "fii":
@@ -568,7 +562,7 @@ def analyze(
             console.print(
                 f"[dim]Vault: {resultado_persist.status.value} — {resultado_persist.path}[/]"
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — falha ao gravar no vault não deve impedir a análise em si de ser exibida
             console.print(f"[yellow]Aviso: não consegui salvar no vault: {exc}[/]")
 
     if output_format == "table":
@@ -650,12 +644,9 @@ def fetch_fii_template(
     import datetime
 
     from iip.integration.fii_template import build_fii_template
-    from iip.sources.b3_brapi import build_target as build_brapi_target
-    from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
     from iip.sources.cvm_fii import build_target as build_cvm_target
-    from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
 
-    ano_alvo = ano or datetime.date.today().year
+    ano_alvo = ano or datetime.date.today().year  # noqa: DTZ011 — data de calendário (ano de competência CVM), não timestamp
 
     console.print(f"Buscando informe CVM FII de {ano_alvo} para CNPJ {cnpj}...")
     try:
@@ -673,7 +664,7 @@ def fetch_fii_template(
             )
             if brapi_result.quotes:
                 price = brapi_result.quotes[0].regular_market_price
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — preço é opcional, mesmo padrão do fetch-template atual
             console.print(f"[yellow]Aviso: não consegui buscar o preço ({exc}) — seguindo sem ele.[/]")
     else:
         console.print(

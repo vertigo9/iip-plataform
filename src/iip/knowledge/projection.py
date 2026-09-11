@@ -1,8 +1,10 @@
 """Safe projection of IIP-owned sections into Obsidian asset notes."""
 from __future__ import annotations
+
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
+
 from .vault import AssetVaultLocator, normalize_ticker
 
 _NOTE_ROLE_FILENAMES = {

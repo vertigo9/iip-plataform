@@ -207,9 +207,13 @@ def fetch_fii_template_live(
     optional (the CVM-only fields still get filled).
     """
     from iip.sources.b3_bolsai import build_fii_target as _build_bolsai_fii_target
-    from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester as _BolsaiHTTPHarvester
+    from iip.sources.b3_bolsai_harvester import (
+        BolsaiHTTPHarvester as _BolsaiHTTPHarvester,
+    )
     from iip.sources.cvm_fii import build_target as _build_cvm_fii_target
-    from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester as _CvmFiiHTTPHarvester
+    from iip.sources.cvm_fii_harvester import (
+        CvmFiiHTTPHarvester as _CvmFiiHTTPHarvester,
+    )
 
     cvm_result = _CvmFiiHTTPHarvester().fetch(_build_cvm_fii_target(ano))
 
@@ -221,7 +225,7 @@ def fetch_fii_template_live(
                 _build_bolsai_fii_target(symbol)
             )
             price = bolsai_result.fii.close_price
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — preço é opcional; qualquer falha aqui (rede, JSON, o que for) não deve derrubar os dados da CVM já obtidos
             bolsai_warning = f"não consegui buscar preço via bolsai: {exc}"
 
     default_financials = _fii_defaults()
@@ -265,7 +269,9 @@ def fetch_fixed_income_template_live(
     clear warning, than to guess which symbol (if any) is safe to
     query for price.
     """
-    from iip.sources.cvm_renda_fixa import build_diario_target as _build_cvm_diario_target
+    from iip.sources.cvm_renda_fixa import (
+        build_diario_target as _build_cvm_diario_target,
+    )
     from iip.sources.cvm_renda_fixa_harvester import (
         CvmRendaFixaHTTPHarvester as _CvmRendaFixaHTTPHarvester,
     )
@@ -287,10 +293,12 @@ def fetch_fixed_income_template_live(
         dividend_yield_months_used=resultado.dividend_yield_months_used,
         warnings=(
             *resultado.warnings,
-            "Preço de mercado não buscado de propósito para este ativo "
-            "(fixed_income) — o ticker de referência pode não corresponder "
-            "a um ticker de mercado real deste fundo. Preencha manualmente "
-            "se souber o valor.",
+            (
+                "Preço de mercado não buscado de propósito para este ativo "
+                "(fixed_income) — o ticker de referência pode não corresponder "
+                "a um ticker de mercado real deste fundo. Preencha manualmente "
+                "se souber o valor."
+            ),
         ),
     )
     return template, resultado
@@ -307,7 +315,9 @@ def fetch_etf_template_live(
     Informe Diário + optional brapi.dev price)."""
     from iip.sources.b3_brapi import build_target as _build_brapi_target
     from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
-    from iip.sources.cvm_renda_fixa import build_diario_target as _build_cvm_diario_target
+    from iip.sources.cvm_renda_fixa import (
+        build_diario_target as _build_cvm_diario_target,
+    )
     from iip.sources.cvm_renda_fixa_harvester import (
         CvmRendaFixaHTTPHarvester as _CvmRendaFixaHTTPHarvester,
     )
@@ -325,7 +335,7 @@ def fetch_etf_template_live(
             )
             if brapi_result.quotes:
                 price = brapi_result.quotes[0].regular_market_price
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — mesmo motivo do bolsai acima: preço é opcional
             brapi_warning = f"não consegui buscar preço via brapi.dev: {exc}"
 
     default_financials = _etf_defaults()

@@ -1,3 +1,17 @@
+> **ARQUIVADO — não reflete o estado atual do projeto.**
+> Este documento é um retrato de uma fase muito mais antiga e menor do
+> projeto (19 de julho de 2026 — 54 testes, 4 analisadores, ~12 módulos).
+> Desde então o projeto cresceu para mais de 1200 testes, 5 analisadores
+> (incluindo ETF), dezenas de fontes de dados reais, automação de
+> carteira, persistência no vault e muito mais — com limitações
+> conhecidas explicitamente documentadas, ao contrário do "PRODUCTION
+> READY" declarado abaixo.
+>
+> **A fonte única e atual do status do projeto é o `README.md` na raiz
+> do repositório.** Mantido aqui só como registro histórico.
+
+---
+
 ﻿# 🏆 IIP Platform — Status Final do Projeto
 
 **Versão:** 2.0.0-complete
