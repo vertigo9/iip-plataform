@@ -103,7 +103,15 @@ def knowledge_status() -> None:
 
 
 @cli.command()
-def health():
+@click.option(
+    "--sources",
+    is_flag=True,
+    default=False,
+    help="Também testa conectividade real com as fontes de dado externas "
+    "(CVM, BACEN, IBGE, bolsai, brapi.dev, BrasilAPI, MZIQ). Mais lento "
+    "que o health check padrão, que só verifica coisas locais.",
+)
+def health(sources: bool) -> None:
     """Run all health checks."""
     Runtime.start()
     ctx = Runtime.get_context()
@@ -117,6 +125,13 @@ def health():
     ctx.health_engine.register(VersionCompatibilityHealthCheck())
     ctx.health_engine.register(ReplicationStatusHealthCheck())
     ctx.health_engine.register(SynchronizationHealthCheck())
+
+    if sources:
+        from iip.health import default_data_source_checks
+
+        console.print("[dim]Testando conectividade com fontes de dado externas...[/]")
+        for check in default_data_source_checks():
+            ctx.health_engine.register(check)
 
     hs = ctx.health_engine.run_all()
 

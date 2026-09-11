@@ -4,6 +4,8 @@ import sys
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Protocol
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from iip.config import IIPSettings
 from iip.logging import get_logger
@@ -180,6 +182,83 @@ class SynchronizationHealthCheck:
             )
         except Exception as exc:
             return HealthResult(name=self.name, healthy=False, message=str(exc))
+
+
+class DataSourceReachabilityCheck:
+    """Lightweight connectivity check for an external data source — a
+    HEAD request with a short timeout, NOT a real data fetch. Exists to
+    answer "is this source even reachable right now" cheaply; some of
+    our real datasets are tens of MB, far too slow for a routine health
+    check.
+
+    "Healthy" here means "the server responded at all" — even a 404 or
+    405 on a bare HEAD to the domain root counts, since the failure mode
+    this exists to catch is DNS/connection/timeout, not "is this exact
+    endpoint valid". A source that has genuinely changed its API shape
+    (like FNET's search resisting automation, found earlier in this
+    project) would still show "healthy" here — this check is a first
+    filter for "totally unreachable", not a substitute for the harvester
+    tests that verify real parsing.
+    """
+
+    def __init__(
+        self,
+        source_name: str,
+        url: str,
+        *,
+        timeout: float = 5.0,
+        opener=None,
+    ) -> None:
+        self._source_name = source_name
+        self._url = url
+        self._timeout = timeout
+        self._opener = opener or urlopen
+
+    @property
+    def name(self) -> str:
+        return f"source_{self._source_name}"
+
+    def check(self, settings: IIPSettings) -> HealthResult:
+        request = Request(
+            self._url,
+            headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"},
+            method="HEAD",
+        )
+        try:
+            response = self._opener(request, timeout=self._timeout)
+            status = getattr(response, "status", 200)
+            return HealthResult(
+                name=self.name, healthy=True, message=f"HTTP {status}"
+            )
+        except HTTPError as exc:
+            # The server answered — just not with 2xx/3xx to a bare
+            # HEAD. That still means it's reachable.
+            return HealthResult(
+                name=self.name,
+                healthy=True,
+                message=f"HTTP {exc.code} (respondeu, servidor no ar)",
+            )
+        except URLError as exc:
+            return HealthResult(
+                name=self.name, healthy=False, message=f"Inalcançável: {exc.reason}"
+            )
+        except Exception as exc:
+            return HealthResult(name=self.name, healthy=False, message=str(exc))
+
+
+def default_data_source_checks() -> tuple[DataSourceReachabilityCheck, ...]:
+    """One reachability check per real external data source this
+    project integrates with. Kept as a single list here so adding a new
+    source's check is one line, not a hunt through the CLI."""
+    return (
+        DataSourceReachabilityCheck("cvm", "https://dados.cvm.gov.br"),
+        DataSourceReachabilityCheck("bacen", "https://api.bcb.gov.br"),
+        DataSourceReachabilityCheck("ibge", "https://servicodados.ibge.gov.br"),
+        DataSourceReachabilityCheck("bolsai", "https://api.usebolsai.com"),
+        DataSourceReachabilityCheck("brapi", "https://brapi.dev"),
+        DataSourceReachabilityCheck("brasilapi", "https://brasilapi.com.br"),
+        DataSourceReachabilityCheck("mziq", "https://apicatalog.mziq.com"),
+    )
 
 
 class HealthEngine:
