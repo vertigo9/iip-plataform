@@ -43,6 +43,14 @@ class ProviderManifest:
     source_roles: tuple[str, ...]
     implementation: str | None = None
     notes: str | None = None
+    # Name of the IIPSettings attribute holding this provider's
+    # credential (e.g. "bolsai_api_key"), and the constructor keyword
+    # argument the implementation expects it under (e.g. "api_key" for
+    # bolsai, "token" for brapi — these differ per provider, hence two
+    # separate fields rather than assuming they match). None for
+    # providers that need no credential.
+    credential_setting: str | None = None
+    credential_kwarg: str | None = None
 
 
 FUND_MANAGERS = (
@@ -97,9 +105,50 @@ def default_provider_manifests() -> tuple[ProviderManifest, ...]:
             ProviderManifest(
                 "cvm",
                 ProviderKind.REGULATORY,
-                ProviderStatus.REGISTERED,
-                ("fund", "equity", "etf", "bdr", "adr", "fixed_income", "other"),
+                ProviderStatus.PARTIAL,
+                ("fund",),
                 ("regulatory",),
+                implementation="iip.sources.cvm_fii_harvester.CvmFiiHTTPHarvester",
+                notes=(
+                    "FII Informe Mensal Estruturado via CVM's open-data "
+                    "portal (dados.cvm.gov.br) — no auth, no JS, no "
+                    "Cloudflare, unlike FNET's own search UI (audited and "
+                    "found to require a real filter + resist automation). "
+                    "Keyed by CNPJ, so it covers financial data for "
+                    "effectively all FII managers (BTG, Sparta, Rio Bravo, "
+                    "Kinea, etc.) in one provider. NOT multi-asset despite "
+                    "asset_classes on the generic ProviderManifest shape: "
+                    "PARTIAL, not READY, because this implementation is "
+                    "FII-only — see the separate 'cvm_fiagro' entry for "
+                    "FIAGRO. FIDC has its own separate CVM open-data "
+                    "dataset with a different, more complex column "
+                    "structure (fidc-doc-inf_mensal, tab_I/tab_X tables) — "
+                    "not yet implemented. Equities/BDRs use an entirely "
+                    "different CVM regime (Formulário de Referência, "
+                    "DFP/ITR for Companhias Abertas, not 'informe mensal'). "
+                    "ICVM 555 fixed-income funds have their own 'perfil "
+                    "mensal'/'informe diário' datasets, also different. "
+                    "Each would need its own target-builder/parser pair, "
+                    "the same as this one."
+                ),
+            ),
+            ProviderManifest(
+                "cvm_fiagro",
+                ProviderKind.REGULATORY,
+                ProviderStatus.READY,
+                ("fund",),
+                ("regulatory",),
+                implementation="iip.sources.cvm_fiagro_harvester.CvmFiagroHTTPHarvester",
+                notes=(
+                    "FIAGRO Informe Mensal via CVM's open-data portal — "
+                    "same channel as 'cvm' (FII) but a genuinely different "
+                    "dataset: published monthly (not yearly), one combined "
+                    "133-column file per competência (not FII's separate "
+                    "geral/ativo_passivo/complemento files) plus a small "
+                    "subclass-level file. Confirmed live against a real "
+                    "downloaded file (inf_mensal_fiagro_202508.zip), not "
+                    "assumed from FII's structure."
+                ),
             ),
             ProviderManifest(
                 "fnet",
@@ -115,21 +164,47 @@ def default_provider_manifests() -> tuple[ProviderManifest, ...]:
                 ("fund", "equity", "etf", "bdr", "adr", "fixed_income", "other"),
                 ("market_validation",),
                 implementation="iip.sources.b3_bolsai_harvester.BolsaiHTTPHarvester",
+                credential_setting="bolsai_api_key",
+                credential_kwarg="api_key",
                 notes=(
                     "Implemented via bolsai (third-party wrapper, not B3 "
-                    "directly — see module docstring). PARTIAL, not READY: "
-                    "the harvester requires an api_key constructor argument "
-                    "with no default, so ProviderFactory's zero-arg "
-                    "instantiation fails today. Needs credential-injection "
-                    "support in ProviderFactory before this can be READY."
+                    "directly — see module docstring). ProviderFactory can "
+                    "now inject the api_key from IIPSettings.bolsai_api_key "
+                    "(env var IIP_BOLSAI_API_KEY) when present — still "
+                    "PARTIAL rather than READY because the manifest's own "
+                    "status is static and can't reflect a runtime-dependent "
+                    "value (whether the key is actually set); "
+                    "ProviderFactory.create() returns a working instance "
+                    "when the credential is present, None otherwise — check "
+                    "the returned ProviderHandle.provider, not this status "
+                    "field, to know if it actually worked this run."
                 ),
             ),
             ProviderManifest(
                 "ri_company",
                 ProviderKind.INSTITUTIONAL,
-                ProviderStatus.PENDING,
+                ProviderStatus.PARTIAL,
                 ("equity",),
                 ("institutional_primary",),
+                implementation="iip.sources.mziq_harvester.MziqHTTPHarvester",
+                notes=(
+                    "Generic MZIQ (MZ Group) investor-relations document "
+                    "catalog — shared infrastructure confirmed live across "
+                    "many Brazilian public companies (not just one), same "
+                    "general concept already used for a single company by "
+                    "iip.harvest.patria. PARTIAL, not READY: the harvester "
+                    "itself instantiates with no arguments, but every call "
+                    "needs a company_id and category_internal_names that "
+                    "are specific to each company's IR site — there is no "
+                    "single registry of these yet. Discover them per "
+                    "company the same way ABC Brasil's (ABCB4) were found: "
+                    "run reconhecer_mziq.py against the company's "
+                    "'Central de Resultados'-style page, then "
+                    "reconhecer_mziq_2.py to capture the response body. "
+                    "Companies not on the MZIQ platform need a different "
+                    "provider entirely — this only covers MZIQ-hosted IR "
+                    "sites."
+                ),
             ),
             ProviderManifest(
                 "sec",
@@ -146,11 +221,67 @@ def default_provider_manifests() -> tuple[ProviderManifest, ...]:
                 ("institutional_primary",),
             ),
             ProviderManifest(
+                "b3_brapi",
+                ProviderKind.MARKET,
+                ProviderStatus.PARTIAL,
+                ("fund", "equity", "bdr"),
+                ("market_validation",),
+                implementation="iip.sources.b3_brapi_harvester.BrapiHTTPHarvester",
+                credential_setting="brapi_token",
+                credential_kwarg="token",
+                notes=(
+                    "General B3 quotes via brapi.dev, kept alongside 'b3' "
+                    "(bolsai) — not a replacement, each covers a real gap "
+                    "the other doesn't. bolsai's own published coverage is "
+                    "'350+ ações' + '400+ FIIs', no BDR category (confirmed "
+                    "live: a bolsai /fundamentals call for AAPL34 returned "
+                    "404). brapi.dev explicitly supports BDRs (type=bdr "
+                    "filter, confirmed in their own docs; AAPL34/MSFT34 "
+                    "quotes confirmed live here). ProviderFactory can now "
+                    "inject the token from IIPSettings.brapi_token (env var "
+                    "IIP_BRAPI_TOKEN) when present — same "
+                    "static-status-vs-runtime-outcome caveat as 'b3': check "
+                    "ProviderHandle.provider, not this status field. Free "
+                    "plan allows only 1 asset per request (confirmed live, "
+                    "QUOTES_PER_REQUEST_EXCEEDED on 2+ tickers). Quotes "
+                    "only, not fundamentals — BDR issuers report abroad, "
+                    "not to the CVM, so no free structured "
+                    "financial-statement source exists for most of them."
+                ),
+            ),
+            ProviderManifest(
                 "market_data",
                 ProviderKind.MARKET,
                 ProviderStatus.REGISTERED,
                 ("fund", "equity", "etf", "bdr", "adr", "fixed_income", "other"),
                 ("enrichment",),
+            ),
+            ProviderManifest(
+                "cvm_renda_fixa",
+                ProviderKind.REGULATORY,
+                ProviderStatus.READY,
+                ("fixed_income",),
+                ("regulatory",),
+                implementation=(
+                    "iip.sources.cvm_renda_fixa_harvester.CvmRendaFixaHTTPHarvester"
+                ),
+                notes=(
+                    "ICVM 555 funds via CVM's open-data portal — two "
+                    "datasets, both confirmed live against real downloaded "
+                    "files (inf_diario_fi_202608.zip, "
+                    "perfil_mensal_fi_202608.csv). Informe Diário: dense "
+                    "daily NAV time series (VL_QUOTA, PL, "
+                    "captações/resgates) — 533k rows for one month across "
+                    "thousands of funds, exactly the historical-series data "
+                    "the quantitative/timing module needs. Perfil Mensal: "
+                    "107-column risk/shareholder-composition profile, kept "
+                    "as raw strings in 'valores' rather than force-parsed "
+                    "as float (unlike FII/FIAGRO's numeric-only dicts) "
+                    "since this file genuinely mixes numbers, free text, "
+                    "and empty cells. Note: Perfil Mensal's URL is a plain "
+                    "CSV, not a ZIP like every other CVM dataset used in "
+                    "this project — confirmed live, not assumed."
+                ),
             ),
             ProviderManifest(
                 "bacen",

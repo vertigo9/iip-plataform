@@ -238,6 +238,8 @@ def test_config_prints_active_configuration(runner, monkeypatch):
             app_name="IIP",
             log_level="INFO",
             base_dir="/tmp/iip",
+            bolsai_api_key=None,
+            brapi_token="fake-token-object",
         )
     )
     monkeypatch.setattr(main.Runtime, "start", staticmethod(lambda: None))
@@ -249,6 +251,8 @@ def test_config_prints_active_configuration(runner, monkeypatch):
     payload = json.loads(result.output)
     assert payload["environment"] == "staging"
     assert payload["debug"] is True
+    assert payload["credentials"]["bolsai_api_key"] == "não configurada"
+    assert payload["credentials"]["brapi_token"] == "configurada"
 
 
 def test_config_prints_nothing_when_no_context(runner, monkeypatch):

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +42,17 @@ from iip.sources.cvm_renda_fixa_harvester import CvmRendaFixaHTTPHarvester
 from iip.versioning import VersionManager
 
 console = Console()
+
+
+def _unwrap_secret(value: Any) -> str | None:
+    """Unwrap a SecretStr setting to its raw string, or pass through
+    None/plain strings unchanged. Centralizes this so credential
+    handling stays consistent everywhere it's read from IIPSettings."""
+    if value is None:
+        return None
+    if hasattr(value, "get_secret_value"):
+        return value.get_secret_value()
+    return value
 
 ANALYZERS: dict[str, type] = {
     "equity": EquityAnalyzer,
@@ -197,8 +207,16 @@ def config():
             "app_name": ctx.settings.app_name,
             "log_level": ctx.settings.log_level,
             "base_dir": str(ctx.settings.base_dir),
+            "credentials": {
+                "bolsai_api_key": "configurada"
+                if ctx.settings.bolsai_api_key
+                else "não configurada",
+                "brapi_token": "configurada"
+                if ctx.settings.brapi_token
+                else "não configurada",
+            },
         }
-        console.print(json.dumps(info, indent=2), soft_wrap=True)
+        console.print(json.dumps(info, indent=2, ensure_ascii=False), soft_wrap=True)
 
 
 class _FieldRecorder(dict):
@@ -333,7 +351,7 @@ def fetch_template(
             raise SystemExit(1) from exc
 
         price = None
-        bolsai_key = os.environ.get("IIP_BOLSAI_API_KEY")
+        bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
         if bolsai_key:
             console.print("[dim]Buscando preço via bolsai...[/]")
             try:
@@ -373,7 +391,7 @@ def fetch_template(
             raise SystemExit(1) from exc
 
         price = None
-        brapi_token = os.environ.get("IIP_BRAPI_TOKEN")
+        brapi_token = _unwrap_secret(get_settings().brapi_token)
         if brapi_token:
             console.print("[dim]Buscando preço via brapi.dev...[/]")
             try:
