@@ -242,6 +242,60 @@ def fetch_fii_template_live(
     return template, resultado
 
 
+def fetch_fixed_income_template_live(
+    symbol: str,
+    cnpj: str,
+    ano: int,
+    mes: int,
+) -> tuple[dict[str, Any], FetchResult]:
+    """CVM Informe Diário only (patrimônio/cota) — deliberately NEVER
+    attempts a market price lookup, unlike the FII/ETF live-fetch
+    functions.
+
+    Reason: found live with AXIA3 (Daycoval FMP-FGTS Eletrobras) — the
+    ``symbol`` a person's portfolio tool uses to label this kind of
+    position is sometimes a proxy/reference ticker for a DIFFERENT,
+    unrelated real asset (AXIA3 is Eletrobras' own common-share
+    ticker), not the fund's own market ticker (FMP-FGTS funds have no
+    B3 ticker at all — they're only accessible via FGTS, not a regular
+    brokerage). Calling brapi/bolsai with that symbol would silently
+    fetch and misattribute a different company's stock price to this
+    position. Safer to fetch only what CVM's CNPJ-keyed data can
+    honestly confirm, and leave price fields at their defaults with a
+    clear warning, than to guess which symbol (if any) is safe to
+    query for price.
+    """
+    from iip.sources.cvm_renda_fixa import build_diario_target as _build_cvm_diario_target
+    from iip.sources.cvm_renda_fixa_harvester import (
+        CvmRendaFixaHTTPHarvester as _CvmRendaFixaHTTPHarvester,
+    )
+
+    diario_result = _CvmRendaFixaHTTPHarvester().fetch_diario(
+        _build_cvm_diario_target(ano, mes)
+    )
+
+    default_financials = _etf_defaults()
+    template, resultado = build_etf_template(
+        symbol=symbol,
+        cnpj=cnpj,
+        informes=list(diario_result.informes),
+        default_financials=default_financials,
+        price=None,
+    )
+    resultado = FetchResult(
+        fetched_fields=resultado.fetched_fields,
+        dividend_yield_months_used=resultado.dividend_yield_months_used,
+        warnings=(
+            *resultado.warnings,
+            "Preço de mercado não buscado de propósito para este ativo "
+            "(fixed_income) — o ticker de referência pode não corresponder "
+            "a um ticker de mercado real deste fundo. Preencha manualmente "
+            "se souber o valor.",
+        ),
+    )
+    return template, resultado
+
+
 def fetch_etf_template_live(
     symbol: str,
     cnpj: str,

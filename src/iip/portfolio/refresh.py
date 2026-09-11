@@ -1,16 +1,16 @@
 """Batch-refresh every portfolio position with a known CNPJ.
 
 Reuses ``iip.cli.fetch_template.fetch_fii_template_live`` /
-``fetch_etf_template_live`` per position — no new fetching logic here,
-just the loop, per-position error isolation (one bad fund must not
-abort the whole run), and dated snapshot output.
+``fetch_etf_template_live`` / ``fetch_fixed_income_template_live`` per
+position — no new fetching logic here, just the loop, per-position
+error isolation (one bad fund must not abort the whole run), and dated
+snapshot output.
 
-Only ``fund``/``etf``-class positions from
+``fund``/``etf``/``fixed_income``-class positions from
 ``iip.portfolio.registry.assets_with_cnpj()`` are refreshed —
-``equity``/``fixed_income`` positions aren't wired to automatic
-fetching yet (see the CLI's own ``fetch-template`` docstring for that
-gap), and positions with no verified CNPJ are skipped with a clear
-reason, never silently guessed.
+``equity`` positions aren't wired to automatic fetching yet, and
+positions with no verified CNPJ are skipped with a clear reason, never
+silently guessed.
 """
 
 from __future__ import annotations
@@ -53,6 +53,7 @@ class RefreshRunResult:
 _ASSET_CLASS_TO_TEMPLATE_TYPE = {
     "fund": "fii",  # PORTFOLIO_ASSETS uses "fund" for FIIs; subtype narrows further
     "etf": "etf",
+    "fixed_income": "fixed_income",
 }
 
 
@@ -76,18 +77,24 @@ def refresh_portfolio(
     positions: tuple[PortfolioAsset, ...] | None = None,
     fetch_fii=None,
     fetch_etf=None,
+    fetch_fixed_income=None,
 ) -> RefreshRunResult:
     """Refresh every position with a known CNPJ, writing one JSON
     snapshot per ticker under ``output_dir/{data}/{ticker}.json``.
 
-    ``fetch_fii``/``fetch_etf`` are injectable (default to the real
-    live-fetch functions) purely for testability — same pattern as the
-    harvesters' injectable ``opener``.
+    ``fetch_fii``/``fetch_etf``/``fetch_fixed_income`` are injectable
+    (default to the real live-fetch functions) purely for testability
+    — same pattern as the harvesters' injectable ``opener``.
     """
-    from iip.cli.fetch_template import fetch_etf_template_live, fetch_fii_template_live
+    from iip.cli.fetch_template import (
+        fetch_etf_template_live,
+        fetch_fii_template_live,
+        fetch_fixed_income_template_live,
+    )
 
     fetch_fii = fetch_fii or fetch_fii_template_live
     fetch_etf = fetch_etf or fetch_etf_template_live
+    fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
 
     hoje = _dt.date.today()
     ano_efetivo = ano or hoje.year
@@ -108,13 +115,20 @@ def refresh_portfolio(
                 template, resultado = fetch_fii(
                     position.ticker, position.cnpj, ano_efetivo, bolsai_api_key
                 )
-            else:
+            elif template_type == "etf":
                 template, resultado = fetch_etf(
                     position.ticker,
                     position.cnpj,
                     ano_efetivo,
                     mes_efetivo,
                     brapi_token,
+                )
+            else:  # fixed_income
+                template, resultado = fetch_fixed_income(
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
                 )
         except Exception as exc:
             outcomes.append(
@@ -145,7 +159,7 @@ def refresh_portfolio(
             PositionOutcome(
                 ticker=ticker,
                 status="pulado",
-                detail="classe de ativo sem fetch automático ainda (só fund/etf)",
+                detail="classe de ativo sem fetch automático ainda (só fund/etf/fixed_income)",
             )
         )
 

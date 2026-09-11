@@ -431,7 +431,10 @@ def refresh_portfolio_command(
 ) -> None:
     """Atualiza de uma vez só todas as posições da carteira real
     (``iip.portfolio.registry.PORTFOLIO_ASSETS``) que já têm CNPJ
-    verificado — hoje só FII e ETF têm fetch automático.
+    verificado — hoje FII, ETF e fixed_income (fundos regulados pela
+    CVM) têm fetch automático; ações e CDBs bancários ainda não (CDB
+    não tem fonte de dado pública/gratuita — não é uma limitação
+    nossa, é como o mercado de CDB funciona).
 
     Pensado para ser chamado por um agendador (Agendador de Tarefas do
     Windows, cron) — não é um serviço contínuo, é um comando que roda

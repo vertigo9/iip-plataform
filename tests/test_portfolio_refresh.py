@@ -124,6 +124,35 @@ def test_refresh_portfolio_reports_fetched_fields_per_position(tmp_path):
     assert result.succeeded[0].fetched_fields == ("dividend_yield",)
 
 
+def fake_fetch_fixed_income_ok(symbol, cnpj, ano, mes):
+    return (
+        {"symbol": symbol, "price": None, "financials": {"assets_under_management_millions": 14.8}},
+        FetchResult(fetched_fields=("assets_under_management_millions",)),
+    )
+
+
+def test_refresh_portfolio_routes_fixed_income_positions(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(
+            PortfolioAsset(
+                ticker="AXIA3", asset_class="fixed_income", cnpj="45.121.022/0001-48"
+            ),
+        ),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+        fetch_fixed_income=fake_fetch_fixed_income_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    snapshot = tmp_path / result.run_date / "AXIA3.json"
+    assert snapshot.exists()
+    data = json.loads(snapshot.read_text(encoding="utf-8"))
+    assert data["price"] is None
+
+
 def test_refresh_portfolio_creates_dated_output_directory(tmp_path):
     result = refresh_portfolio(
         tmp_path,

@@ -306,6 +306,17 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         subtype="Daycoval FMP FGTS / subjacente AXIA3",
         manager="Daycoval",
         classification_provenance=ClassificationProvenance.DATABASE,
+        # CNPJ do FUNDO Daycoval FMP-FGTS Eletrobras (verificado via
+        # busca, multiplas fontes concordam, inclusive documento do
+        # administrador). NAO confundir com o ticker "AXIA3" em si, que
+        # e a propria acao ordinaria da Eletrobras (CNPJ
+        # 00.001.180/0001-26) -- um ativo totalmente diferente. O
+        # fundo FMP-FGTS nao tem ticker/cotacao propria na B3 (so e
+        # acessado via FGTS, nao por corretora) -- por isso o fetch
+        # deste ativo busca só patrimonio/cota via CVM, nunca preço via
+        # bolsai/brapi (buscar preço usando "AXIA3" pegaria o preço da
+        # ação da Eletrobras por engano).
+        cnpj="45.121.022/0001-48",
     ),
 )
 

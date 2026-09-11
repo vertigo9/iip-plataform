@@ -153,7 +153,8 @@ trabalho (buscar por "audit finding" no código).
 
 ## Limitações conhecidas
 
-- **Só FII e ETF têm busca automática de dado.** Ação/Infra/Agro precisam
+- **Só FII, ETF e fundos regulados pela CVM (fixed_income) têm busca
+  automática de dado.** Ação/Infra/Agro precisam
   de `analyze-template` + preenchimento manual completo.
 - **~22 dos 27 campos de cada analisador são julgamento qualitativo**
   (ocupação, governança, tracking error, poder de precificação etc.) — não
@@ -161,8 +162,14 @@ trabalho (buscar por "audit finding" no código).
   gerencial em PDF.
 - **BDR não tem fundamentos**, só cotação (via brapi.dev) — o emissor
   reporta no exterior, não à CVM.
-- **`refresh-portfolio` só cobre posições com CNPJ verificado** no registro
-  (hoje: 2 de ~25).
+- **CDB (renda fixa bancária) não tem fonte de dado pública/gratuita** —
+  não é uma lacuna nossa, é como o mercado funciona: CDB é dívida bilateral
+  banco↔investidor, não um valor mobiliário com cotação pública (nem o
+  CETIP NET, plataforma de negociação entre instituições financeiras, tem
+  API pública). `refresh-portfolio` não tenta buscar esses ativos.
+- **`refresh-portfolio` cobre todas as posições com CNPJ verificado** no
+  registro (hoje: todos os 22 fundos/ETF da carteira real, além de
+  posições em ações — que não usam CNPJ pra automação).
 - **O monitoramento de fontes (`health --sources`) só checa se o servidor
   responde**, não se o formato do dado mudou (ex: CVM trocar o nome de uma
   coluna não seria pego por esse check — só os testes automatizados
