@@ -1,0 +1,136 @@
+import json
+
+from iip.cli.fetch_template import FetchResult
+from iip.portfolio.refresh import refresh_portfolio
+from iip.portfolio.registry import PortfolioAsset
+
+
+def make_position(ticker, asset_class="fund", cnpj="11.111.111/0001-11"):
+    return PortfolioAsset(ticker=ticker, asset_class=asset_class, cnpj=cnpj)
+
+
+def fake_fetch_fii_ok(symbol, cnpj, ano, bolsai_key):
+    return (
+        {"symbol": symbol, "financials": {"dividend_yield": 8.5}},
+        FetchResult(fetched_fields=("dividend_yield",), dividend_yield_months_used=7),
+    )
+
+
+def fake_fetch_etf_ok(symbol, cnpj, ano, mes, brapi_token):
+    return (
+        {"symbol": symbol, "financials": {"assets_under_management_millions": 500}},
+        FetchResult(fetched_fields=("assets_under_management_millions",)),
+    )
+
+
+def fake_fetch_fii_fails(symbol, cnpj, ano, bolsai_key):
+    raise RuntimeError("CVM indisponível")
+
+
+def test_refresh_portfolio_writes_snapshot_for_fii_position(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(make_position("BTLG11", "fund"),),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    outcome = result.succeeded[0]
+    assert outcome.ticker == "BTLG11"
+    snapshot = tmp_path / result.run_date / "BTLG11.json"
+    assert snapshot.exists()
+    data = json.loads(snapshot.read_text(encoding="utf-8"))
+    assert data["financials"]["dividend_yield"] == 8.5
+
+
+def test_refresh_portfolio_writes_snapshot_for_etf_position(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(make_position("LFTB11", "etf"),),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    snapshot = tmp_path / result.run_date / "LFTB11.json"
+    assert snapshot.exists()
+
+
+def test_refresh_portfolio_one_failure_does_not_abort_the_run(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(make_position("BROKEN11", "fund"), make_position("BTLG11", "fund")),
+        fetch_fii=lambda symbol, *a: fake_fetch_fii_fails(symbol, *a)
+        if symbol == "BROKEN11"
+        else fake_fetch_fii_ok(symbol, *a),
+        fetch_etf=fake_fetch_etf_ok,
+    )
+
+    assert len(result.failed) == 1
+    assert result.failed[0].ticker == "BROKEN11"
+    assert len(result.succeeded) == 1
+    assert result.succeeded[0].ticker == "BTLG11"
+
+
+def test_refresh_portfolio_skips_positions_without_fetchable_asset_class(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(
+            make_position("BTLG11", "fund"),
+            PortfolioAsset(ticker="ABCB4", asset_class="equity", cnpj="22.222.222/0001-22"),
+        ),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    assert len(result.skipped) == 1
+    assert result.skipped[0].ticker == "ABCB4"
+
+
+def test_refresh_portfolio_defaults_to_assets_with_cnpj(tmp_path):
+    # No `positions=` override — must fall back to the real registry's
+    # assets_with_cnpj(), not silently do nothing.
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+    )
+    tickers = {o.ticker for o in result.outcomes}
+    assert "BTLG11" in tickers
+    assert "LFTB11" in tickers
+
+
+def test_refresh_portfolio_reports_fetched_fields_per_position(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(make_position("BTLG11", "fund"),),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+    )
+    assert result.succeeded[0].fetched_fields == ("dividend_yield",)
+
+
+def test_refresh_portfolio_creates_dated_output_directory(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(make_position("BTLG11", "fund"),),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+    )
+    assert (tmp_path / result.run_date).is_dir()

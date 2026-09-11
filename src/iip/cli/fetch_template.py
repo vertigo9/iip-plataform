@@ -46,7 +46,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from iip.sources.cvm_fii import FiiComplemento
+from iip.sources.cvm_fii import FiiComplemento, FiiGeral
 from iip.sources.cvm_renda_fixa import InformeDiario
 
 
@@ -100,11 +100,17 @@ def build_fii_template(
     complementos: list[FiiComplemento],
     default_financials: dict[str, Any],
     price: float | None = None,
+    geral: list[FiiGeral] | None = None,
 ) -> tuple[dict[str, Any], FetchResult]:
     """Assemble the same JSON shape ``iip analyze --data-file`` expects,
     with the fetchable fields filled from real data and everything
     else left at ``default_financials`` (from
     ``iip.cli.main._template_financials(FIIAnalyzer)``).
+
+    ``geral`` is optional (defaults to none fetched) — when given, also
+    fills ``sector`` from CVM's ``Segmento_Atuacao``, a feature ported
+    from the parallel implementation in ``iip.integration.fii_template``
+    (see that module's docstring for why the two exist side by side).
     """
 
     financials = dict(default_financials)
@@ -157,9 +163,23 @@ def build_fii_template(
     else:
         warnings.append("Preço não informado/buscado — reit_premium_discount e market_cap ficam vazios.")
 
+    sector = "REPLACE_WITH_SECTOR"
+    if geral:
+        cnpj_normalizado = "".join(ch for ch in cnpj if ch.isdigit())
+        geral_matches = [
+            g
+            for g in geral
+            if "".join(ch for ch in g.cnpj_fundo_classe if ch.isdigit()) == cnpj_normalizado
+        ]
+        if geral_matches:
+            mais_recente = max(geral_matches, key=lambda g: g.data_referencia)
+            if mais_recente.segmento_atuacao:
+                sector = mais_recente.segmento_atuacao
+                fetched.append("sector")
+
     template = {
         "symbol": symbol.upper(),
-        "sector": "REPLACE_WITH_SECTOR",
+        "sector": sector,
         "industry": "REPLACE_WITH_INDUSTRY",
         "market_cap": market_cap,
         "price": price,
@@ -171,6 +191,118 @@ def build_fii_template(
         dividend_yield_months_used=months_used,
         warnings=tuple(warnings),
     )
+
+
+def fetch_fii_template_live(
+    symbol: str,
+    cnpj: str,
+    ano: int,
+    bolsai_api_key: str | None,
+) -> tuple[dict[str, Any], FetchResult]:
+    """Do the real network fetch (CVM FII + optional bolsai price) and
+    assemble the FII template. Raises whatever the CVM harvester raises
+    on failure — that's a hard stop, there's no FII data to build a
+    template from without it. A bolsai failure is NOT raised — it's
+    folded into the returned FetchResult.warnings, since price is
+    optional (the CVM-only fields still get filled).
+    """
+    from iip.sources.b3_bolsai import build_fii_target as _build_bolsai_fii_target
+    from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester as _BolsaiHTTPHarvester
+    from iip.sources.cvm_fii import build_target as _build_cvm_fii_target
+    from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester as _CvmFiiHTTPHarvester
+
+    cvm_result = _CvmFiiHTTPHarvester().fetch(_build_cvm_fii_target(ano))
+
+    price = None
+    bolsai_warning = None
+    if bolsai_api_key:
+        try:
+            bolsai_result = _BolsaiHTTPHarvester(api_key=bolsai_api_key).fetch_fii(
+                _build_bolsai_fii_target(symbol)
+            )
+            price = bolsai_result.fii.close_price
+        except Exception as exc:
+            bolsai_warning = f"não consegui buscar preço via bolsai: {exc}"
+
+    default_financials = _fii_defaults()
+    template, resultado = build_fii_template(
+        symbol=symbol,
+        cnpj=cnpj,
+        complementos=list(cvm_result.complemento),
+        default_financials=default_financials,
+        price=price,
+        geral=list(cvm_result.geral),
+    )
+    if bolsai_warning:
+        resultado = FetchResult(
+            fetched_fields=resultado.fetched_fields,
+            dividend_yield_months_used=resultado.dividend_yield_months_used,
+            warnings=(*resultado.warnings, bolsai_warning),
+        )
+    return template, resultado
+
+
+def fetch_etf_template_live(
+    symbol: str,
+    cnpj: str,
+    ano: int,
+    mes: int,
+    brapi_token: str | None,
+) -> tuple[dict[str, Any], FetchResult]:
+    """Same idea as ``fetch_fii_template_live`` but for ETFs (CVM
+    Informe Diário + optional brapi.dev price)."""
+    from iip.sources.b3_brapi import build_target as _build_brapi_target
+    from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
+    from iip.sources.cvm_renda_fixa import build_diario_target as _build_cvm_diario_target
+    from iip.sources.cvm_renda_fixa_harvester import (
+        CvmRendaFixaHTTPHarvester as _CvmRendaFixaHTTPHarvester,
+    )
+
+    diario_result = _CvmRendaFixaHTTPHarvester().fetch_diario(
+        _build_cvm_diario_target(ano, mes)
+    )
+
+    price = None
+    brapi_warning = None
+    if brapi_token:
+        try:
+            brapi_result = _BrapiHTTPHarvester(token=brapi_token).fetch(
+                _build_brapi_target((symbol,))
+            )
+            if brapi_result.quotes:
+                price = brapi_result.quotes[0].regular_market_price
+        except Exception as exc:
+            brapi_warning = f"não consegui buscar preço via brapi.dev: {exc}"
+
+    default_financials = _etf_defaults()
+    template, resultado = build_etf_template(
+        symbol=symbol,
+        cnpj=cnpj,
+        informes=list(diario_result.informes),
+        default_financials=default_financials,
+        price=price,
+    )
+    if brapi_warning:
+        resultado = FetchResult(
+            fetched_fields=resultado.fetched_fields,
+            dividend_yield_months_used=resultado.dividend_yield_months_used,
+            warnings=(*resultado.warnings, brapi_warning),
+        )
+    return template, resultado
+
+
+def _fii_defaults() -> dict[str, Any]:
+    from iip.analysis import FIIAnalyzer
+    from iip.cli.main import _template_financials
+
+    return _template_financials(FIIAnalyzer)
+
+
+def _etf_defaults() -> dict[str, Any]:
+    from iip.analysis import ETFAnalyzer
+    from iip.cli.main import _template_financials
+
+    return _template_financials(ETFAnalyzer)
 
 
 def latest_informe_for_cnpj(

@@ -34,6 +34,12 @@ class PortfolioAsset:
     classification_provenance: ClassificationProvenance = (
         ClassificationProvenance.PENDING
     )
+    # CNPJ do fundo, necessário para os providers da CVM (cvm_fii,
+    # cvm_renda_fixa). Deliberadamente None para a maioria das posições
+    # — só preenchido onde foi verificado ao vivo (ver notas por
+    # posição abaixo). Nunca adivinhado: um CNPJ errado buscaria dados
+    # de outro fundo silenciosamente.
+    cnpj: str | None = None
 
 
 # This table deliberately avoids inventing classifications not supported by
@@ -62,6 +68,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="BTG Pactual",
         source_url="https://btlg.btgpactual.com",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="11.839.593/0001-09",  # verificado ao vivo nesta sessão
     ),
     PortfolioAsset(
         "TRXF11",
@@ -271,6 +278,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Investo",
         source_url="https://www.investoetf.com/etf/lftb11/",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="56.176.507/0001-55",  # verificado ao vivo nesta sessão
     ),
     PortfolioAsset(
         "AXIA3",
@@ -290,3 +298,12 @@ def get_asset(ticker: str) -> PortfolioAsset | None:
 def assets_by_class(asset_class: str) -> tuple[PortfolioAsset, ...]:
     target = asset_class.strip().lower()
     return tuple(a for a in PORTFOLIO_ASSETS if a.asset_class == target)
+
+
+def assets_with_cnpj() -> tuple[PortfolioAsset, ...]:
+    """Positions with a verified CNPJ — the ones ``iip refresh-portfolio``
+    can actually fetch from the CVM today. Most FII/ETF positions in
+    ``PORTFOLIO_ASSETS`` don't have one yet (never guessed, only
+    populated after live verification) — this makes that gap visible
+    rather than silently skipping without explanation."""
+    return tuple(a for a in PORTFOLIO_ASSETS if a.cnpj)

@@ -98,6 +98,33 @@ class KnowledgeBridge:
             raise ValueError("snapshot must contain at least one position")
         return results[-1]
 
+    def sync_analysis_projection(
+        self, report, ticker: str, asset_class: str
+    ) -> ProjectionSyncResult:
+        """Project an ``iip.analysis`` framework report (from
+        ``EquityAnalyzer``/``FIIAnalyzer``/``ETFAnalyzer``/etc.) into the
+        canonical asset note — the piece that closes the loop between
+        ``iip analyze`` and the vault. Overwrites the previous
+        ``IIP:analysis`` section idempotently on every run (same
+        managed-section mechanism as decisions/evidence), so re-running
+        ``analyze`` after fetching fresh data keeps just the latest
+        result in this section, not an ever-growing log — history lives
+        in ``ProjectionFingerprint``/git, not duplicated inline here.
+        """
+        pilares = "\n".join(
+            f"- {p.pillar.value}: {p.score:.1f} (peso {p.weight:.0%})"
+            for p in report.pillar_scores
+        )
+        content = (
+            f"Score geral: {report.overall_score:.1f}/100\n"
+            f"Recomendação: {report.recommendation}\n"
+            f"Risco: {report.risk_level}\n"
+            f"{pilares}"
+        )
+        return self.sync_asset_section(
+            ticker, asset_class, "scoring", "IIP:analysis", content
+        )
+
     def assemble(self, ticker: str) -> KnowledgeContext:
         return self.context.assemble(ticker)
 

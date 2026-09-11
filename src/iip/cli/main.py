@@ -338,84 +338,45 @@ def fetch_template(
     """
     import datetime as _dt
 
+    from iip.cli.fetch_template import fetch_etf_template_live, fetch_fii_template_live
+
     hoje = _dt.date.today()
     ano_efetivo = ano or hoje.year
 
     if asset_type == "fii":
         console.print(f"[dim]Buscando dados CVM FII para {ano_efetivo}...[/]")
-        cvm_harvester = CvmFiiHTTPHarvester()
-        try:
-            cvm_result = cvm_harvester.fetch(build_cvm_fii_target(ano_efetivo))
-        except Exception as exc:
-            console.print(f"[bold red]Erro ao buscar dados da CVM:[/] {exc}")
-            raise SystemExit(1) from exc
-
-        price = None
         bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
-        if bolsai_key:
-            console.print("[dim]Buscando preço via bolsai...[/]")
-            try:
-                bolsai_result = BolsaiHTTPHarvester(api_key=bolsai_key).fetch_fii(
-                    build_bolsai_fii_target(symbol)
-                )
-                price = bolsai_result.fii.close_price
-            except Exception as exc:
-                console.print(f"[yellow]Aviso: não consegui buscar preço via bolsai: {exc}[/]")
-        else:
+        if not bolsai_key:
             console.print(
                 "[dim]IIP_BOLSAI_API_KEY não definida — pulando busca de preço "
                 "(reit_premium_discount e market_cap ficam vazios).[/]"
             )
-
-        default_financials = _template_financials(FIIAnalyzer)
-        template, resultado = build_fii_template(
-            symbol=symbol,
-            cnpj=cnpj,
-            complementos=list(cvm_result.complemento),
-            default_financials=default_financials,
-            price=price,
-        )
+        try:
+            template, resultado = fetch_fii_template_live(
+                symbol, cnpj, ano_efetivo, bolsai_key
+            )
+        except Exception as exc:
+            console.print(f"[bold red]Erro ao buscar dados da CVM:[/] {exc}")
+            raise SystemExit(1) from exc
 
     else:  # etf
         mes_efetivo = mes or hoje.month
         console.print(
             f"[dim]Buscando dados CVM Informe Diário para {ano_efetivo}-{mes_efetivo:02d}...[/]"
         )
-        renda_fixa_harvester = CvmRendaFixaHTTPHarvester()
-        try:
-            diario_result = renda_fixa_harvester.fetch_diario(
-                build_cvm_diario_target(ano_efetivo, mes_efetivo)
-            )
-        except Exception as exc:
-            console.print(f"[bold red]Erro ao buscar Informe Diário da CVM:[/] {exc}")
-            raise SystemExit(1) from exc
-
-        price = None
         brapi_token = _unwrap_secret(get_settings().brapi_token)
-        if brapi_token:
-            console.print("[dim]Buscando preço via brapi.dev...[/]")
-            try:
-                brapi_result = BrapiHTTPHarvester(token=brapi_token).fetch(
-                    build_brapi_target((symbol,))
-                )
-                if brapi_result.quotes:
-                    price = brapi_result.quotes[0].regular_market_price
-            except Exception as exc:
-                console.print(f"[yellow]Aviso: não consegui buscar preço via brapi.dev: {exc}[/]")
-        else:
+        if not brapi_token:
             console.print(
                 "[dim]IIP_BRAPI_TOKEN não definida — pulando busca de preço "
                 "(market_cap fica vazio).[/]"
             )
-
-        default_financials = _template_financials(ETFAnalyzer)
-        template, resultado = build_etf_template(
-            symbol=symbol,
-            cnpj=cnpj,
-            informes=list(diario_result.informes),
-            default_financials=default_financials,
-            price=price,
-        )
+        try:
+            template, resultado = fetch_etf_template_live(
+                symbol, cnpj, ano_efetivo, mes_efetivo, brapi_token
+            )
+        except Exception as exc:
+            console.print(f"[bold red]Erro ao buscar Informe Diário da CVM:[/] {exc}")
+            raise SystemExit(1) from exc
 
     console.print(f"\n[bold]Campos preenchidos com dado real:[/] {', '.join(resultado.fetched_fields) or '(nenhum)'}")
     for warning in resultado.warnings:
@@ -431,6 +392,80 @@ def fetch_template(
         )
     else:
         console.print(payload)
+
+
+@cli.command("refresh-portfolio")
+@click.option(
+    "--output-dir",
+    "-o",
+    type=click.Path(),
+    default="portfolio_snapshots",
+    help="Diretório onde salvar os snapshots (um subdiretório por data).",
+)
+@click.option(
+    "--ano", type=int, default=None, help="Ano de referência CVM (padrão: ano atual)."
+)
+@click.option(
+    "--mes",
+    type=int,
+    default=None,
+    help="Mês de referência CVM para ETFs, 1-12 (padrão: mês atual).",
+)
+def refresh_portfolio_command(
+    output_dir: str, ano: int | None, mes: int | None
+) -> None:
+    """Atualiza de uma vez só todas as posições da carteira real
+    (``iip.portfolio.registry.PORTFOLIO_ASSETS``) que já têm CNPJ
+    verificado — hoje só FII e ETF têm fetch automático.
+
+    Pensado para ser chamado por um agendador (Agendador de Tarefas do
+    Windows, cron) — não é um serviço contínuo, é um comando que roda
+    uma vez, busca tudo, e termina. Ver `agendar_atualizacao_windows.ps1`
+    para registrar isso como tarefa agendada diária.
+    """
+    from iip.portfolio.refresh import refresh_portfolio
+
+    bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
+    brapi_token = _unwrap_secret(get_settings().brapi_token)
+
+    if not bolsai_key:
+        console.print(
+            "[dim]IIP_BOLSAI_API_KEY não definida — posições FII vão sem preço.[/]"
+        )
+    if not brapi_token:
+        console.print(
+            "[dim]IIP_BRAPI_TOKEN não definida — posições ETF vão sem preço.[/]"
+        )
+
+    console.print(f"[dim]Atualizando carteira em {output_dir}...[/]\n")
+
+    resultado = refresh_portfolio(
+        Path(output_dir),
+        bolsai_api_key=bolsai_key,
+        brapi_token=brapi_token,
+        ano=ano,
+        mes=mes,
+    )
+
+    table = Table(title=f"Atualização da carteira — {resultado.run_date}")
+    table.add_column("Ticker")
+    table.add_column("Status")
+    table.add_column("Detalhe")
+
+    for outcome in resultado.outcomes:
+        cor = {"ok": "green", "erro": "red", "pulado": "yellow"}[outcome.status]
+        table.add_row(
+            outcome.ticker, f"[{cor}]{outcome.status}[/]", outcome.detail[:80]
+        )
+
+    console.print(table)
+    console.print(
+        f"\n[bold]Resumo:[/] {len(resultado.succeeded)} ok, "
+        f"{len(resultado.failed)} erro, {len(resultado.skipped)} pulado"
+    )
+
+    if resultado.failed:
+        raise SystemExit(1)
 
 
 @cli.command()
@@ -463,8 +498,21 @@ def fetch_template(
     default=None,
     help="Write the report to this path instead of printing to the console.",
 )
+@click.option(
+    "--persist",
+    is_flag=True,
+    default=False,
+    help="Salva o resultado na nota canônica do vault Obsidian "
+    "(IIP_OBSIDIAN_VAULT), na seção 'IIP:analysis' de "
+    "'{symbol} - Score e Ranking.md'.",
+)
 def analyze(
-    symbol: str, asset_type: str, data_file: str, output_format: str, output: str | None
+    symbol: str,
+    asset_type: str,
+    data_file: str,
+    output_format: str,
+    output: str | None,
+    persist: bool,
 ) -> None:
     """Run an IIP framework analysis on SYMBOL using data from --data-file."""
     try:
@@ -490,6 +538,20 @@ def analyze(
     )
 
     report = ANALYZERS[asset_type]().analyze(data)
+
+    if persist:
+        from iip.knowledge.bridge import KnowledgeBridge
+
+        vault_path = str(get_settings().obsidian_vault)
+        try:
+            resultado_persist = KnowledgeBridge(vault_path).sync_analysis_projection(
+                report, symbol, asset_type
+            )
+            console.print(
+                f"[dim]Vault: {resultado_persist.status.value} — {resultado_persist.path}[/]"
+            )
+        except Exception as exc:
+            console.print(f"[yellow]Aviso: não consegui salvar no vault: {exc}[/]")
 
     if output_format == "table":
         table = Table(title=f"{report.asset_symbol} — {asset_type.upper()} Analysis")

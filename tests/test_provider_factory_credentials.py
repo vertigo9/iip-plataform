@@ -1,7 +1,20 @@
+import pytest
+
 from iip.config import IIPSettings
 from iip.providers.factory import ProviderFactory
 from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
 from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
+
+
+@pytest.fixture(autouse=True)
+def _clear_real_env_credentials(monkeypatch):
+    # _env_file=None below only disables .env file loading — pydantic
+    # BaseSettings still reads real OS environment variables regardless.
+    # If the person's shell already exported IIP_BOLSAI_API_KEY/
+    # IIP_BRAPI_TOKEN (e.g. to test the CLI for real earlier), those
+    # would otherwise leak into "without credential" test cases here.
+    monkeypatch.delenv("IIP_BOLSAI_API_KEY", raising=False)
+    monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
 
 
 def make_settings(**kwargs):
