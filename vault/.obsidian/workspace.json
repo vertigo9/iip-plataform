@@ -11,10 +11,14 @@
             "id": "5a1685357f2e02a0",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Visualização em gráfico"
+              "type": "markdown",
+              "state": {
+                "file": "04_Evidence/evidence_metric_6d8cd3b7ba3e5f302f70b4f3.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "evidence_metric_6d8cd3b7ba3e5f302f70b4f3"
             }
           }
         ]
@@ -183,6 +187,7 @@
   },
   "active": "5a1685357f2e02a0",
   "lastOpenFiles": [
+    "01_Assets/FIIs/BTLG11/BTLG11 - Score e Ranking.md",
     "04_Evidence/evidence_metric_50782adfb65270a6384c0a76.md",
     "04_Evidence/evidence_metric_5296755a52816755630488ee.md",
     "04_Evidence/evidence_metric_5f74192f77c0bd2b54e403c9.md",
@@ -208,7 +213,6 @@
     "04_Evidence/evidence_metric_a9e27280e8fe7f0e4d3ceb60.md",
     "04_Evidence/evidence_metric_04fbeacce0898f6d3f6a6eee.md",
     "04_Evidence/evidence_metric_2e4f82add5082a4fe90d894b.md",
-    "04_Evidence/evidence_metric_ac5b6c6a40b808df20ca0839.md",
     "archive/portfolio-integrity-fix-0683-20260902_150331",
     "archive/portfolio-integrity-pre-v0.1-20260902_150026",
     "archive/portfolio-pre-position-load-v0.1-20260902_145312/POSITION_LOAD_MANIFEST.txt",

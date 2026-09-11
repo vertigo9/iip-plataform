@@ -78,6 +78,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="TRX",
         source_url="https://trxf11.com.br/relatorios-gerenciais-2",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.548.288/0001-52",  # verificado via busca (multiplas fontes concordam)
     ),
     PortfolioAsset(
         "HGRU11",
@@ -88,6 +89,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/hgru",
         classification_provenance=ClassificationProvenance.USER,
+        cnpj="29.641.226/0001-53",  # verificado via busca
     ),
     PortfolioAsset(
         "CDII11",
@@ -101,6 +103,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         risk_profile="Baixo",
         strategy="Crédito / Debêntures incentivadas",
         classification_provenance=ClassificationProvenance.USER,
+        cnpj="48.973.783/0001-16",  # verificado via busca (multiplas fontes concordam)
     ),
     PortfolioAsset(
         "JURO11",
@@ -109,6 +112,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Sparta",
         source_url="https://sparta.com.br/juro11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="42.730.834/0001-00",  # verificado via busca (multiplas fontes concordam)
     ),
     PortfolioAsset(
         "CRAA11",
@@ -122,6 +126,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         risk_profile="Alto",
         strategy="CRA",
         classification_provenance=ClassificationProvenance.USER,
+        cnpj="48.903.610/0001-21",  # verificado via busca (multiplas fontes concordam)
     ),
     PortfolioAsset(
         "BTCI11",
@@ -131,7 +136,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Crédito Imobiliário",
         manager="BTG Pactual",
         source_url="https://btgpactual.com/asset-management/.../BTCI11",
-        classification_provenance=ClassificationProvenance.DATABASE,
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="09.552.812/0001-14",  # confirmado pelo usuario via extrato real da corretora
     ),
     PortfolioAsset(
         "VGIP11",
@@ -141,6 +147,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Valora Invest (fonte agregadora)",
         source_url="https://valorainvest.com.br/fundo/vgip11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="34.197.811/0001-46",  # verificado via busca (5 fontes concordam)
     ),
     PortfolioAsset(
         "PCIP11",
@@ -150,6 +157,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/pcip11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.729.197/0001-13",  # verificado via busca (2 fontes concordam)
     ),
     PortfolioAsset(
         "LVBI11",
@@ -160,6 +168,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/lvbi11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="30.629.603/0001-18",  # verificado via busca (3 fontes concordam)
     ),
     PortfolioAsset(
         "AFHI11",
@@ -172,6 +181,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         risk_profile="Médio",
         strategy="CRI",
         classification_provenance=ClassificationProvenance.USER,
+        cnpj="36.642.293/0001-58",  # verificado via busca (muitas fontes concordam)
     ),
     PortfolioAsset(
         "CPTI11",
@@ -180,6 +190,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Capitânia",
         source_url="https://capitaniainfra.com.br/cpti11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="38.065.012/0001-77",  # verificado via busca (docs oficiais CVM/B3)
     ),
     PortfolioAsset(
         "MANA11",
@@ -193,6 +204,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         risk_profile="Médio",
         strategy="Hedge Fund",
         classification_provenance=ClassificationProvenance.USER,
+        cnpj="42.888.583/0001-89",  # verificado via busca
     ),
     PortfolioAsset(
         "HSML11",
@@ -203,6 +215,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="HSI",
         source_url="https://hsml.hsifii.com",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="32.892.018/0001-31",  # verificado via busca (muitas fontes concordam)
     ),
     PortfolioAsset(
         "XPML11",
@@ -213,6 +226,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="XP Asset",
         source_url="https://xpasset.com.br/fundos/xp-malls",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.757.546/0001-00",  # verificado via busca (muitas fontes concordam)
     ),
     PortfolioAsset(
         "HGCR11",
@@ -223,6 +237,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/hgcr11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="11.160.521/0001-22",  # verificado via busca
     ),
     PortfolioAsset(
         "RBVA11",
@@ -232,6 +247,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Rio Bravo",
         source_url="https://riobravo.com.br/rbva11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="15.576.907/0001-70",  # verificado via busca (site oficial)
     ),
     PortfolioAsset(
         "PVBI11",
@@ -242,6 +258,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/pvbi11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="35.652.102/0001-76",  # verificado via busca (doc oficial B3/FNET)
     ),
     PortfolioAsset(
         "ALZR11",
@@ -251,6 +268,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Alianza",
         source_url="https://alzr11.alianza.com.br",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.737.771/0001-85",  # verificado via busca (site oficial)
     ),
     PortfolioAsset(
         "KNRI11",
@@ -260,6 +278,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Kinea",
         source_url="https://kinea.com.br/fundos/.../knri11",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="12.005.956/0001-65",  # verificado via busca
     ),
     PortfolioAsset(
         "HGBS11",
@@ -270,6 +289,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         manager="Hedge Investments",
         source_url="https://hedgeinvest.com.br/fundos/hgbs",
         classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="08.431.747/0001-06",  # verificado via busca (muitas fontes concordam)
     ),
     PortfolioAsset(
         "LFTB11",
