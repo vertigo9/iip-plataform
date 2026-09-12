@@ -50,7 +50,7 @@ class IntegratedPortfolioPipeline:
                 documents.extend(report.documents)
                 if documents:
                     break
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — isola falha de uma rota, permite tentar a proxima
                 errors.append(f"{route.source.provider}:{type(exc).__name__}")
 
         return PortfolioPipelineResult(

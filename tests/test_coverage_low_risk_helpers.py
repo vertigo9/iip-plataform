@@ -23,7 +23,7 @@ def _safe_construct(cls):
             values[f.name] = f.name
     try:
         return cls(**values)
-    except Exception:
+    except Exception:  # noqa: BLE001 — adapter best-effort: campos incompativeis viram None, nao erro
         return None
 
 

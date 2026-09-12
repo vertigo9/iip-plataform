@@ -75,7 +75,7 @@ def test_build_etf_template_never_overwrites_unfetchable_fields():
 
 
 def test_build_etf_template_does_not_fill_ytd_style_fields():
-    template, resultado = build_etf_template(
+    _template, resultado = build_etf_template(
         "BOVA11", CNPJ, INFORMES_AGOSTO, DEFAULT_FINANCIALS, price=112.30
     )
     # net_inflows_ytd nao esta no default_financials de teste, mas o

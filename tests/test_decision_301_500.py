@@ -9,16 +9,16 @@ from iip.decision.valuation_bridge import ValuationSnapshot, valuation_score
 
 
 def make_item(**changes):
-    values = dict(
-        ticker="HGRU11",
-        thesis_signal="Reforço",
-        risk_level="Baixo",
-        valuation_score=9.0,
-        dividend_score=8.0,
-        quality_score=9.0,
-        opportunity_score=8.0,
-        evidence=(EvidenceRef("e1"), EvidenceRef("e2"), EvidenceRef("e3")),
-    )
+    values = {
+        "ticker": "HGRU11",
+        "thesis_signal": "Reforço",
+        "risk_level": "Baixo",
+        "valuation_score": 9.0,
+        "dividend_score": 8.0,
+        "quality_score": 9.0,
+        "opportunity_score": 8.0,
+        "evidence": (EvidenceRef("e1"), EvidenceRef("e2"), EvidenceRef("e3")),
+    }
     values.update(changes)
     return IntelligenceInput(**values)
 

@@ -1,4 +1,23 @@
-"""Portfolio-wide closed-loop orchestration."""
+"""Portfolio-wide closed-loop orchestration.
+
+Distinct concept from ``iip.system.pipeline.FullSystemPipeline`` (the
+canonical asset-onboarding pipeline) despite the same staged-executor
+shape (Stage enum + ORDER tuple + injected handlers) — confirmed by
+audit, not assumed from the shape alone. This one models a
+**recurring cycle over an already-onboarded portfolio**: its stages
+start at SNAPSHOT/DATA, skipping SOURCE/ATLAS/KNOWLEDGE entirely,
+because it assumes the assets involved have already been through
+onboarding and just need periodic re-evaluation (intelligence ->
+decision -> validation -> report on current holdings).
+
+Do not treat this as legacy or fold it into ``FullSystemPipeline`` —
+they answer different questions ("bring this new asset's documents
+all the way to a decision" vs. "re-run intelligence/decision/
+validation over the portfolio I already have"). If a future portfolio
+cycle needs to onboard a not-yet-known asset mid-cycle, the natural
+integration point is to invoke ``FullSystemPipeline`` from within this
+orchestrator's DATA stage handler — not to merge the two frameworks.
+"""
 
 from __future__ import annotations
 
@@ -68,7 +87,7 @@ class PortfolioCycleOrchestrator:
                 results.append(
                     OrchestrationResult(ticker.upper(), stage, True, payload=value)
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — isola falha do handler por estagio, nao derruba o ciclo inteiro
                 results.append(
                     OrchestrationResult(
                         ticker.upper(),

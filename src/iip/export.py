@@ -219,7 +219,7 @@ class ReportExporter:
         </div>
         
         <div class="footer">
-            Report generated at {datetime.now().strftime("%d/%m/%Y %H:%M")}<br>
+            Report generated at {datetime.now().astimezone().strftime("%d/%m/%Y %H:%M")}<br>
             IIP Platform - Institutional Investment Platform v2.0.0
         </div>
     </div>

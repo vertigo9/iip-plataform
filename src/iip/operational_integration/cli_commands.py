@@ -25,5 +25,5 @@ class CommandDispatcher:
             return CommandOutcome(command, False, error="unknown_command")
         try:
             return CommandOutcome(command, True, fn(*args, **kwargs))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isola falha do comando num CommandOutcome, nao deixa propagar
             return CommandOutcome(command, False, error=f"{type(exc).__name__}:{exc}")

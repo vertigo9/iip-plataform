@@ -30,9 +30,6 @@ from iip.health import (
 from iip.metrics import MetricsEngine
 from iip.registry import ModuleRegistry
 from iip.replication import ReplicationEngine
-from iip.sources.b3_brapi import build_target as build_brapi_target
-from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
-from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
 from iip.versioning import VersionManager
 
 console = Console()
@@ -612,103 +609,6 @@ def analyze(
         console.print(f"[green]Report saved to {output}[/]")
     else:
         console.print(content)
-
-
-@cli.command("fetch-fii-template")
-@click.argument("symbol")
-@click.option("--cnpj", required=True, help="CNPJ do fundo (formato: 00.000.000/0001-00).")
-@click.option("--ano", type=int, default=None, help="Ano de referência (padrão: ano atual).")
-@click.option(
-    "--brapi-token",
-    default=None,
-    help="Token da brapi.dev para buscar o preço atual (opcional — sem ele, price fica null).",
-)
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(),
-    default=None,
-    help="Onde salvar o template JSON. Imprime no console se omitido.",
-)
-def fetch_fii_template(
-    symbol: str, cnpj: str, ano: int | None, brapi_token: str | None, output: str | None
-) -> None:
-    """Busca dados reais (CVM FII + brapi.dev) e pré-preenche um template
-    de análise para `iip analyze --type fii`.
-
-    NÃO preenche os campos qualitativos (ocupação, governança, histórico
-    do gestor etc.) — esses exigem leitura do relatório gerencial, sem
-    fonte automática disponível. O comando deixa claro o que foi
-    preenchido de verdade e o que ainda precisa da sua análise.
-    """
-    import datetime
-
-    from iip.integration.fii_template import build_fii_template
-    from iip.sources.cvm_fii import build_target as build_cvm_target
-
-    ano_alvo = ano or datetime.date.today().year  # noqa: DTZ011 — data de calendário (ano de competência CVM), não timestamp
-
-    console.print(f"Buscando informe CVM FII de {ano_alvo} para CNPJ {cnpj}...")
-    try:
-        cvm_result = CvmFiiHTTPHarvester().fetch(build_cvm_target(ano_alvo))
-    except Exception as exc:
-        console.print(f"[bold red]Erro ao buscar dados da CVM:[/] {exc}")
-        raise SystemExit(1) from exc
-
-    price: float | None = None
-    if brapi_token:
-        console.print(f"Buscando preço atual de {symbol} via brapi.dev...")
-        try:
-            brapi_result = BrapiHTTPHarvester(token=brapi_token).fetch(
-                build_brapi_target((symbol,))
-            )
-            if brapi_result.quotes:
-                price = brapi_result.quotes[0].regular_market_price
-        except Exception as exc:  # noqa: BLE001 — preço é opcional, mesmo padrão do fetch-template atual
-            console.print(f"[yellow]Aviso: não consegui buscar o preço ({exc}) — seguindo sem ele.[/]")
-    else:
-        console.print(
-            "[dim]Sem --brapi-token: o campo 'price' vai ficar null "
-            "(pode preencher manualmente depois).[/]"
-        )
-
-    base = {
-        "symbol": symbol.upper(),
-        "sector": "REPLACE_WITH_SECTOR",
-        "industry": "REPLACE_WITH_INDUSTRY",
-        "market_cap": None,
-        "price": None,
-        "financials": _template_financials(ANALYZERS["fii"]),
-    }
-
-    resultado = build_fii_template(
-        cnpj, cvm_result.geral, cvm_result.complemento, base, price=price
-    )
-
-    payload = json.dumps(resultado.template, indent=2, ensure_ascii=False)
-    if output:
-        Path(output).write_text(payload, encoding="utf-8")
-        console.print(f"\n[green]Template salvo em {output}[/]")
-    else:
-        console.print(payload)
-
-    console.print(
-        f"\n[bold green]Preenchido automaticamente ({len(resultado.auto_filled)}):[/] "
-        f"{', '.join(resultado.auto_filled) or '(nenhum — CNPJ não encontrado nos dados de ' + str(ano_alvo) + '?)'}"
-    )
-    if resultado.months_summed_for_yield:
-        console.print(
-            f"[dim]dividend_yield somado a partir de {resultado.months_summed_for_yield} "
-            f"mês(es) disponível(is) em {ano_alvo} — não necessariamente 12 meses completos.[/]"
-        )
-    console.print(
-        f"[bold yellow]Ainda precisa da sua análise ({len(resultado.still_needs_completion)} "
-        f"campo(s) qualitativos):[/] {', '.join(resultado.still_needs_completion)}"
-    )
-    console.print(
-        "\n[dim]Tip: edite os campos pendentes e rode:\n"
-        f"  iip analyze {symbol.upper()} --type fii --data-file <arquivo>.json[/]"
-    )
 
 
 if __name__ == "__main__":

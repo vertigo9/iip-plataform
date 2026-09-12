@@ -16,20 +16,20 @@ from iip.intelligence.metric_identity import (
 
 class MetricIdentityTests(unittest.TestCase):
     def base(self, **overrides):
-        values = dict(
-            canonical_ticker="PCIP11",
-            original_ticker="CVBI11",
-            metric_name="market_price_per_share",
-            value_raw="78,18",
-            value_parsed="78.18",
-            unit="BRL/share",
-            scale="1",
-            period="2025-01",
-            document_hash="a" * 64,
-            document_id="historical_document:test",
-            lineage="CVBI11 -> PCIP11",
-            contexts=[],
-        )
+        values = {
+            "canonical_ticker": "PCIP11",
+            "original_ticker": "CVBI11",
+            "metric_name": "market_price_per_share",
+            "value_raw": "78,18",
+            "value_parsed": "78.18",
+            "unit": "BRL/share",
+            "scale": "1",
+            "period": "2025-01",
+            "document_hash": "a" * 64,
+            "document_id": "historical_document:test",
+            "lineage": "CVBI11 -> PCIP11",
+            "contexts": [],
+        }
         values.update(overrides)
         return values
 

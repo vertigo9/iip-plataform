@@ -60,7 +60,7 @@ def test_e2e_checks():
     report = run_checks(
         (
             ("atlas", lambda: True),
-            ("knowledge", lambda: 1 == 1),
+            ("knowledge", lambda: True),
         )
     )
     assert report.passed

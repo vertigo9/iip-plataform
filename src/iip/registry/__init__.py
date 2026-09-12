@@ -4,7 +4,7 @@ import importlib
 from builtins import list as _list
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 
 from iip.config import IIPSettings, get_settings
 from iip.events import Event, EventBus
@@ -31,7 +31,7 @@ class RegisteredModule:
 
 
 class ModuleRegistry:
-    _modules: dict[str, RegisteredModule] = {}
+    _modules: ClassVar[dict[str, RegisteredModule]] = {}
     _settings: IIPSettings | None = None
 
     @classmethod
@@ -83,7 +83,7 @@ class ModuleRegistry:
                 )
             )
             return True
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isola falha de carregamento de modulo, retorna False em vez de propagar
             logger.error("module_load_failed", module=name, error=str(exc))
             return False
 

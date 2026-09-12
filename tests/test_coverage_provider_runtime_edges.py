@@ -19,7 +19,7 @@ def _construct(cls):
             values[f.name] = "x"
     try:
         return cls(**values)
-    except Exception:
+    except Exception:  # noqa: BLE001 — adapter best-effort: campos incompativeis viram None, nao erro
         return None
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import ClassVar
 
 from iip.config import IIPSettings, get_settings
 from iip.registry import ModuleRegistry
@@ -21,9 +22,9 @@ class MetricPoint:
 class MetricsEngine:
     """Collects and exposes system metrics."""
 
-    _counters: dict[str, int] = {}
-    _gauges: dict[str, float] = {}
-    _histograms: dict[str, list[float]] = {}
+    _counters: ClassVar[dict[str, int]] = {}
+    _gauges: ClassVar[dict[str, float]] = {}
+    _histograms: ClassVar[dict[str, list[float]]] = {}
 
     @classmethod
     def increment(cls, name: str, value: int = 1) -> None:
@@ -81,7 +82,7 @@ class MetricsEngine:
                         with open(pyfile, "r", encoding="utf-8") as f:
                             lines = f.readlines()
                             total_lines += len(lines)
-                    except Exception:
+                    except Exception:  # noqa: S110,BLE001 — best-effort: arquivo ilegivel so eh pulado na contagem
                         pass
 
             tests_dir = base / "tests"

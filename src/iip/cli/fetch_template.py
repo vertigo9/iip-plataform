@@ -108,9 +108,14 @@ def build_fii_template(
     ``iip.cli.main._template_financials(FIIAnalyzer)``).
 
     ``geral`` is optional (defaults to none fetched) — when given, also
-    fills ``sector`` from CVM's ``Segmento_Atuacao``, a feature ported
-    from the parallel implementation in ``iip.integration.fii_template``
-    (see that module's docstring for why the two exist side by side).
+    fills ``sector`` from CVM's ``Segmento_Atuacao``. This was ported
+    from ``iip.integration.fii_template``, an earlier parallel
+    implementation of the same idea (same CVM+price sourcing, same
+    dividend_yield/AUM logic) that predated this module. That module
+    and its ``fetch-fii-template`` CLI command were removed once this
+    one (``fetch-template --type fii``) fully covered the same ground
+    — this docstring keeps the note for anyone who finds a reference
+    to the old name in history or documentation.
     """
 
     financials = dict(default_financials)

@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import ClassVar
 
 import pytest
 
@@ -48,16 +49,16 @@ from iip.universal.snapshot_diff import diff
 
 
 def strategy_input(**kw):
-    base = dict(
-        ticker="cpfe3",
-        score=8,
-        confidence=0.9,
-        income_yield=0.06,
-        margin_of_safety=0.20,
-        risk_score=3,
-        current_weight=0.05,
-        target_weight=0.10,
-    )
+    base = {
+        "ticker": "cpfe3",
+        "score": 8,
+        "confidence": 0.9,
+        "income_yield": 0.06,
+        "margin_of_safety": 0.20,
+        "risk_score": 3,
+        "current_weight": 0.05,
+        "target_weight": 0.10,
+    }
     base.update(kw)
     return StrategyInput(**base)
 
@@ -366,7 +367,7 @@ def test_harvester_and_adapter():
 
     class Response:
         status = None
-        headers = {"Content-Type": "application/pdf; charset=utf-8"}
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/pdf; charset=utf-8"}
 
         def read(self):
             return b"abc"

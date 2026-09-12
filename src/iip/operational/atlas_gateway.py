@@ -28,7 +28,7 @@ class AtlasGateway:
                 True,
                 self.ingest_fn(document),
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isola falha da ingestao num AtlasIngestResult, nao deixa propagar
             return AtlasIngestResult(
                 document.document_id,
                 False,

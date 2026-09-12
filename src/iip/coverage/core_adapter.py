@@ -25,5 +25,5 @@ class CoreAdapter:
             return CoreResult(False, operation, error="unsupported_operation")
         try:
             return CoreResult(True, operation, fn(*args, **kwargs))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isola falha do handler num CoreResult, nao deixa propagar
             return CoreResult(False, operation, error=f"{type(exc).__name__}:{exc}")

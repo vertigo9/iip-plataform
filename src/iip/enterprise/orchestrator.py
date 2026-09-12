@@ -1,4 +1,19 @@
-"""Enterprise orchestration for the complete IIP lifecycle."""
+"""Enterprise orchestration for the complete IIP lifecycle.
+
+Legacy variant of the same concept as
+``iip.system.pipeline.FullSystemPipeline`` — both model a
+source-document-to-decision asset-onboarding pipeline with the same
+staged-executor shape, but with incompatible handler call signatures
+(this one calls ``handler(ticker, *args, **kwargs)``;
+``FullSystemPipeline`` calls ``handler(ticker, context, trace)``), so
+they cannot be merged without breaking one or the other's locked-in
+tests. ``FullSystemPipeline`` is canonical: it also tracks a
+``run_id``, threads a context dict through every stage, and
+accumulates per-stage evidence via ``SystemArtifact.evidence_ids``,
+none of which this module has. Use ``FullSystemPipeline`` for any new
+work; this module is kept only because
+``tests/test_enterprise_2001_3000.py`` still exercises it.
+"""
 
 from __future__ import annotations
 
@@ -66,7 +81,7 @@ class EnterpriseOrchestrator:
             try:
                 value = handler(ticker, *args, **kwargs)
                 results.append(StageResult(stage, True, value=value))
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — isola falha do handler por estagio, nao derruba os demais
                 results.append(
                     StageResult(stage, False, error=f"{type(exc).__name__}:{exc}")
                 )

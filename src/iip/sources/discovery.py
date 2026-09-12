@@ -37,7 +37,7 @@ class MultiProviderDiscovery:
         for route in self.router.routes_for(asset):
             try:
                 documents = tuple(route.provider.discover(asset, years))
-            except Exception:
+            except Exception:  # noqa: S112,BLE001 — isola falha de uma rota de provider, tenta a proxima
                 continue
 
             if documents:
@@ -57,7 +57,7 @@ class MultiProviderDiscovery:
         for route in self.router.routes_for(asset):
             try:
                 documents = tuple(route.provider.discover(asset, years))
-            except Exception:
+            except Exception:  # noqa: S112,BLE001 — isola falha de uma rota de provider, tenta a proxima
                 continue
 
             if documents:

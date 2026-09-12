@@ -56,7 +56,7 @@ def test_compute_dividend_yield_ttm_sums_available_months():
 def test_compute_dividend_yield_ttm_caps_at_twelve_months():
     treze_meses = [make_complemento(f"2025-{m:02d}-01", dy_mes=0.01) for m in range(1, 13)]
     treze_meses.append(make_complemento("2026-01-01", dy_mes=0.01))
-    dy_pct, months_used = compute_dividend_yield_ttm(treze_meses)
+    _dy_pct, months_used = compute_dividend_yield_ttm(treze_meses)
     assert months_used == 12
 
 
@@ -99,7 +99,7 @@ DEFAULT_FINANCIALS = {
 
 
 def test_build_fii_template_fills_dividend_yield_aum_and_premium():
-    template, resultado = build_fii_template(
+    template, _resultado = build_fii_template(
         "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50
     )
 
@@ -165,3 +165,60 @@ def test_build_fii_template_handles_no_price():
     assert template["market_cap"] is None
     assert "reit_premium_discount" not in resultado.fetched_fields
     assert any("Preço não informado" in w for w in resultado.warnings)
+
+
+def make_geral(**overrides):
+    from iip.sources.cvm_fii import FiiGeral
+
+    defaults = {
+        "cnpj_fundo_classe": CNPJ,
+        "data_referencia": "2026-07-01",
+        "versao": "1",
+        "tipo_fundo_classe": "Classe",
+        "nome_fundo_classe": "BTGP LOGISTICA FII",
+        "segmento_atuacao": "Logistica",
+        "tipo_gestao": "Ativa",
+        "mandato": "Renda",
+        "nome_administrador": "BTG PACTUAL",
+        "cnpj_administrador": "123",
+        "cidade": "SAO PAULO",
+        "estado": "SP",
+        "outros_campos": {},
+    }
+    defaults.update(overrides)
+    return FiiGeral(**defaults)
+
+
+def test_build_fii_template_fills_sector_from_segmento_atuacao():
+    template, resultado = build_fii_template(
+        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50,
+        geral=[make_geral()],
+    )
+    assert template["sector"] == "Logistica"
+    assert "sector" in resultado.fetched_fields
+
+
+def test_build_fii_template_sector_stays_placeholder_without_geral():
+    template, _ = build_fii_template(
+        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50
+    )
+    assert template["sector"] == "REPLACE_WITH_SECTOR"
+
+
+def test_build_fii_template_sector_stays_placeholder_when_cnpj_not_in_geral():
+    template, _ = build_fii_template(
+        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50,
+        geral=[make_geral(cnpj_fundo_classe="00.000.000/0001-00")],
+    )
+    assert template["sector"] == "REPLACE_WITH_SECTOR"
+
+
+def test_build_fii_template_sector_picks_most_recent_geral_row():
+    template, _ = build_fii_template(
+        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50,
+        geral=[
+            make_geral(data_referencia="2026-01-01", segmento_atuacao="Antigo"),
+            make_geral(data_referencia="2026-07-01", segmento_atuacao="Logistica"),
+        ],
+    )
+    assert template["sector"] == "Logistica"

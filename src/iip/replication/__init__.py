@@ -6,6 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
+from typing import ClassVar
 
 
 class ChangeType(Enum):
@@ -71,9 +72,9 @@ class ReplicationLog:
 class ReplicationEngine:
     """Track and replicate changes through the pipeline."""
 
-    _rfcs: dict[str, RFC] = {}
-    _adrs: dict[str, ADR] = {}
-    _logs: dict[str, ReplicationLog] = {}
+    _rfcs: ClassVar[dict[str, RFC]] = {}
+    _adrs: ClassVar[dict[str, ADR]] = {}
+    _logs: ClassVar[dict[str, ReplicationLog]] = {}
 
     @classmethod
     def propose(

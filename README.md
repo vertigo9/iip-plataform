@@ -174,10 +174,6 @@ trabalho (buscar por "audit finding" no código).
   responde**, não se o formato do dado mudou (ex: CVM trocar o nome de uma
   coluna não seria pego por esse check — só os testes automatizados
   pegariam isso, ao rodar).
-- **`iip fetch-fii-template`** é uma implementação paralela mais antiga de
-  `fetch-template --type fii` (mesma ideia, sourcing de preço diferente) —
-  mantida por compatibilidade com testes existentes, não é a recomendada
-  para uso novo.
 
 ### Monitoramento
 

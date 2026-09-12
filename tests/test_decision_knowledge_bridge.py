@@ -11,14 +11,14 @@ from iip.knowledge.models import Verdict as KnowledgeVerdict
 
 
 def make_engine_decision(**overrides) -> EngineDecision:
-    data = dict(
-        ticker="pcip11",
-        verdict=EngineVerdict.COMPRAR,
-        score=8.7,
-        confidence=0.9,
-        reasons=("composite_score=8.70",),
-        evidence=(EvidenceRef("EV-PCIP11-001"),),
-    )
+    data = {
+        "ticker": "pcip11",
+        "verdict": EngineVerdict.COMPRAR,
+        "score": 8.7,
+        "confidence": 0.9,
+        "reasons": ("composite_score=8.70",),
+        "evidence": (EvidenceRef("EV-PCIP11-001"),),
+    }
     data.update(overrides)
     return EngineDecision(**data)
 

@@ -34,7 +34,7 @@ class PortfolioIntegrationFacade:
             return IntegrationResult(component, False, error="component_not_registered")
         try:
             return IntegrationResult(component, True, handler(*args, **kwargs))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isola falha do handler num IntegrationResult, nao deixa propagar
             return IntegrationResult(
                 component, False, error=f"{type(exc).__name__}:{exc}"
             )

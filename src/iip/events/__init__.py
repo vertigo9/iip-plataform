@@ -7,7 +7,7 @@ from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, ClassVar
 
 EventType = Any
 EventHandler = Callable[[Any], None]
@@ -26,7 +26,7 @@ class Event:
 
 
 class EventBus:
-    _subscribers: dict[str, list[EventHandler]] = defaultdict(list)
+    _subscribers: ClassVar[dict[str, list[EventHandler]]] = defaultdict(list)
     _lock = asyncio.Lock()
 
     @classmethod

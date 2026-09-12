@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,7 +22,7 @@ def test_repository_decision_evidence_and_append_only(tmp_path):
     decision = Decision(
         "DEC-CPFE3-1",
         "CPFE3",
-        date.today(),
+        datetime.now(tz=UTC).date(),
         Verdict.MANTER,
         change_type=DecisionChange.NO_CHANGE,
         confidence=0.8,
@@ -34,7 +34,7 @@ def test_repository_decision_evidence_and_append_only(tmp_path):
     evidence = Evidence(
         "EV-1",
         "CPFE3",
-        date.today(),
+        datetime.now(tz=UTC).date(),
         "FNET",
         source_url="https://example.invalid",
         document_hash="abc",
@@ -71,7 +71,7 @@ def test_decision_auditor_missing_and_invalid(tmp_path):
     invalid = Decision(
         "D-1",
         "CPFE3",
-        date.today(),
+        datetime.now(tz=UTC).date(),
         Verdict.MANTER,
         confidence=1.5,
         evidence_ids=("missing",),
@@ -79,7 +79,7 @@ def test_decision_auditor_missing_and_invalid(tmp_path):
     issues = auditor.audit(invalid)
     assert {i.code for i in issues} == {"MISSING_EVIDENCE", "INVALID_CONFIDENCE"}
 
-    valid = Decision("D-2", "CPFE3", date.today(), Verdict.MANTER, confidence=0.5)
+    valid = Decision("D-2", "CPFE3", datetime.now(tz=UTC).date(), Verdict.MANTER, confidence=0.5)
     assert auditor.audit(valid) == []
 
 

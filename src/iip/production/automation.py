@@ -42,7 +42,7 @@ class JobRunner:
             return JobResult(name, JobStatus.SKIPPED, error="job_disabled")
         try:
             return JobResult(name, JobStatus.SUCCESS, job.handler(*args, **kwargs))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — isola falha do job num JobResult, nao deixa propagar
             return JobResult(
                 name, JobStatus.FAILED, error=f"{type(exc).__name__}:{exc}"
             )

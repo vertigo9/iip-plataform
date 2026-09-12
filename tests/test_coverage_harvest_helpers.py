@@ -94,7 +94,7 @@ def test_document_is_immutable():
     assert doc.sha256 is None
     try:
         doc.title = "changed"
-    except Exception:
+    except Exception:  # noqa: S110,BLE001 — teste verifica que o objeto e imutavel; qualquer excecao confirma isso
         pass
     else:
         raise AssertionError("Document must be frozen")

@@ -138,7 +138,7 @@ def _replace_year_in_payload(payload: str, year: int) -> str:
             return value
 
         return json.dumps(replace(obj), ensure_ascii=False, separators=(",", ":"))
-    except Exception:
+    except Exception:  # noqa: BLE001 — fallback: se nao der pra serializar como JSON, troca o ano via regex no texto bruto
         return re.sub(r"(?<!\d)(?:19|20)\d{2}(?!\d)", wanted, payload)
 
 
@@ -258,10 +258,10 @@ def _api_documents_for_year(
 
             try:
                 payload = response.json()
-            except Exception:
+            except Exception:  # noqa: BLE001 — fallback: se response.json() falhar, tenta parsear o texto bruto como JSON
                 try:
                     payload = json.loads(response.text())
-                except Exception:
+                except Exception:  # noqa: S112,BLE001 — scraper best-effort: item com payload ilegivel e pulado, nao trava os demais
                     continue
 
             meta = _extract_document_meta(payload)
@@ -276,7 +276,7 @@ def _api_documents_for_year(
                     flush=True,
                 )
                 return docs
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — scraper best-effort: falha ao consultar um ano e logada e reportada, nao derruba a coleta inteira
             print(
                 f"[API] falha ao consultar ano={year}: {type(exc).__name__}: {exc}",
                 flush=True,
@@ -304,12 +304,12 @@ def _find_year_select(page):
                     "(opts) => opts.map(o => o.value || '')"
                 )
             ]
-            years = set(
+            years = {
                 x for x in labels + values if re.fullmatch(r"(?:19|20)\d{2}", x)
-            )
+            }
             if years:
                 candidates.append((len(years), i, sel, sorted(years)))
-        except Exception:
+        except Exception:  # noqa: S112,BLE001 — scraper best-effort: opcao de ano invalida e pulada, nao trava a busca
             continue
 
     if not candidates:
@@ -339,7 +339,7 @@ def _visible_year_controls(page, year: int):
             item = candidates.nth(i)
             if item.is_visible(timeout=500):
                 found.append(item)
-        except Exception:
+        except Exception:  # noqa: S112,BLE001 — scraper best-effort: elemento invisivel/quebrado e pulado, nao trava a busca
             continue
     return found
 
@@ -359,7 +359,7 @@ def _category_for_link(link) -> str:
                     text = heading.inner_text().strip()
                     if text:
                         return text
-        except Exception:
+        except Exception:  # noqa: S110,BLE001 — scraper best-effort: sem heading legivel, cai no valor padrao 'Outros'
             pass
     return "Outros"
 
@@ -387,7 +387,7 @@ def _collect_links(page, ticker: str, year: int) -> list[Document]:
                     href = m.group(0)
 
             title = (node.inner_text() or "").strip()
-        except Exception:
+        except Exception:  # noqa: S112,BLE001 — scraper best-effort: link malformado e pulado, nao trava a coleta
             continue
 
         if not href:
@@ -445,7 +445,7 @@ def _collect_links(page, ticker: str, year: int) -> list[Document]:
                 f"MZIQ={mz_count}, url={page.url}",
                 flush=True,
             )
-        except Exception:
+        except Exception:  # noqa: S110,BLE001 — scraper best-effort: falha ao logar contagem nao deve travar o fluxo principal
             pass
 
     return documents
@@ -485,18 +485,18 @@ def _select_year(page, year: int) -> bool:
                     try:
                         body = response.text()
                         api_payloads.append((u, body))
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 — scraper best-effort: resposta de API ilegivel e logada, nao derruba a captura
                         print(
                             f"[DIAGNÓSTICO] não consegui ler resposta da API: "
                             f"{type(exc).__name__}: {exc}",
                             flush=True,
                         )
-        except Exception:
+        except Exception:  # noqa: S110,BLE001 — scraper best-effort: falha ao instalar/ler listener nao deve travar o fluxo principal
             pass
 
     try:
         page.on("response", _on_response)
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — scraper best-effort: falha ao instalar listener de resposta e logada, segue sem ele
         print(f"[DIAGNÓSTICO] não consegui instalar listener: {exc}", flush=True)
 
     options = sel.locator("option")
@@ -518,7 +518,7 @@ def _select_year(page, year: int) -> bool:
 
             try:
                 sel.select_option(value=target_value)
-            except Exception:
+            except Exception:  # noqa: BLE001 — fallback: se a selecao nativa do <select> falhar, tenta via evento DOM
                 sel.evaluate(
                     "(el, v) => {"
                     "el.value = v;"
@@ -532,7 +532,7 @@ def _select_year(page, year: int) -> bool:
 
             debug_dir = Path.cwd() / "data" / "patria" / "debug"
             debug_dir.mkdir(parents=True, exist_ok=True)
-            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            stamp = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
 
             try:
                 (debug_dir / f"{wanted}_{stamp}.html").write_text(
@@ -542,7 +542,7 @@ def _select_year(page, year: int) -> bool:
                     page.locator("body").inner_text(), encoding="utf-8"
                 )
                 print(f"[DIAGNÓSTICO] DOM salvo em: {debug_dir}", flush=True)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — diagnostico best-effort: falha ao salvar DOM de debug e so logada
                 print(
                     f"[DIAGNÓSTICO] não consegui salvar DOM: {exc}",
                     flush=True,
@@ -560,7 +560,7 @@ def _select_year(page, year: int) -> bool:
                     f"mziq={mziq_count}",
                     flush=True,
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — diagnostico best-effort: falha ao contar elementos do DOM e so logada
                 print(f"[DIAGNÓSTICO] contagem DOM falhou: {exc}", flush=True)
 
             if network_urls:
@@ -588,7 +588,7 @@ def _select_year(page, year: int) -> bool:
 
             return True
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001 — scraper best-effort: falha ao selecionar o ano e logada e reportada, nao derruba a coleta
             print(
                 f"[DIAGNÓSTICO] falha ao selecionar {year}: "
                 f"{type(exc).__name__}: {exc}",
@@ -619,13 +619,13 @@ def _capture_document_meta_payload(response, ticker: str, year_hint: int | None 
             return []
         try:
             payload = response.json()
-        except Exception:
+        except Exception:  # noqa: BLE001 — fallback: se response.json() falhar, tenta parsear o texto bruto como JSON
             payload = json.loads(response.text())
         meta = _extract_document_meta(payload)
         if not meta:
             return []
         return meta
-    except Exception:
+    except Exception:  # noqa: BLE001 — fallback: payload sem metadados reconheciveis retorna lista vazia, nao erro
         return []
 
 
@@ -678,7 +678,7 @@ def harvest(
                         f"body={'sim' if request.post_data else 'não'}",
                         flush=True,
                     )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — diagnostico best-effort: falha ao capturar request de API e so logada
                 print(
                     f"[DIAGNÓSTICO] falha ao capturar REQUEST API: "
                     f"{type(exc).__name__}: {exc}",
@@ -743,7 +743,7 @@ def harvest(
                         f"body={'sim' if req.post_data else 'não'}",
                         flush=True,
                     )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 — diagnostico best-effort: falha ao capturar molde de API e so logada
                 print(
                     f"[DIAGNÓSTICO] falha ao capturar molde API: {type(exc).__name__}: {exc}",
                     flush=True,
@@ -758,7 +758,7 @@ def harvest(
             page.goto(url, wait_until="domcontentloaded", timeout=120_000)
             try:
                 page.wait_for_load_state("networkidle", timeout=15_000)
-            except Exception:
+            except Exception:  # noqa: S110,BLE001 — scraper best-effort: timeout de rede ociosa e ignorado, segue com timeout fixo
                 pass
 
             page.wait_for_timeout(2500)
@@ -898,7 +898,7 @@ def harvest(
                                         target = target.with_name(target.name + url_ext)
                                 target.write_bytes(body)
                                 saved = True
-                    except Exception:
+                    except Exception:  # noqa: S110,BLE001 — scraper best-effort: essa tentativa de salvar arquivo falhou, tenta a proxima estrategia
                         pass
 
                     if not saved:
@@ -909,13 +909,13 @@ def harvest(
                                 link = links_now.nth(j)
                                 href = link.get_attribute("href")
                                 if href and urljoin(page.url, href) == doc.url:
-                                    with _ProgressPulse(
-                                        f"  [{index}/{len(docs)}] aguardando download {filename[:45]}"
+                                    with (
+                                        _ProgressPulse(
+                                            f"  [{index}/{len(docs)}] aguardando download {filename[:45]}"
+                                        ),
+                                        page.expect_download(timeout=8_000) as info,
                                     ):
-                                        with page.expect_download(
-                                            timeout=8_000
-                                        ) as info:
-                                            link.click(timeout=8_000)
+                                        link.click(timeout=8_000)
                                     download = info.value
                                     target = year_dir / _safe_name(
                                         download.suggested_filename or doc.title
@@ -923,7 +923,7 @@ def harvest(
                                     download.save_as(str(target))
                                     saved = True
                                     break
-                        except Exception:
+                        except Exception:  # noqa: S110,BLE001 — scraper best-effort: essa tentativa de download falhou, tenta a proxima estrategia
                             pass
 
                     if saved and target.exists() and target.stat().st_size > 0:

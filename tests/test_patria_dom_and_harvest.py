@@ -2,6 +2,7 @@ import hashlib
 import json
 import sys
 import types
+from typing import ClassVar
 
 import pytest
 
@@ -189,7 +190,7 @@ def test_collect_links_accepts_files_and_mziq_urls_and_deduplicates():
 def test_capture_document_meta_payload_filters_non_mziq_and_reads_text_json():
     class Response:
         url = "https://api.mziq.com/filter/categories/year/meta"
-        headers = {"content-type": "application/json"}
+        headers: ClassVar[dict[str, str]] = {"content-type": "application/json"}
 
         def json(self):
             raise ValueError("json unavailable")
@@ -207,7 +208,7 @@ def test_capture_document_meta_payload_filters_non_mziq_and_reads_text_json():
 def test_capture_document_meta_payload_ignores_irrelevant_response():
     class Response:
         url = "https://example.test/page"
-        headers = {"content-type": "application/json"}
+        headers: ClassVar[dict[str, str]] = {"content-type": "application/json"}
 
     assert patria._capture_document_meta_payload(Response(), "TEST3") == []
 
@@ -215,7 +216,7 @@ def test_capture_document_meta_payload_ignores_irrelevant_response():
 def test_capture_document_meta_payload_ignores_non_json_mziq_response():
     class Response:
         url = "https://api.mziq.com/file"
-        headers = {"content-type": "application/pdf"}
+        headers: ClassVar[dict[str, str]] = {"content-type": "application/pdf"}
 
     assert patria._capture_document_meta_payload(Response(), "TEST3") == []
 
@@ -287,7 +288,7 @@ def test_select_year_returns_false_when_no_select_or_no_matching_year():
 
 class DownloadResponse:
     ok = True
-    headers = {"content-type": "application/pdf"}
+    headers: ClassVar[dict[str, str]] = {"content-type": "application/pdf"}
 
     def body(self):
         return b"pdf-content"
@@ -324,7 +325,7 @@ class HarvestPage:
 
 class InitialResponse:
     url = "https://api.mziq.com/filter/categories/year/meta"
-    headers = {"content-type": "application/json"}
+    headers: ClassVar[dict[str, str]] = {"content-type": "application/json"}
 
     def json(self):
         return {
@@ -413,7 +414,7 @@ def test_documents_from_meta_keeps_items_with_an_unparseable_year():
 
 class FailedDownloadResponse:
     ok = False
-    headers = {}
+    headers: ClassVar[dict[str, str]] = {}
 
     def body(self):
         return b""
@@ -523,7 +524,7 @@ class TemplateRequestApi(RequestApi):
 
 class EmptyInitialResponse:
     url = "https://api.mziq.com/initial"
-    headers = {"content-type": "application/json"}
+    headers: ClassVar[dict[str, str]] = {"content-type": "application/json"}
 
     def json(self):
         return {"data": {}}

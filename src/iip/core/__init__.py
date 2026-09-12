@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Self
 
 from iip.config import IIPSettings, get_settings
 from iip.health import (
@@ -34,7 +35,7 @@ class Runtime:
     _instance: Runtime | None = None
     _context: ApplicationContext | None = None
 
-    def __new__(cls) -> Runtime:
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance

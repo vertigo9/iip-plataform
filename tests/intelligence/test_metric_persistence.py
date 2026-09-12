@@ -17,20 +17,20 @@ from iip.intelligence.metric_persistence import (
 
 class MetricPersistenceTests(unittest.TestCase):
     def observation(self, **overrides):
-        values = dict(
-            canonical_ticker="PCIP11",
-            original_ticker="CVBI11",
-            metric_name="dividend_yield_annualized",
-            value="13.4",
-            unit="percent",
-            scale="1",
-            period="2024-01",
-            semantic_dimension="MARKET_VALUE",
-            document_hash="b" * 64,
-            document_id="historical_document:test",
-            source_locator="page=6",
-            lineage="CVBI11 -> PCIP11",
-        )
+        values = {
+            "canonical_ticker": "PCIP11",
+            "original_ticker": "CVBI11",
+            "metric_name": "dividend_yield_annualized",
+            "value": "13.4",
+            "unit": "percent",
+            "scale": "1",
+            "period": "2024-01",
+            "semantic_dimension": "MARKET_VALUE",
+            "document_hash": "b" * 64,
+            "document_id": "historical_document:test",
+            "source_locator": "page=6",
+            "lineage": "CVBI11 -> PCIP11",
+        }
         values.update(overrides)
         return MetricObservationIdentity(**values)
 

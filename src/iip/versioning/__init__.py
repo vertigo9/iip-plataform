@@ -95,12 +95,13 @@ class VersionManager:
             return False
         if version.major < cls._matrix.minimum_major:
             return False
-        if cls._matrix.maximum_major is not None and (
-            version.major > cls._matrix.maximum_major
-            or cls._current_version.major > cls._matrix.maximum_major
-        ):
-            return False
-        return True
+        return not (
+            cls._matrix.maximum_major is not None
+            and (
+                version.major > cls._matrix.maximum_major
+                or cls._current_version.major > cls._matrix.maximum_major
+            )
+        )
 
     @classmethod
     def check_dependencies(cls, deps: dict[str, str]) -> tuple[bool, list[str]]:
