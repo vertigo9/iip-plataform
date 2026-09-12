@@ -338,3 +338,14 @@ def assets_with_cnpj() -> tuple[PortfolioAsset, ...]:
     populated after live verification) — this makes that gap visible
     rather than silently skipping without explanation."""
     return tuple(a for a in PORTFOLIO_ASSETS if a.cnpj)
+
+
+def assets_refreshable_now() -> tuple[PortfolioAsset, ...]:
+    """Everything ``iip refresh-portfolio`` can actually fetch today:
+    CNPJ-verified fund/ETF/fixed_income positions (see
+    ``assets_with_cnpj``) plus every equity position — equities are
+    fetched by ticker via bolsai/brapi, not by CNPJ, so they don't need
+    one to be refreshable."""
+    return tuple(
+        a for a in PORTFOLIO_ASSETS if a.cnpj or a.asset_class == "equity"
+    )

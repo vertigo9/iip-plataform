@@ -251,6 +251,119 @@ def fetch_fii_template_live(
     return template, resultado
 
 
+def fetch_equity_template_live(
+    symbol: str,
+    bolsai_api_key: str | None,
+    brapi_token: str | None,
+) -> tuple[dict[str, Any], FetchResult]:
+    """Fill what's honestly fillable for an equity from real data — far
+    less than FII/ETF, and worth being upfront about why.
+
+    bolsai's stock fundamentals endpoint (confirmed live earlier this
+    project with PETR4) exposes PRE-COMPUTED RATIOS (ROE, ROIC, net/
+    gross margin, EV/EBITDA, net debt/EBITDA) — not the raw absolute
+    financial-statement figures (``revenue``, ``net_income``, ``ebit``,
+    ``equity``, ``invested_capital``) that ``EquityAnalyzer`` actually
+    reads (confirmed by reading its own scoring code:
+    ``_calc_roe``/``_calc_roic`` compute ratios FROM those raw figures
+    internally — they don't accept pre-computed ratios). A ratio and
+    the absolute BRL figure behind it are not interchangeable, so
+    those fields are left at the analyzer's defaults, not guessed from
+    the ratio.
+
+    Only three fields are genuinely, unambiguously fillable:
+      - ``dividend_yield`` — bolsai already returns this as a plain
+        percentage number (confirmed live: MXRF11 DY TTM=11.3, not
+        0.113), matching exactly what ``EquityAnalyzer`` expects
+        (``min(dy * 15, 100)`` in its own scoring code only makes
+        sense for a percent, not a fraction) — no conversion needed.
+      - ``price`` / ``market_cap`` — bolsai's own fields, used as-is.
+
+    Falls back to brapi.dev for price alone if bolsai isn't configured
+    (brapi's quote response has no dividend_yield or market_cap field
+    at all, confirmed by its own dataclass shape) — so a brapi-only
+    fetch fills just ``price``, nothing else.
+    """
+    from iip.sources.b3_bolsai import build_target as _build_bolsai_target
+    from iip.sources.b3_bolsai_harvester import (
+        BolsaiHTTPHarvester as _BolsaiHTTPHarvester,
+    )
+    from iip.sources.b3_brapi import build_target as _build_brapi_target
+    from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
+
+    default_financials = _equity_defaults()
+    financials = dict(default_financials)
+    fetched: list[str] = []
+    warnings: list[str] = []
+    price: float | None = None
+    market_cap: float | None = None
+
+    if bolsai_api_key:
+        try:
+            result = _BolsaiHTTPHarvester(api_key=bolsai_api_key).fetch(
+                _build_bolsai_target(symbol)
+            )
+            fund = result.fundamentals
+            if fund.close_price is not None:
+                price = fund.close_price
+                fetched.append("price")
+            if fund.market_cap is not None:
+                market_cap = fund.market_cap
+                fetched.append("market_cap")
+            if fund.dividend_yield is not None:
+                financials["dividend_yield"] = fund.dividend_yield
+                fetched.append("dividend_yield")
+        except Exception as exc:  # noqa: BLE001 — bolsai é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+            warnings.append(f"não consegui buscar fundamentos via bolsai: {exc}")
+    elif brapi_token:
+        try:
+            result = _BrapiHTTPHarvester(token=brapi_token).fetch(
+                _build_brapi_target((symbol,))
+            )
+            if result.quotes:
+                price = result.quotes[0].regular_market_price
+                fetched.append("price")
+        except Exception as exc:  # noqa: BLE001 — brapi é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+            warnings.append(f"não consegui buscar preço via brapi.dev: {exc}")
+    else:
+        warnings.append(
+            "Nem IIP_BOLSAI_API_KEY nem IIP_BRAPI_TOKEN configurados — "
+            "nenhum dado de preço buscado."
+        )
+
+    warnings.append(
+        "Os ~26 campos restantes (receita, lucro líquido, patrimônio, "
+        "capital investido, dívida/patrimônio, governança, poder de "
+        "precificação etc.) continuam com os valores-padrão do "
+        "analisador — bolsai só fornece razões já calculadas (ROE, "
+        "ROIC, margens), não os valores absolutos que o EquityAnalyzer "
+        "precisa pra calcular essas razões por conta própria. Preencha "
+        "manualmente a partir do relatório financeiro real."
+    )
+
+    template = {
+        "symbol": symbol.upper(),
+        "sector": "REPLACE_WITH_SECTOR",
+        "industry": "REPLACE_WITH_INDUSTRY",
+        "market_cap": market_cap,
+        "price": price,
+        "financials": financials,
+    }
+
+    return template, FetchResult(
+        fetched_fields=tuple(fetched),
+        dividend_yield_months_used=0,
+        warnings=tuple(warnings),
+    )
+
+
+def _equity_defaults() -> dict[str, Any]:
+    from iip.analysis import EquityAnalyzer
+    from iip.cli.main import _template_financials
+
+    return _template_financials(EquityAnalyzer)
+
+
 def fetch_fixed_income_template_live(
     symbol: str,
     cnpj: str,

@@ -14,7 +14,15 @@ CNPJ = "11.839.593/0001-09"
 
 
 @pytest.fixture(autouse=True)
-def _clear_settings_cache():
+def _clear_settings_cache(monkeypatch):
+    from iip.config import IIPSettings
+
+    # monkeypatch.delenv only clears os.environ -- pydantic-settings
+    # ALSO reads directly from a real .env file on disk regardless of
+    # os.environ state. Without this, a machine with a populated .env
+    # (e.g. configured for the scheduled task) would leak real
+    # credentials into these "without credential" tests.
+    monkeypatch.setitem(IIPSettings.model_config, "env_file", None)
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

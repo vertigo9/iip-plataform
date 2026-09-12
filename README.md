@@ -153,10 +153,17 @@ trabalho (buscar por "audit finding" no código).
 
 ## Limitações conhecidas
 
-- **Só FII, ETF e fundos regulados pela CVM (fixed_income) têm busca
-  automática de dado.** Ação/Infra/Agro precisam
-  de `analyze-template` + preenchimento manual completo.
-- **~22 dos 27 campos de cada analisador são julgamento qualitativo**
+- **FII, ETF, fundos regulados pela CVM (fixed_income) e ação têm busca
+  automática de dado.** Infra/Agro ainda precisam de `analyze-template` +
+  preenchimento manual completo.
+- **A automação de ação é bem mais limitada que a de FII/ETF** — só
+  `price`, `market_cap` e `dividend_yield` (3 de 29 campos). O bolsai só
+  fornece razões já calculadas (ROE, ROIC, margens), não os valores
+  absolutos (receita, lucro líquido, patrimônio, capital investido) que
+  o `EquityAnalyzer` precisa pra calcular essas razões por conta própria
+  — um valor e a razão dele não são intercambiáveis, então esses campos
+  nunca são adivinhados a partir da razão.
+- **~22-26 dos campos de cada analisador são julgamento qualitativo**
   (ocupação, governança, tracking error, poder de precificação etc.) — não
   existe fonte gratuita estruturada para isso; vem de leitura de relatório
   gerencial em PDF.
@@ -168,8 +175,9 @@ trabalho (buscar por "audit finding" no código).
   CETIP NET, plataforma de negociação entre instituições financeiras, tem
   API pública). `refresh-portfolio` não tenta buscar esses ativos.
 - **`refresh-portfolio` cobre todas as posições com CNPJ verificado** no
-  registro (hoje: todos os 22 fundos/ETF da carteira real, além de
-  posições em ações — que não usam CNPJ pra automação).
+  registro (hoje: todos os 22 fundos/ETF da carteira real) **mais todas as
+  posições em ação** (buscadas por ticker via bolsai/brapi, não precisam
+  de CNPJ) — 37 posições ao todo.
 - **O monitoramento de fontes (`health --sources`) só checa se o servidor
   responde**, não se o formato do dado mudou (ex: CVM trocar o nome de uma
   coluna não seria pego por esse check — só os testes automatizados

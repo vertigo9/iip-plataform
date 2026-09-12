@@ -86,7 +86,11 @@ def test_refresh_portfolio_skips_positions_without_fetchable_asset_class(tmp_pat
         brapi_token=None,
         positions=(
             make_position("BTLG11", "fund"),
-            PortfolioAsset(ticker="ABCB4", asset_class="equity", cnpj="22.222.222/0001-22"),
+            # "commodity" is not a real PORTFOLIO_ASSETS class today --
+            # used here purely to exercise the skip mechanism itself,
+            # since every real class (fund/etf/fixed_income/equity) is
+            # now fetchable.
+            PortfolioAsset(ticker="XAU11", asset_class="commodity"),
         ),
         fetch_fii=fake_fetch_fii_ok,
         fetch_etf=fake_fetch_etf_ok,
@@ -94,22 +98,31 @@ def test_refresh_portfolio_skips_positions_without_fetchable_asset_class(tmp_pat
 
     assert len(result.succeeded) == 1
     assert len(result.skipped) == 1
-    assert result.skipped[0].ticker == "ABCB4"
+    assert result.skipped[0].ticker == "XAU11"
 
 
-def test_refresh_portfolio_defaults_to_assets_with_cnpj(tmp_path):
-    # No `positions=` override — must fall back to the real registry's
-    # assets_with_cnpj(), not silently do nothing.
+def fake_fetch_equity_ok(symbol, bolsai_api_key, brapi_token):
+    return (
+        {"symbol": symbol, "financials": {"dividend_yield": 5.0}},
+        FetchResult(fetched_fields=("dividend_yield",)),
+    )
+
+
+def test_refresh_portfolio_defaults_to_assets_refreshable_now(tmp_path):
+    # No `positions=` override -- must fall back to the real registry's
+    # assets_refreshable_now(), not silently do nothing.
     result = refresh_portfolio(
         tmp_path,
         bolsai_api_key=None,
         brapi_token=None,
         fetch_fii=fake_fetch_fii_ok,
         fetch_etf=fake_fetch_etf_ok,
+        fetch_equity=fake_fetch_equity_ok,
     )
     tickers = {o.ticker for o in result.outcomes}
     assert "BTLG11" in tickers
     assert "LFTB11" in tickers
+    assert "BBSE3" in tickers  # equity -- refreshable now too, no CNPJ needed
 
 
 def test_refresh_portfolio_reports_fetched_fields_per_position(tmp_path):
@@ -151,6 +164,22 @@ def test_refresh_portfolio_routes_fixed_income_positions(tmp_path):
     assert snapshot.exists()
     data = json.loads(snapshot.read_text(encoding="utf-8"))
     assert data["price"] is None
+
+
+def test_refresh_portfolio_routes_equity_positions(tmp_path):
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(PortfolioAsset(ticker="BBSE3", asset_class="equity"),),
+        fetch_fii=fake_fetch_fii_ok,
+        fetch_etf=fake_fetch_etf_ok,
+        fetch_equity=fake_fetch_equity_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    snapshot = tmp_path / result.run_date / "BBSE3.json"
+    assert snapshot.exists()
 
 
 def test_refresh_portfolio_creates_dated_output_directory(tmp_path):

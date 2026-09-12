@@ -17,7 +17,10 @@ from iip.sources.cvm_renda_fixa_harvester import (
 
 
 @pytest.fixture(autouse=True)
-def _clear_settings_cache():
+def _clear_settings_cache(monkeypatch):
+    from iip.config import IIPSettings
+
+    monkeypatch.setitem(IIPSettings.model_config, "env_file", None)
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

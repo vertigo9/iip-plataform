@@ -295,12 +295,17 @@ def analyze_template(asset_type: str, output: str | None) -> None:
 @click.option(
     "--type",
     "asset_type",
-    type=click.Choice(["fii", "etf"]),
+    type=click.Choice(["fii", "etf", "equity"]),
     default="fii",
-    help="Asset type. Only FII and ETF are wired to real data fetching so "
-    "far — equity/infra/agro still need `iip analyze-template` + manual entry.",
+    help="Asset type. FII, ETF and equity are wired to real data fetching — "
+    "infra/agro still need `iip analyze-template` + manual entry.",
 )
-@click.option("--cnpj", required=True, help="CNPJ do fundo (formato livre, com ou sem pontuação).")
+@click.option(
+    "--cnpj",
+    default=None,
+    help="CNPJ do fundo (formato livre, com ou sem pontuação). Obrigatório "
+    "para --type fii/etf; não usado para --type equity (busca por ticker).",
+)
 @click.option(
     "--ano", type=int, default=None, help="Ano de referência CVM (padrão: ano atual)."
 )
@@ -320,7 +325,7 @@ def analyze_template(asset_type: str, output: str | None) -> None:
 def fetch_template(
     symbol: str,
     asset_type: str,
-    cnpj: str,
+    cnpj: str | None,
     ano: int | None,
     mes: int | None,
     output: str | None,
@@ -337,14 +342,28 @@ def fetch_template(
     anos ou captação YTD não podem ser honestamente derivados de um
     mês só.
 
-    Em ambos os casos, os campos de julgamento qualitativo (ocupação,
-    governança, tracking error, taxa de administração, liquidez etc.)
-    continuam com os valores-padrão do analisador — sem isso, editar à
-    mão.
+    Equity: preenche só price, market_cap e dividend_yield (via
+    bolsai/brapi) — bem mais limitado que FII/ETF, porque bolsai só
+    fornece razões já calculadas (ROE, ROIC, margens), não os valores
+    absolutos (receita, lucro líquido, patrimônio) que o EquityAnalyzer
+    precisa pra calcular essas razões por conta própria.
+
+    Em todos os casos, os campos de julgamento qualitativo (ocupação,
+    governança, tracking error, taxa de administração, liquidez,
+    poder de precificação etc.) continuam com os valores-padrão do
+    analisador — sem isso, editar à mão.
     """
     import datetime as _dt
 
-    from iip.cli.fetch_template import fetch_etf_template_live, fetch_fii_template_live
+    from iip.cli.fetch_template import (
+        fetch_equity_template_live,
+        fetch_etf_template_live,
+        fetch_fii_template_live,
+    )
+
+    if asset_type in ("fii", "etf") and not cnpj:
+        console.print(f"[bold red]--cnpj é obrigatório para --type {asset_type}[/]")
+        raise SystemExit(1)
 
     hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (ano/mês de competência CVM), não timestamp; timezone não se aplica
     ano_efetivo = ano or hoje.year
@@ -365,7 +384,7 @@ def fetch_template(
             console.print(f"[bold red]Erro ao buscar dados da CVM:[/] {exc}")
             raise SystemExit(1) from exc
 
-    else:  # etf
+    elif asset_type == "etf":
         mes_efetivo = mes or hoje.month
         console.print(
             f"[dim]Buscando dados CVM Informe Diário para {ano_efetivo}-{mes_efetivo:02d}...[/]"
@@ -383,6 +402,12 @@ def fetch_template(
         except Exception as exc:
             console.print(f"[bold red]Erro ao buscar Informe Diário da CVM:[/] {exc}")
             raise SystemExit(1) from exc
+
+    else:  # equity
+        bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
+        brapi_token = _unwrap_secret(get_settings().brapi_token)
+        console.print(f"[dim]Buscando dados de {symbol.upper()} via bolsai/brapi...[/]")
+        template, resultado = fetch_equity_template_live(symbol, bolsai_key, brapi_token)
 
     console.print(f"\n[bold]Campos preenchidos com dado real:[/] {', '.join(resultado.fetched_fields) or '(nenhum)'}")
     for warning in resultado.warnings:
