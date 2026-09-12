@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from iip.analysis import AnalysisReport, Pillar, PillarScore
-from iip.analysis.framework import AssetData, BaseAnalyzer
+from iip.analysis.framework import AssetData, BaseAnalyzer, safe_segment
 
 
 class AgroAnalyzer(BaseAnalyzer):
@@ -34,7 +34,7 @@ class AgroAnalyzer(BaseAnalyzer):
 
         report.calculate_overall()
         report.set_recommendation()
-        report.notes = f"Agro Fund Analysis for {data.industry} sector"
+        report.notes = f"Agro Fund Analysis for {safe_segment(data.industry, placeholder='setor não preenchido')} sector"
         return report
 
     def _analyze_agro_business_model(self, fin: dict) -> PillarScore:

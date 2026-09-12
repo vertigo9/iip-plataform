@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from iip.analysis import AnalysisReport, Pillar, PillarScore
-from iip.analysis.framework import AssetData, BaseAnalyzer
+from iip.analysis.framework import AssetData, BaseAnalyzer, safe_segment
 
 
 class FixedIncomeAnalyzer(BaseAnalyzer):
@@ -55,7 +55,7 @@ class FixedIncomeAnalyzer(BaseAnalyzer):
 
         report.calculate_overall()
         report.set_recommendation()
-        report.notes = f"Fixed Income Analysis for {data.industry} fund"
+        report.notes = f"Fixed Income Analysis for {safe_segment(data.industry, placeholder='fundo não preenchido')} fund"
         return report
 
     def _analyze_business_model(self, fin: dict) -> PillarScore:

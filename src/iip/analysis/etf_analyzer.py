@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from iip.analysis import AnalysisReport, Pillar, PillarScore
-from iip.analysis.framework import AssetData, BaseAnalyzer
+from iip.analysis.framework import AssetData, BaseAnalyzer, safe_segment
 
 
 class ETFAnalyzer(BaseAnalyzer):
@@ -44,7 +44,7 @@ class ETFAnalyzer(BaseAnalyzer):
 
         report.calculate_overall()
         report.set_recommendation()
-        report.notes = f"ETF Analysis for {data.industry} index exposure"
+        report.notes = f"ETF Analysis for {safe_segment(data.industry, placeholder='índice não preenchido')} index exposure"
         return report
 
     def _analyze_etf_business_model(self, fin: dict) -> PillarScore:
