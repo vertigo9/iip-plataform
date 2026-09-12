@@ -213,6 +213,20 @@ usam um `opener`/callable injetável em vez de mockar bibliotecas HTTP
 diretamente — ao adicionar uma fonte nova, siga esse mesmo padrão (veja
 qualquer `*_harvester.py` existente como modelo).
 
+## Integração contínua
+
+`.github/workflows/ci.yml` roda em todo push e pull request: instalação
+limpa (`pip install -e ".[dev]"`), `ruff check` (bloqueante), checagem de
+compilação (bloqueante), e a suíte completa de testes (bloqueante). A
+checagem de formatação do `black` também roda, mas **não bloqueia** —
+70 arquivos ainda não seguem o padrão dele (nunca foi aplicado no
+projeto); vira tarefa deliberada de formatação em lote quando fizer
+sentido, do mesmo jeito que o Ruff foi tratado (por regra, com testes a
+cada lote, não tudo de uma vez). `mypy` também não está no CI ainda —
+mesmo um arquivo escrito com cuidado nesta sessão acusou 4 erros de
+tipagem dinâmica normal, então adicionar isso como bloqueante hoje
+seria ruído, não sinal.
+
 ## Descobrir → reutilizar → estender → criar
 
 Esse projeto já passou por várias rodadas de descoberta de código duplicado
