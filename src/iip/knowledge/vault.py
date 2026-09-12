@@ -23,6 +23,7 @@ _ASSET_CLASS_FOLDERS: dict[str, str] = {
     "agro": "FIAgro",  # matches iip.cli.main.ANALYZERS' "agro" key
     "etf": "ETFs",
     "etfs": "ETFs",
+    "fixed_income": "FixedIncome",
 }
 
 

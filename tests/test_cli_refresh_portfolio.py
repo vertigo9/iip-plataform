@@ -7,6 +7,7 @@ from iip.cli.main import cli
 from iip.config import get_settings
 from iip.sources.b3_bolsai import BolsaiFiiData
 from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFii
+from iip.sources.cvm_fiagro_harvester import CvmFiagroHTTPHarvester, FetchedFiagroReport
 from iip.sources.cvm_fii import FiiComplemento
 from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester, FetchedFiiReport
 from iip.sources.cvm_renda_fixa import InformeDiario
@@ -61,11 +62,19 @@ def fake_cvm_diario_fetch(self, target):
     return FetchedDiario(target=target, status_code=200, informes=informes)
 
 
+def fake_cvm_fiagro_fetch(self, target):
+    # Sem correspondencia de CNPJ real aqui de proposito -- so precisa
+    # nao tentar rede de verdade; um "nao encontrado" e' um aviso, nao
+    # uma falha, entao nao derruba o exit_code do comando.
+    return FetchedFiagroReport(target=target, status_code=200, informes=(), subclasses=())
+
+
 def test_refresh_portfolio_runs_without_credentials(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BOLSAI_API_KEY", raising=False)
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -82,6 +91,7 @@ def test_refresh_portfolio_writes_real_snapshot_files(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -106,6 +116,7 @@ def test_refresh_portfolio_uses_bolsai_and_brapi_when_credentials_present(
     monkeypatch.setenv("IIP_BRAPI_TOKEN", "fake-token")
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
 
     def fake_fetch_fii(self, target):
         return FetchedFii(
@@ -149,6 +160,7 @@ def test_refresh_portfolio_exits_nonzero_when_a_position_fails(monkeypatch, tmp_
 
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", failing_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
 
     runner = CliRunner()
     result = runner.invoke(

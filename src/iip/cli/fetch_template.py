@@ -364,6 +364,133 @@ def _equity_defaults() -> dict[str, Any]:
     return _template_financials(EquityAnalyzer)
 
 
+def fetch_fiagro_template_live(
+    symbol: str,
+    cnpj: str,
+    ano: int,
+    mes: int,
+    brapi_token: str | None = None,
+) -> tuple[dict[str, Any], FetchResult]:
+    """Fill what's honestly fillable for a FIAGRO fund from CVM's own
+    Informe Mensal FIAGRO, plus price via brapi.dev when configured.
+
+    Correction from this module's earlier version (12/09/2026): the
+    original docstring claimed FIAGRO funds like CRAA11 "aren't traded
+    on B3 with a market ticker" — that was WRONG, found live when a
+    real run against 2026 data hit a genuine gap: CRAA11's CNPJ
+    (confirmed correct against six independent public sources —
+    Kinvo, Investidor10, Rei dos Dividendos, Funds Explorer, Sparta's
+    own site, iValor — and confirmed NOT a "too new to report" case,
+    operating since 2023) does not appear in CVM's FIAGRO Informe
+    Mensal for August/2026 either, even though the file itself
+    downloads fine (not a publication-lag 404 like the current month
+    gives). The reason for that specific gap is still unexplained —
+    but those same public sources show CRAA11 trading actively on B3
+    with a real price (~R$88-102 across recent months), so at minimum
+    price IS fetchable here, unlike the true no-ticker case
+    (fixed_income/AXIA3).
+
+    ``AgroAnalyzer`` (confirmed by reading its own
+    ``analyze-template`` output) has NO assets-under-management field
+    at all, so patrimônio still can't be mapped even when the CVM
+    lookup succeeds. ``dividend_yield_pct`` fetch logic (with FIAGRO's
+    own ``Dividend_Yield_Mes`` scale — already a plain monthly percent,
+    confirmed live, unlike CVM FII's fraction-based field) is
+    unchanged from before; it simply won't fill for CNPJs the CVM
+    dataset doesn't have, which is reported as a warning, not an
+    error — the command still succeeds with whatever price data brapi
+    provides.
+    """
+    from iip.sources.b3_brapi import build_target as _build_brapi_target
+    from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
+    from iip.sources.cvm_fiagro import build_target as _build_cvm_fiagro_target
+    from iip.sources.cvm_fiagro_harvester import (
+        CvmFiagroHTTPHarvester as _CvmFiagroHTTPHarvester,
+    )
+
+    result = _CvmFiagroHTTPHarvester().fetch(_build_cvm_fiagro_target(ano, mes))
+
+    normalized_cnpj = "".join(ch for ch in cnpj if ch.isdigit())
+    matches = [
+        i
+        for i in result.informes
+        if "".join(ch for ch in i.cnpj_classe if ch.isdigit()) == normalized_cnpj
+    ]
+
+    default_financials = _agro_defaults()
+    financials = dict(default_financials)
+    fetched: list[str] = []
+    warnings: list[str] = []
+
+    if not matches:
+        warnings.append(
+            f"Nenhum registro CVM FIAGRO encontrado para o CNPJ {cnpj} no "
+            f"mês {ano}-{mes:02d} — CNPJ pode estar certo mesmo assim (confirme "
+            "em fontes públicas como Investidor10/Kinvo) e o fundo genuinamente "
+            "não aparecer nesse dataset da CVM por um motivo ainda não identificado."
+        )
+    else:
+        ordenados = sorted(matches, key=lambda i: i.data_referencia, reverse=True)
+        ultimos = ordenados[:12]
+        valores_dy = [
+            i.valores.get("Dividend_Yield_Mes")
+            for i in ultimos
+            if i.valores.get("Dividend_Yield_Mes") is not None
+        ]
+        if valores_dy:
+            financials["dividend_yield_pct"] = round(sum(valores_dy), 4)
+            fetched.append("dividend_yield_pct")
+            if len(valores_dy) < 12:
+                warnings.append(
+                    f"dividend_yield_pct calculado com apenas {len(valores_dy)} "
+                    "mes(es) disponível(is), não os 12 meses completos (TTM parcial)."
+                )
+
+    price: float | None = None
+    if brapi_token:
+        try:
+            brapi_result = _BrapiHTTPHarvester(token=brapi_token).fetch(
+                _build_brapi_target((symbol,))
+            )
+            if brapi_result.quotes:
+                price = brapi_result.quotes[0].regular_market_price
+                fetched.append("price")
+        except Exception as exc:  # noqa: BLE001 — preço é opcional, mesmo padrão do fetch-template atual
+            warnings.append(f"não consegui buscar preço via brapi.dev: {exc}")
+    else:
+        warnings.append(
+            "IIP_BRAPI_TOKEN não definida — pulando busca de preço."
+        )
+
+    warnings.append(
+        "AgroAnalyzer não tem campo de patrimônio/AUM — só "
+        "dividend_yield_pct (via CVM) e price (via brapi.dev) são "
+        "buscáveis aqui."
+    )
+
+    template = {
+        "symbol": symbol.upper(),
+        "sector": "REPLACE_WITH_SECTOR",
+        "industry": "REPLACE_WITH_INDUSTRY",
+        "market_cap": None,
+        "price": price,
+        "financials": financials,
+    }
+
+    return template, FetchResult(
+        fetched_fields=tuple(fetched),
+        dividend_yield_months_used=len(valores_dy) if matches and valores_dy else 0,
+        warnings=tuple(warnings),
+    )
+
+
+def _agro_defaults() -> dict[str, Any]:
+    from iip.analysis import AgroAnalyzer
+    from iip.cli.main import _template_financials
+
+    return _template_financials(AgroAnalyzer)
+
+
 def fetch_fixed_income_template_live(
     symbol: str,
     cnpj: str,

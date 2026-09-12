@@ -2,9 +2,10 @@
 
 Reuses ``iip.cli.fetch_template.fetch_fii_template_live`` /
 ``fetch_etf_template_live`` / ``fetch_fixed_income_template_live`` /
-``fetch_equity_template_live`` per position — no new fetching logic
-here, just the loop, per-position error isolation (one bad position
-must not abort the whole run), and dated snapshot output.
+``fetch_equity_template_live`` / ``fetch_fiagro_template_live`` per
+position — no new fetching logic here, just the loop, per-position
+error isolation (one bad position must not abort the whole run), and
+dated snapshot output.
 
 ``fund``/``etf``/``fixed_income`` positions need a verified CNPJ (see
 ``iip.portfolio.registry.assets_with_cnpj``); ``equity`` positions
@@ -50,22 +51,41 @@ class RefreshRunResult:
         return tuple(o for o in self.outcomes if o.status == "pulado")
 
 
-_ASSET_CLASS_TO_TEMPLATE_TYPE = {
-    "fund": "fii",  # PORTFOLIO_ASSETS uses "fund" for FIIs; subtype narrows further
-    "etf": "etf",
-    "fixed_income": "fixed_income",
-    "equity": "equity",
-}
+def _template_type_for(position: PortfolioAsset) -> str | None:
+    """Which live-fetch function a position should use.
+
+    Real bug found and fixed here (12/09/2026): ``asset_class="fund"``
+    was routing EVERY subtype through the FII-specific CVM Informe
+    Mensal — but FI-Infra positions (CDII11, JURO11, CPTI11) are NOT
+    registered under that regulatory category at all (confirmed live:
+    CDII11's real CNPJ does not appear in the FII dataset). They ARE
+    registered as general ICVM 555 funds (confirmed live: CDII11's
+    CNPJ DOES appear in the Informe Diário) — the same dataset ETF and
+    fixed_income already use. Before this fix, ``refresh-portfolio``
+    reported "ok" for these positions while silently finding zero real
+    data, since an empty CNPJ match doesn't raise an error, just
+    leaves fields at their defaults with a buried warning.
+
+    FI-Agro (CRAA11) needed a THIRD dataset (confirmed live: its CNPJ
+    appears in neither the FII nor the Informe Diário dataset) — CVM's
+    own dedicated FIAGRO Informe Mensal, now wired via
+    ``fetch_fiagro_template_live``.
+    """
+    if position.asset_class == "fund":
+        if position.subtype == "FI-Infra":
+            return "fixed_income"
+        if position.subtype == "FI-Agro":
+            return "fiagro"
+        return "fii"
+    if position.asset_class in ("etf", "fixed_income", "equity"):
+        return position.asset_class
+    return None
 
 
 def _refreshable_positions(
     positions: tuple[PortfolioAsset, ...],
 ) -> tuple[PortfolioAsset, ...]:
-    return tuple(
-        p
-        for p in positions
-        if _ASSET_CLASS_TO_TEMPLATE_TYPE.get(p.asset_class) is not None
-    )
+    return tuple(p for p in positions if _template_type_for(p) is not None)
 
 
 def refresh_portfolio(
@@ -80,18 +100,20 @@ def refresh_portfolio(
     fetch_etf=None,
     fetch_fixed_income=None,
     fetch_equity=None,
+    fetch_fiagro=None,
 ) -> RefreshRunResult:
     """Refresh every refreshable position, writing one JSON snapshot per
     ticker under ``output_dir/{data}/{ticker}.json``.
 
-    ``fetch_fii``/``fetch_etf``/``fetch_fixed_income``/``fetch_equity``
-    are injectable (default to the real live-fetch functions) purely
-    for testability — same pattern as the harvesters' injectable
-    ``opener``.
+    ``fetch_fii``/``fetch_etf``/``fetch_fixed_income``/``fetch_equity``/
+    ``fetch_fiagro`` are injectable (default to the real live-fetch
+    functions) purely for testability — same pattern as the
+    harvesters' injectable ``opener``.
     """
     from iip.cli.fetch_template import (
         fetch_equity_template_live,
         fetch_etf_template_live,
+        fetch_fiagro_template_live,
         fetch_fii_template_live,
         fetch_fixed_income_template_live,
     )
@@ -100,6 +122,7 @@ def refresh_portfolio(
     fetch_etf = fetch_etf or fetch_etf_template_live
     fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
     fetch_equity = fetch_equity or fetch_equity_template_live
+    fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
 
     hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (data de referência do snapshot), não timestamp
     ano_efetivo = ano or hoje.year
@@ -114,7 +137,7 @@ def refresh_portfolio(
 
     outcomes: list[PositionOutcome] = []
     for position in refreshable:
-        template_type = _ASSET_CLASS_TO_TEMPLATE_TYPE[position.asset_class]
+        template_type = _template_type_for(position)
         try:
             if template_type == "fii":
                 template, resultado = fetch_fii(
@@ -131,6 +154,14 @@ def refresh_portfolio(
             elif template_type == "equity":
                 template, resultado = fetch_equity(
                     position.ticker, bolsai_api_key, brapi_token
+                )
+            elif template_type == "fiagro":
+                template, resultado = fetch_fiagro(
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
+                    brapi_token,
                 )
             else:  # fixed_income
                 template, resultado = fetch_fixed_income(
@@ -168,7 +199,7 @@ def refresh_portfolio(
             PositionOutcome(
                 ticker=ticker,
                 status="pulado",
-                detail="classe de ativo sem fetch automático ainda (só fund/etf/fixed_income/equity)",
+                detail="classe de ativo sem fetch automático ainda (só fund/etf/fixed_income/equity/fiagro)",
             )
         )
 

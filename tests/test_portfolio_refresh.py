@@ -166,6 +166,70 @@ def test_refresh_portfolio_routes_fixed_income_positions(tmp_path):
     assert data["price"] is None
 
 
+def test_refresh_portfolio_routes_fi_infra_via_fixed_income_not_fii(tmp_path):
+    """Bug real encontrado e corrigido em 12/09/2026: FI-Infra
+    (CDII11/JURO11/CPTI11) nao esta registrado como FII na CVM --
+    confirmado ao vivo que o CNPJ do CDII11 nao aparece no Informe
+    Mensal FII, mas aparece no Informe Diario (mesmo dataset que
+    fixed_income/etf usam). Antes desta correcao, essas posicoes
+    passavam pelo fetch_fii (que nao encontrava nada) e reportavam
+    "ok" mesmo sem dado real algum."""
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(
+            PortfolioAsset(
+                ticker="CDII11",
+                asset_class="fund",
+                subtype="FI-Infra",
+                cnpj="48.973.783/0001-16",
+            ),
+        ),
+        fetch_fii=fake_fetch_fii_fails,  # se cair aqui por engano, o teste falha
+        fetch_etf=fake_fetch_etf_ok,
+        fetch_fixed_income=fake_fetch_fixed_income_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    assert result.succeeded[0].ticker == "CDII11"
+
+
+def fake_fetch_fiagro_ok(symbol, cnpj, ano, mes, brapi_token=None):
+    return (
+        {"symbol": symbol, "price": None, "financials": {"dividend_yield_pct": 8.3}},
+        FetchResult(fetched_fields=("dividend_yield_pct",)),
+    )
+
+
+def test_refresh_portfolio_routes_fi_agro_via_fiagro(tmp_path):
+    """FI-Agro (CRAA11) confirmado ao vivo: CNPJ nao aparece nem no
+    dataset FII nem no Informe Diario, so no dataset dedicado FIAGRO
+    -- agora roteado corretamente pra fetch_fiagro, nao mais pulado."""
+    result = refresh_portfolio(
+        tmp_path,
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(
+            PortfolioAsset(
+                ticker="CRAA11",
+                asset_class="fund",
+                subtype="FI-Agro",
+                cnpj="48.903.610/0001-21",
+            ),
+        ),
+        fetch_fii=fake_fetch_fii_fails,
+        fetch_etf=fake_fetch_etf_ok,
+        fetch_fixed_income=fake_fetch_fixed_income_ok,
+        fetch_fiagro=fake_fetch_fiagro_ok,
+    )
+
+    assert len(result.succeeded) == 1
+    assert result.succeeded[0].ticker == "CRAA11"
+    snapshot = tmp_path / result.run_date / "CRAA11.json"
+    assert snapshot.exists()
+
+
 def test_refresh_portfolio_routes_equity_positions(tmp_path):
     result = refresh_portfolio(
         tmp_path,

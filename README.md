@@ -153,9 +153,19 @@ trabalho (buscar por "audit finding" no código).
 
 ## Limitações conhecidas
 
-- **FII, ETF, fundos regulados pela CVM (fixed_income) e ação têm busca
-  automática de dado.** Infra/Agro ainda precisam de `analyze-template` +
-  preenchimento manual completo.
+- **FII, ETF, fundos regulados pela CVM (fixed_income), FIAGRO (agro) e
+  ação têm busca automática de dado e analisador dedicado.** Infra ainda
+  precisa de `analyze-template` + preenchimento manual completo.
+- **FIAGRO (ex: CRAA11) busca `dividend_yield_pct` via CVM e `price` via
+  brapi.dev** — correção real: a suposição inicial de que esses fundos não
+  negociam na B3 estava errada (confirmado com cotação real de várias
+  fontes públicas). O que continua sem explicação: o CNPJ do CRAA11
+  (confirmado correto em 6 fontes independentes) genuinamente não aparece
+  no Informe Mensal FIAGRO da CVM para 2026 — não é atraso de publicação
+  (o arquivo de agosto/2026 baixa normalmente), é uma lacuna específica
+  desse fundo nesse dataset que não foi possível explicar. `AgroAnalyzer`
+  não tem campo de patrimônio, então isso não afeta a análise além do
+  `dividend_yield_pct`.
 - **A automação de ação é bem mais limitada que a de FII/ETF** — só
   `price`, `market_cap` e `dividend_yield` (3 de 29 campos). O bolsai só
   fornece razões já calculadas (ROE, ROIC, margens), não os valores
@@ -174,10 +184,10 @@ trabalho (buscar por "audit finding" no código).
   banco↔investidor, não um valor mobiliário com cotação pública (nem o
   CETIP NET, plataforma de negociação entre instituições financeiras, tem
   API pública). `refresh-portfolio` não tenta buscar esses ativos.
-- **`refresh-portfolio` cobre todas as posições com CNPJ verificado** no
-  registro (hoje: todos os 22 fundos/ETF da carteira real) **mais todas as
-  posições em ação** (buscadas por ticker via bolsai/brapi, não precisam
-  de CNPJ) — 37 posições ao todo.
+- **`refresh-portfolio` cobre todas as 23 posições de fundo/ETF com CNPJ
+  verificado** (incluindo FI-Infra e FI-Agro agora, cada um no dataset
+  CVM certo) **mais todas as posições em ação** (buscadas por ticker via
+  bolsai/brapi, não precisam de CNPJ) — 37 posições ativas ao todo.
 - **O monitoramento de fontes (`health --sources`) só checa se o servidor
   responde**, não se o formato do dado mudou (ex: CVM trocar o nome de uma
   coluna não seria pego por esse check — só os testes automatizados

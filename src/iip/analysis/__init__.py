@@ -95,6 +95,7 @@ class AnalysisReport:
 # them any earlier would create a circular import.
 from iip.analysis.agro_analyzer import AgroAnalyzer
 from iip.analysis.etf_analyzer import ETFAnalyzer
+from iip.analysis.fixed_income_analyzer import FixedIncomeAnalyzer
 from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
 from iip.analysis.infra_analyzer import InfraAnalyzer
 
@@ -105,6 +106,7 @@ __all__ = [
     "ETFAnalyzer",
     "EquityAnalyzer",
     "FIIAnalyzer",
+    "FixedIncomeAnalyzer",
     "InfraAnalyzer",
     "Pillar",
     "PillarScore",

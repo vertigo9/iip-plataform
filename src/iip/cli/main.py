@@ -15,6 +15,7 @@ from iip.analysis import (
     EquityAnalyzer,
     ETFAnalyzer,
     FIIAnalyzer,
+    FixedIncomeAnalyzer,
     InfraAnalyzer,
 )
 from iip.config import get_settings
@@ -51,6 +52,7 @@ ANALYZERS: dict[str, type] = {
     "infra": InfraAnalyzer,
     "agro": AgroAnalyzer,
     "etf": ETFAnalyzer,
+    "fixed_income": FixedIncomeAnalyzer,
 }
 
 
@@ -295,16 +297,17 @@ def analyze_template(asset_type: str, output: str | None) -> None:
 @click.option(
     "--type",
     "asset_type",
-    type=click.Choice(["fii", "etf", "equity"]),
+    type=click.Choice(["fii", "etf", "equity", "fixed_income", "agro"]),
     default="fii",
-    help="Asset type. FII, ETF and equity are wired to real data fetching — "
-    "infra/agro still need `iip analyze-template` + manual entry.",
+    help="Asset type. FII, ETF, equity, fixed_income and agro are wired to "
+    "real data fetching (agro busca no dataset CVM FIAGRO) — infra ainda "
+    "precisa de `iip analyze-template` + preenchimento manual.",
 )
 @click.option(
     "--cnpj",
     default=None,
     help="CNPJ do fundo (formato livre, com ou sem pontuação). Obrigatório "
-    "para --type fii/etf; não usado para --type equity (busca por ticker).",
+    "para --type fii/etf/fixed_income/agro; não usado para --type equity (busca por ticker).",
 )
 @click.option(
     "--ano", type=int, default=None, help="Ano de referência CVM (padrão: ano atual)."
@@ -313,7 +316,7 @@ def analyze_template(asset_type: str, output: str | None) -> None:
     "--mes",
     type=int,
     default=None,
-    help="Mês de referência CVM, 1-12 (só para --type etf; padrão: mês atual).",
+    help="Mês de referência CVM, 1-12 (para --type etf/fixed_income/agro; padrão: mês atual).",
 )
 @click.option(
     "--output",
@@ -348,6 +351,16 @@ def fetch_template(
     absolutos (receita, lucro líquido, patrimônio) que o EquityAnalyzer
     precisa pra calcular essas razões por conta própria.
 
+    fixed_income: preenche só patrimônio (via CVM Informe Diário) —
+    nunca busca preço de mercado, mesmo se configurado, porque o
+    ticker de referência desses fundos (ex: AXIA3) pode não corresponder
+    a um ticker de mercado real do próprio fundo.
+
+    agro: preenche só dividend_yield_pct (via CVM FIAGRO — dataset
+    dedicado, diferente do de FII/Informe Diário) — AgroAnalyzer não
+    tem campo de patrimônio, e fundos FIAGRO como CRAA11 também não
+    têm ticker negociado na B3.
+
     Em todos os casos, os campos de julgamento qualitativo (ocupação,
     governança, tracking error, taxa de administração, liquidez,
     poder de precificação etc.) continuam com os valores-padrão do
@@ -358,10 +371,12 @@ def fetch_template(
     from iip.cli.fetch_template import (
         fetch_equity_template_live,
         fetch_etf_template_live,
+        fetch_fiagro_template_live,
         fetch_fii_template_live,
+        fetch_fixed_income_template_live,
     )
 
-    if asset_type in ("fii", "etf") and not cnpj:
+    if asset_type in ("fii", "etf", "fixed_income", "agro") and not cnpj:
         console.print(f"[bold red]--cnpj é obrigatório para --type {asset_type}[/]")
         raise SystemExit(1)
 
@@ -401,6 +416,37 @@ def fetch_template(
             )
         except Exception as exc:
             console.print(f"[bold red]Erro ao buscar Informe Diário da CVM:[/] {exc}")
+            raise SystemExit(1) from exc
+
+    elif asset_type == "fixed_income":
+        mes_efetivo = mes or hoje.month
+        console.print(
+            f"[dim]Buscando dados CVM Informe Diário para {ano_efetivo}-{mes_efetivo:02d}...[/]"
+        )
+        try:
+            template, resultado = fetch_fixed_income_template_live(
+                symbol, cnpj, ano_efetivo, mes_efetivo
+            )
+        except Exception as exc:
+            console.print(f"[bold red]Erro ao buscar Informe Diário da CVM:[/] {exc}")
+            raise SystemExit(1) from exc
+
+    elif asset_type == "agro":
+        mes_efetivo = mes or hoje.month
+        console.print(
+            f"[dim]Buscando dados CVM FIAGRO para {ano_efetivo}-{mes_efetivo:02d}...[/]"
+        )
+        brapi_token = _unwrap_secret(get_settings().brapi_token)
+        if not brapi_token:
+            console.print(
+                "[dim]IIP_BRAPI_TOKEN não definida — pulando busca de preço.[/]"
+            )
+        try:
+            template, resultado = fetch_fiagro_template_live(
+                symbol, cnpj, ano_efetivo, mes_efetivo, brapi_token
+            )
+        except Exception as exc:
+            console.print(f"[bold red]Erro ao buscar dados CVM FIAGRO:[/] {exc}")
             raise SystemExit(1) from exc
 
     else:  # equity
