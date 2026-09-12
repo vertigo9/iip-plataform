@@ -7,6 +7,20 @@ from typing import Any
 from iip.analysis import AnalysisReport, Pillar, PillarScore
 
 
+def safe_segment(value: str | None, *, placeholder: str = "") -> str:
+    """Guard de relatório: placeholder de julgamento não deve sair na entrega.
+
+    Campos de segmento (sector/industry) chegam dos templates com
+    'REPLACE_WITH_*' quando não foram derivados do dado real — isso é
+    instrução para o usuário, não entrega. Imprimir o placeholder cru no
+    relatório (ex.: "FII Analysis for REPLACE_WITH_INDUSTRY fund") vaza
+    instrução no artefato persistido no vault; omitir é mais honesto.
+    """
+    if not value or value.startswith("REPLACE_WITH"):
+        return placeholder
+    return value
+
+
 @dataclass
 class AssetData:
     symbol: str
@@ -68,7 +82,10 @@ class EquityAnalyzer(BaseAnalyzer):
         report.add_pillar(self._analyze_resilience(data))
         report.calculate_overall()
         report.set_recommendation()
-        report.notes = f"Analysis for {data.sector}/{data.industry} sector"
+        report.notes = (
+            f"Analysis for {safe_segment(data.sector, placeholder='—')}"
+            f"/{safe_segment(data.industry, placeholder='—')} sector"
+        )
         return report
 
     def _analyze_business_model(self, data: AssetData) -> PillarScore:
@@ -270,7 +287,9 @@ class FIIAnalyzer(BaseAnalyzer):
         report.add_pillar(self._analyze_fii_resilience(fin))
         report.calculate_overall()
         report.set_recommendation()
-        report.notes = f"FII Analysis for {data.industry} fund"
+        report.notes = (
+            f"FII Analysis for {safe_segment(data.industry, placeholder='setor não preenchido')} fund"
+        )
         return report
 
     def _analyze_fii_business_model(self, fin: dict) -> PillarScore:
