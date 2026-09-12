@@ -53,6 +53,21 @@ class ProjectionSyncEngine:
             AssetNoteProjector.END_TEMPLATE.format(section=section),
         )
 
+    @staticmethod
+    def _compose_footer(content: str, notes: str | None) -> str:
+        """FIX: rodapé do relatório precisa entrar no conteúdo sincronizado.
+
+        Sem isto, uma mudança apenas em report.notes gera o mesmo
+        fingerprint e o sync responde UNCHANGED com a nota desatualizada.
+        """
+        clean = str(notes or "").strip()
+        if not clean or clean.lower() == "none":
+            return content
+        footer = f"> Rodapé: {clean}"
+        if footer in content:
+            return content
+        return f"{content.rstrip()}\n\n{footer}"
+
     @classmethod
     def _extract_content(cls, text: str, section: str) -> str | None:
         begin, end = cls._markers(section)
@@ -65,7 +80,11 @@ class ProjectionSyncEngine:
         return match.group(1).strip("\n")
 
     def sync_section(
-        self, path: str | Path, section: str, content: str
+        self,
+        path: str | Path,
+        section: str,
+        content: str,
+        notes: str | None = None,
     ) -> ProjectionSyncResult:
         path = Path(path)
         section = AssetNoteProjector._normalize_section(section)
@@ -75,6 +94,7 @@ class ProjectionSyncEngine:
                 path,
                 ProjectionFingerprint.from_content(section, ""),
             )
+        content = self._compose_footer(content, notes)
         fingerprint = ProjectionFingerprint.from_content(section, content)
 
         if not path.exists():
@@ -100,6 +120,7 @@ class ProjectionSyncEngine:
         role: str,
         section: str,
         content: str,
+        notes: str | None = None,
     ) -> ProjectionSyncResult:
         projection = self.projector.locate(ticker, asset_class, role)
-        return self.sync_section(projection.path, section, content)
+        return self.sync_section(projection.path, section, content, notes)
