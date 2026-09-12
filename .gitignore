@@ -59,3 +59,9 @@ Thumbs.db
 # Large installers and archives
 *.exe
 *.zip
+
+src/iip_platform.egg-info/
+hglg11.json
+ivvb11.json
+itsa4.json
+craa11.json

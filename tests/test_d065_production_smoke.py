@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import importlib
 import os
@@ -40,13 +40,13 @@ def test_production_health_endpoint_when_configured() -> None:
     run_http = os.getenv("IIP_RUN_PROD_HTTP_SMOKE", "").strip().lower()
     if run_http not in {"1", "true", "yes"}:
         pytest.skip(
-            "IIP_RUN_PROD_HTTP_SMOKE nÃ£o habilitado; health HTTP reservado "
+            "IIP_RUN_PROD_HTTP_SMOKE não habilitado; health HTTP reservado "
             "ao Production Smoke Gate standalone."
         )
 
     url = os.getenv("IIP_PROD_HEALTH_URL")
     if not url:
-        pytest.skip("IIP_PROD_HEALTH_URL nÃ£o configurada; smoke HTTP nÃ£o executado.")
+        pytest.skip("IIP_PROD_HEALTH_URL não configurada; smoke HTTP não executado.")
 
     request = urllib.request.Request(
         url,
@@ -61,5 +61,5 @@ def test_production_health_endpoint_when_configured() -> None:
 def test_production_environment_marker_when_configured() -> None:
     env = os.getenv("IIP_ENVIRONMENT")
     if not env:
-        pytest.skip("IIP_ENVIRONMENT nÃ£o configurada.")
+        pytest.skip("IIP_ENVIRONMENT não configurada.")
     assert env.lower() in {"prod", "production"}
