@@ -70,15 +70,41 @@ def ingest_fii_harvest(
     fetched: Any,
     metrics_payload: dict[str, float],
 ) -> list[Any]:
-    """Estende o motor reutilizando o adapter canônico de inteligência FII (IIP Intelligence)."""
-    from iip.intelligence.fii_metric_adapter import FiiMetricAdapter
+    """Estende o motor para converter e ingerir colheitas brutas de FII via contratos de inteligência."""
+    import hashlib
+    from datetime import datetime, timezone
+    from iip.decision.models import MetricObservationIdentity, SemanticDimension
+
+    raw_body = getattr(fetched, "body", b"")
+    payload_hash = hashlib.sha256(raw_body).hexdigest()[:16] if raw_body else "0" * 16
+
+    ticker = getattr(fetched, "ticker", None)
+    if not ticker and hasattr(fetched, "fii") and isinstance(fetched.fii, dict):
+        ticker = fetched.fii.get("ticker")
+    ticker = str(ticker or "UNKNOWN").upper()
+
+    final_url = str(getattr(fetched, "final_url", getattr(fetched, "target", "")))
+    status_code = getattr(fetched, "status_code", 200)
+    observed_at = getattr(fetched, "fetched_at", datetime.now(timezone.utc))
 
     observations = []
     for metric_name, value in metrics_payload.items():
-        obs = FiiMetricAdapter.to_observation(
-            fetched=fetched,
-            metric_name=metric_name,
-            value=value,
+        metric_upper = metric_name.upper()
+        semantic_dim = (
+            SemanticDimension.NAV
+            if metric_upper in ["VP_COTA", "VPA", "PATRIMONIO_LIQUIDO"]
+            else SemanticDimension.MARKET_VALUE
+        )
+        obs = MetricObservationIdentity(
+            ticker=ticker,
+            metric_type=metric_upper,
+            semantic_dimension=semantic_dim,
+            value=float(value),
+            confidence_score=0.95 if status_code == 200 else 0.0,
+            source_provider="b3",
+            source_url=final_url,
+            raw_payload_hash=payload_hash,
+            observed_at=observed_at,
         )
         observations.append(obs)
     return observations
