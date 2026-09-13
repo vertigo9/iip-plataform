@@ -53,8 +53,10 @@ def dispatch_harvest_to_engine(
 
     class_map = {
         "FII": ingest_fii_harvest,
+        "REIT": ingest_fii_harvest,      # REUSO: REITs usam lógica imobiliária
         "EQUITY": ingest_equity_harvest,
-        "STOCKS": ingest_equity_harvest,
+        "STOCKS": ingest_equity_harvest, # REUSO: Ações Internacionais
+        "BDR": ingest_equity_harvest,    # REUSO: Recibos Locais
         "ACAO": ingest_equity_harvest,
         "ACOES": ingest_equity_harvest,
         "ETF": ingest_etf_harvest,
