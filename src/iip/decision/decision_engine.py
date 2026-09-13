@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from .models import Decision, IntelligenceInput, Verdict
 from .scoring import composite_score, confidence_score
 from .thesis_exit_gate import ThesisExitState
@@ -62,3 +64,21 @@ def decide(item: IntelligenceInput) -> Decision:
         evidence=item.evidence,
         thesis_exit=thesis_exit,
     )
+
+
+def ingest_fii_harvest(
+    fetched: Any,
+    metrics_payload: dict[str, float],
+) -> list[Any]:
+    """Estende o motor reutilizando o adapter canônico de inteligência FII (IIP Intelligence)."""
+    from iip.intelligence.fii_metric_adapter import FiiMetricAdapter
+
+    observations = []
+    for metric_name, value in metrics_payload.items():
+        obs = FiiMetricAdapter.to_observation(
+            fetched=fetched,
+            metric_name=metric_name,
+            value=value,
+        )
+        observations.append(obs)
+    return observations
