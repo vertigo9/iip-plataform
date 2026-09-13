@@ -1,11 +1,13 @@
-"""Script de execução End-to-End do IIP Engine com exportação para Obsidian e HTML/PDF."""
+"""Script de execução End-to-End do IIP Engine com exportação para Obsidian, HTML e envio por e-mail."""
 
 import logging
+import os
 from pathlib import Path
 
 from iip.operational.portfolio_runner import run_portfolio_cycle
 from iip.obsidian.dashboard import generate_portfolio_dashboard
 from iip.reports.pdf_exporter import generate_html_report
+from iip.notifications.email_sender import send_html_report_email
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
@@ -42,7 +44,7 @@ print(f"[IIP ENGINE] Destino do Obsidian Vault: {VAULT_DIR.absolute()}\n")
 resultados = run_portfolio_cycle(assets_manifest=manifesto, vault_path=VAULT_DIR)
 dashboard = generate_portfolio_dashboard(vault_path=VAULT_DIR)
 
-# Coleta o resumo dos ativos para a exportacao de relatorio HTML/PDF
+# Coleta resumo dos ativos
 assets_summary = [
     {
         "ticker": item["ticker"],
@@ -54,7 +56,21 @@ assets_summary = [
     for item in manifesto
 ]
 
+# 1. Gera relatório HTML
 report_path = generate_html_report(assets_summary, REPORTS_DIR / "relatorio_consolidado.html")
+
+# 2. Configuração e Envio de E-mail (Lê de variáveis de ambiente se disponíveis)
+smtp_config = {
+    "host": os.getenv("IIP_SMTP_HOST", "localhost"),
+    "port": int(os.getenv("IIP_SMTP_PORT", 25)),
+    "username": os.getenv("IIP_SMTP_USER"),
+    "password": os.getenv("IIP_SMTP_PASS"),
+    "sender_email": os.getenv("IIP_SMTP_SENDER", "noreply@iipengine.com"),
+}
+
+recipient = os.getenv("IIP_NOTIFICATION_EMAIL")
+if recipient:
+    send_html_report_email(report_path, smtp_config, recipient)
 
 print("\n[IIP ENGINE] Execucao concluida com sucesso!")
 print(f"Ativos Processados: {resultados['processed']}")
