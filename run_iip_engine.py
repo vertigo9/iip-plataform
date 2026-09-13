@@ -34,13 +34,12 @@ manifesto = [
     }
 ]
 
-print(f"\n🚀 Iniciando IIP Engine...")
-print(f"📁 Destino do Obsidian Vault: {VAULT_DIR.absolute()}\n")
+print("\n[IIP ENGINE] Iniciando execucao do ciclo operacional...")
+print(f"[IIP ENGINE] Destino do Obsidian Vault: {VAULT_DIR.absolute()}\n")
 
 resultados = run_portfolio_cycle(assets_manifest=manifesto, vault_path=VAULT_DIR)
 dashboard = generate_portfolio_dashboard(vault_path=VAULT_DIR)
 
-print("\n✅ Execução Concluída!")
+print("\n[IIP ENGINE] Execucao concluida com sucesso!")
 print(f"Ativos Processados: {resultados['processed']}")
 print(f"Erros: {resultados['errors']}")
-print(f"Abra o seu Obsidian na pasta '{VAULT_DIR.name}'!")
