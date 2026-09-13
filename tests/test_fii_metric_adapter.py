@@ -6,6 +6,7 @@ import pytest
 from iip.atlas.models import AtlasDocument
 from iip.intelligence.fii_metric_adapter import (
     CVM_REGULATORY_CONFIDENCE,
+    NAV_CONSISTENCY_TOLERANCE_PCT,
     cvm_patrimonio_liquido_to_evidence,
 )
 from iip.intelligence.metric_evidence import (
@@ -300,6 +301,208 @@ def test_fase_b_metrics_persist_through_the_same_real_mechanism(tmp_path):
 
     assert "106.86346" in Path(caminho_vp).read_text(encoding="utf-8")
     assert "70940261.0" in Path(caminho_cotas).read_text(encoding="utf-8")
+
+
+def test_nav_consistency_check_confirms_real_shaped_data():
+    from iip.intelligence.fii_metric_adapter import (
+        check_nav_consistency,
+        cvm_cotas_emitidas_to_evidence,
+        cvm_patrimonio_liquido_to_evidence,
+        cvm_valor_patrimonial_cotas_to_evidence,
+    )
+
+    complemento = make_complemento_fase_b()
+    document = make_document()
+
+    pl = cvm_patrimonio_liquido_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-1"
+    )
+    cotas = cvm_cotas_emitidas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-2"
+    )
+    vp = cvm_valor_patrimonial_cotas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-3"
+    )
+
+    check = check_nav_consistency(pl, cotas, vp)
+
+    assert check.ticker == "BTLG11"
+    assert check.period == "2026-07-01"
+    assert check.declared_nav_per_share == 106.86346
+    assert round(check.calculated_nav_per_share, 4) == 106.8635
+    assert check.consistent is True
+    assert check.relative_difference_pct < 0.01
+
+
+def test_nav_consistency_check_flags_a_real_discrepancy():
+    from iip.intelligence.fii_metric_adapter import (
+        check_nav_consistency,
+        cvm_cotas_emitidas_to_evidence,
+        cvm_patrimonio_liquido_to_evidence,
+        cvm_valor_patrimonial_cotas_to_evidence,
+    )
+
+    # Valor_Patrimonial_Cotas propositalmente errado (fora da tolerancia)
+    complemento = make_complemento_fase_b(valor_patrimonial_cotas=999.0)
+    document = make_document()
+
+    pl = cvm_patrimonio_liquido_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-1"
+    )
+    cotas = cvm_cotas_emitidas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-2"
+    )
+    vp = cvm_valor_patrimonial_cotas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-3"
+    )
+
+    check = check_nav_consistency(pl, cotas, vp)
+
+    assert check.consistent is False
+    assert check.declared_nav_per_share == 999.0
+    assert check.relative_difference_pct > NAV_CONSISTENCY_TOLERANCE_PCT
+
+
+def test_nav_consistency_check_never_overwrites_the_declared_value():
+    """O ponto arquitetural central: o valor calculado nunca substitui
+    o declarado -- os dois ficam visiveis separadamente no resultado,
+    mesmo quando divergem."""
+    from iip.intelligence.fii_metric_adapter import (
+        check_nav_consistency,
+        cvm_cotas_emitidas_to_evidence,
+        cvm_patrimonio_liquido_to_evidence,
+        cvm_valor_patrimonial_cotas_to_evidence,
+    )
+
+    complemento = make_complemento_fase_b(valor_patrimonial_cotas=999.0)
+    document = make_document()
+
+    pl = cvm_patrimonio_liquido_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-1"
+    )
+    cotas = cvm_cotas_emitidas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-2"
+    )
+    vp = cvm_valor_patrimonial_cotas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-3"
+    )
+
+    check = check_nav_consistency(pl, cotas, vp)
+
+    assert check.declared_nav_per_share == 999.0  # o declarado continua intacto
+    assert check.calculated_nav_per_share != 999.0  # nao foi substituido
+
+
+def test_nav_consistency_check_rejects_mismatched_tickers():
+    from iip.intelligence.fii_metric_adapter import (
+        check_nav_consistency,
+        cvm_cotas_emitidas_to_evidence,
+        cvm_patrimonio_liquido_to_evidence,
+        cvm_valor_patrimonial_cotas_to_evidence,
+    )
+
+    complemento = make_complemento_fase_b()
+    document = make_document()
+
+    pl = cvm_patrimonio_liquido_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-1"
+    )
+    cotas = cvm_cotas_emitidas_to_evidence(
+        complemento, "HGRU11", document, evidence_id="EV-2"  # ticker diferente
+    )
+    vp = cvm_valor_patrimonial_cotas_to_evidence(
+        complemento, "BTLG11", document, evidence_id="EV-3"
+    )
+
+    with pytest.raises(ValueError, match="mesmo ticker"):
+        check_nav_consistency(pl, cotas, vp)
+
+
+def test_nav_consistency_check_rejects_mismatched_periods():
+    from iip.intelligence.fii_metric_adapter import (
+        check_nav_consistency,
+        cvm_cotas_emitidas_to_evidence,
+        cvm_patrimonio_liquido_to_evidence,
+        cvm_valor_patrimonial_cotas_to_evidence,
+    )
+
+    complemento_julho = make_complemento_fase_b(data_referencia="2026-07-01")
+    complemento_agosto = make_complemento_fase_b(data_referencia="2026-08-01")
+    document = make_document()
+
+    pl = cvm_patrimonio_liquido_to_evidence(
+        complemento_julho, "BTLG11", document, evidence_id="EV-1"
+    )
+    cotas = cvm_cotas_emitidas_to_evidence(
+        complemento_agosto, "BTLG11", document, evidence_id="EV-2"
+    )
+    vp = cvm_valor_patrimonial_cotas_to_evidence(
+        complemento_julho, "BTLG11", document, evidence_id="EV-3"
+    )
+
+    with pytest.raises(ValueError, match="mesmo período"):
+        check_nav_consistency(pl, cotas, vp)
+
+
+def test_real_cvm_zip_nav_consistency_is_within_tolerance():
+    """Fecha 15.15 com dado real: BTLG11 do ZIP real da CVM."""
+    from pathlib import Path
+
+    from iip.atlas.adapter import AtlasDocumentAdapter
+    from iip.intelligence.fii_metric_adapter import (
+        check_nav_consistency,
+        cvm_cotas_emitidas_to_evidence,
+        cvm_patrimonio_liquido_to_evidence,
+        cvm_valor_patrimonial_cotas_to_evidence,
+    )
+    from iip.sources.cvm_fii import build_target
+    from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
+
+    zip_path = Path("/mnt/user-data/uploads/inf_mensal_fii_2026.zip")
+    if not zip_path.exists():
+        pytest.skip("ZIP real da CVM não disponível neste ambiente")
+
+    zip_bytes = zip_path.read_bytes()
+
+    class FakeResponse:
+        status = 200
+        headers: ClassVar[dict[str, str]] = {
+            "Content-Type": "application/zip; charset=binary"
+        }
+
+        def read(self):
+            return zip_bytes
+
+        def geturl(self):
+            return "https://dados.cvm.gov.br/dataset/fii-doc-inf_mensal/inf_mensal_fii_2026.zip"
+
+    result = CvmFiiHTTPHarvester(opener=lambda req, timeout: FakeResponse()).fetch(
+        build_target(2026)
+    )
+    document = AtlasDocumentAdapter().from_fetched(result)
+
+    cnpj_btlg11 = "11.839.593/0001-09"
+    registros = sorted(
+        (c for c in result.complemento if c.cnpj_fundo_classe == cnpj_btlg11),
+        key=lambda c: c.data_referencia,
+        reverse=True,
+    )
+    mais_recente = registros[0]
+
+    pl = cvm_patrimonio_liquido_to_evidence(
+        mais_recente, "BTLG11", document, evidence_id="EV-PL"
+    )
+    cotas = cvm_cotas_emitidas_to_evidence(
+        mais_recente, "BTLG11", document, evidence_id="EV-COTAS"
+    )
+    vp = cvm_valor_patrimonial_cotas_to_evidence(
+        mais_recente, "BTLG11", document, evidence_id="EV-VP"
+    )
+
+    check = check_nav_consistency(pl, cotas, vp)
+
+    assert check.consistent is True
+    assert check.relative_difference_pct < 0.01
 
 
 def test_persist_if_eligible_writes_a_real_file(tmp_path):

@@ -37,6 +37,7 @@ fabricado.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import date
 
 from iip.atlas.models import AtlasDocument
@@ -56,6 +57,88 @@ from iip.intelligence.metric_persistence import build_knowledge_evidence
 from iip.knowledge.bridge import KnowledgeBridge
 from iip.knowledge.models import Evidence
 from iip.sources.cvm_fii import FiiComplemento
+
+# Decisão deliberada e documentada, não ajustada por fundo/período: as
+# 4 (na verdade 5, incluindo enterprise_consolidation.decision_consistency)
+# implementações de "reconciliation" já existentes no projeto são todas
+# baseadas em CONJUNTOS de strings (matched/missing/unexpected) --
+# nenhuma faz comparação numérica com tolerância. Confirmado por busca
+# direta antes de escrever isto (TRACE 15.15). Este limiar reflete
+# arredondamento normal de disclosure financeiro, não um ajuste por
+# caso -- 0.5% é generoso o bastante pra não mascarar discrepância
+# real, mas tolera o arredondamento típico de casas decimais da CVM.
+NAV_CONSISTENCY_TOLERANCE_PCT = 0.5
+
+
+@dataclass(frozen=True)
+class NavConsistencyCheck:
+    """Validação independente -- NUNCA substitui o
+    ``Valor_Patrimonial_Cotas`` declarado pela CVM. Só confirma (ou
+    aponta divergência) entre o valor declarado e o mesmo valor
+    recalculado a partir de ``Patrimonio_Liquido`` / ``Cotas_Emitidas``
+    do MESMO período/fundo. Uma divergência aqui é um sinal de
+    auditoria (dado possivelmente inconsistente, período desalinhado,
+    ou erro de transcrição) -- nunca motivo pra silenciosamente usar o
+    valor calculado no lugar do declarado."""
+
+    ticker: str
+    period: str
+    declared_nav_per_share: float
+    calculated_nav_per_share: float
+    absolute_difference: float
+    relative_difference_pct: float
+    consistent: bool
+
+
+def check_nav_consistency(
+    patrimonio_liquido: HistoricalMetricEvidence,
+    cotas_emitidas: HistoricalMetricEvidence,
+    valor_patrimonial_cotas: HistoricalMetricEvidence,
+) -> NavConsistencyCheck:
+    """Confere ``Patrimonio_Liquido / Cotas_Emitidas`` contra
+    ``Valor_Patrimonial_Cotas`` declarado -- as três evidências
+    precisam ser do MESMO ticker e do MESMO período; caso contrário a
+    comparação não teria sentido nenhum, e a função lança
+    ``ValueError`` em vez de comparar valores de contextos diferentes
+    silenciosamente.
+    """
+    tickers = {
+        patrimonio_liquido.canonical_ticker,
+        cotas_emitidas.canonical_ticker,
+        valor_patrimonial_cotas.canonical_ticker,
+    }
+    if len(tickers) > 1:
+        raise ValueError(
+            f"as três evidências precisam ser do mesmo ticker, recebido: {tickers}"
+        )
+
+    periods = {
+        patrimonio_liquido.observation.period,
+        cotas_emitidas.observation.period,
+        valor_patrimonial_cotas.observation.period,
+    }
+    if len(periods) > 1:
+        raise ValueError(
+            f"as três evidências precisam ser do mesmo período, recebido: {periods}"
+        )
+
+    calculado = patrimonio_liquido.observation.value / cotas_emitidas.observation.value
+    declarado = valor_patrimonial_cotas.observation.value
+
+    diferenca_absoluta = abs(calculado - declarado)
+    diferenca_relativa_pct = (
+        (diferenca_absoluta / declarado) * 100 if declarado != 0 else float("inf")
+    )
+
+    return NavConsistencyCheck(
+        ticker=patrimonio_liquido.canonical_ticker,
+        period=patrimonio_liquido.observation.period,
+        declared_nav_per_share=declarado,
+        calculated_nav_per_share=calculado,
+        absolute_difference=diferenca_absoluta,
+        relative_difference_pct=diferenca_relativa_pct,
+        consistent=diferenca_relativa_pct <= NAV_CONSISTENCY_TOLERANCE_PCT,
+    )
 
 # Decisão deliberada e documentada, não uma suposição por métrica: o
 # Informe Mensal FII é disclosure regulatório obrigatório de primeira
