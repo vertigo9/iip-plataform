@@ -73,8 +73,13 @@ def dispatch_harvest_to_engine(
     return handler(fetched_data, metrics_payload)
 
 
-def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]:
-    """Executa o ciclo completo da carteira com enriquecimento spot, cambial e RAG de teses."""
+from iip.obsidian.asset_updater import update_asset_note
+
+def run_portfolio_cycle(
+    assets_manifest: list[dict[str, Any]],
+    vault_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Executa o ciclo completo da carteira com enriquecimento spot, cambial, RAG e sync no Obsidian."""
     results = {"processed": 0, "errors": 0, "observations": []}
     quote_gateway = YFinanceGateway()
     rag_analyzer = ThesisRAGAnalyzer()
@@ -99,7 +104,7 @@ def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]
                 metrics["FX_RATE"] = 1.0
                 metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"])
 
-            # 2. Processamento RAG (se houver texto de relatório)
+            # 2. Processamento RAG
             if report_text:
                 rag_result = rag_analyzer.analyze_report(ticker, report_text)
                 metrics["RAG_CONFIDENCE"] = float(rag_result.confidence)
@@ -108,6 +113,20 @@ def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]
             obs = dispatch_harvest_to_engine(fetched_data, asset_class, metrics)
             results["observations"].extend(obs)
             results["processed"] += 1
+
+            # 4. Sync de Nota Individual no Obsidian Vault (se vault_path for fornecido)
+            if vault_path:
+                update_asset_note(
+                    vault_path=vault_path,
+                    ticker=ticker,
+                    asset_class=asset_class,
+                    metrics=metrics,
+                    verdict_data={
+                        "score": metrics.get("SCORE", "N/A"),
+                        "verdict": metrics.get("VERDICT", "AGUARDAR"),
+                        "confidence": metrics.get("RAG_CONFIDENCE", 0.0),
+                    },
+                )
         except Exception as exc:
             logger.error("Falha ao processar ativo %s: %s", ticker, exc)
             results["errors"] += 1
