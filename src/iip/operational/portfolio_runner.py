@@ -13,6 +13,7 @@ from iip.decision.decision_engine import (
     ingest_fii_harvest,
     ingest_fixed_income_harvest,
 )
+from iip.intelligence.thesis_rag import ThesisRAGAnalyzer
 
 from .atlas_gateway import AtlasGateway
 from .discovery_chain import DiscoveryReport
@@ -73,17 +74,20 @@ def dispatch_harvest_to_engine(
 
 
 def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]:
-    """Executa o ciclo completo da carteira para múltiplos ativos com enriquecimento spot/cambial."""
+    """Executa o ciclo completo da carteira com enriquecimento spot, cambial e RAG de teses."""
     results = {"processed": 0, "errors": 0, "observations": []}
     quote_gateway = YFinanceGateway()
+    rag_analyzer = ThesisRAGAnalyzer()
 
     for item in assets_manifest:
         ticker = item.get("ticker", "UNKNOWN")
         asset_class = item.get("asset_class", "EQUITY")
         fetched_data = item.get("fetched_data")
         metrics = item.get("metrics", {})
+        report_text = item.get("report_text", "")
 
         try:
+            # 1. Preço Spot & Normalização Cambial
             spot_data = quote_gateway.fetch_spot_price(ticker)
             metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
 
@@ -95,6 +99,12 @@ def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]
                 metrics["FX_RATE"] = 1.0
                 metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"])
 
+            # 2. Processamento RAG (se houver texto de relatório)
+            if report_text:
+                rag_result = rag_analyzer.analyze_report(ticker, report_text)
+                metrics["RAG_CONFIDENCE"] = float(rag_result.confidence)
+
+            # 3. Despacho ao Decision Engine
             obs = dispatch_harvest_to_engine(fetched_data, asset_class, metrics)
             results["observations"].extend(obs)
             results["processed"] += 1
