@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from .thesis_exit_gate import ThesisExitAssessment
+
 
 class Verdict(StrEnum):
     COMPRAR = "COMPRAR"
@@ -30,6 +32,7 @@ class IntelligenceInput:
     quality_score: float
     opportunity_score: float
     evidence: tuple[EvidenceRef, ...] = ()
+    thesis_exit: ThesisExitAssessment | None = None
 
 
 @dataclass(frozen=True)
@@ -40,3 +43,4 @@ class Decision:
     confidence: float
     reasons: tuple[str, ...]
     evidence: tuple[EvidenceRef, ...] = ()
+    thesis_exit: ThesisExitAssessment | None = None

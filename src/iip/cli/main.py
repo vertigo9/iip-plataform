@@ -493,10 +493,13 @@ def refresh_portfolio_command(
 ) -> None:
     """Atualiza de uma vez só todas as posições da carteira real
     (``iip.portfolio.registry.PORTFOLIO_ASSETS``) que já têm CNPJ
-    verificado — hoje FII, ETF e fixed_income (fundos regulados pela
-    CVM) têm fetch automático; ações e CDBs bancários ainda não (CDB
-    não tem fonte de dado pública/gratuita — não é uma limitação
-    nossa, é como o mercado de CDB funciona).
+    verificado ou são ação — hoje FII, ETF, fixed_income, FIAGRO e
+    ação têm fetch automático; CDB bancário não (não tem fonte de
+    dado pública/gratuita — não é uma limitação nossa, é como o
+    mercado de CDB funciona).
+
+    Só busca dado, não analisa nem persiste — para isso, ver
+    ``iip analyze-portfolio``.
 
     Pensado para ser chamado por um agendador (Agendador de Tarefas do
     Windows, cron) — não é um serviço contínuo, é um comando que roda
@@ -528,6 +531,76 @@ def refresh_portfolio_command(
     )
 
     table = Table(title=f"Atualização da carteira — {resultado.run_date}")
+    table.add_column("Ticker")
+    table.add_column("Status")
+    table.add_column("Detalhe")
+
+    for outcome in resultado.outcomes:
+        cor = {"ok": "green", "erro": "red", "pulado": "yellow"}[outcome.status]
+        table.add_row(
+            outcome.ticker, f"[{cor}]{outcome.status}[/]", outcome.detail[:80]
+        )
+
+    console.print(table)
+    console.print(
+        f"\n[bold]Resumo:[/] {len(resultado.succeeded)} ok, "
+        f"{len(resultado.failed)} erro, {len(resultado.skipped)} pulado"
+    )
+
+    if resultado.failed:
+        raise SystemExit(1)
+
+
+@cli.command("analyze-portfolio")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--ano", type=int, default=None, help="Ano de referência CVM (padrão: ano atual)."
+)
+@click.option(
+    "--mes",
+    type=int,
+    default=None,
+    help="Mês de referência CVM, 1-12 (padrão: mês atual).",
+)
+def analyze_portfolio_command(
+    vault: str | None, ano: int | None, mes: int | None
+) -> None:
+    """Busca dado real, roda o analisador certo, e persiste a análise
+    de TODA a carteira de uma vez — uma posição por vez, uma falha não
+    trava as outras.
+
+    Só analisa posições com ``sector``/``industry`` reais disponíveis
+    no registro (``PortfolioAsset.sector``/``.industry`` para ações,
+    ``.structure``/``.segment`` para fundos) — nunca fabrica um
+    placeholder pra "funcionar" com todas. O que não tiver isso
+    preenchido aparece como "pulado" com o motivo exato, nunca como
+    "ok" com dado inventado.
+
+    Não gera nem persiste nenhuma ``Decision`` — isso continua
+    exigindo evidência real e julgamento por ativo, ver
+    ``iip analyze --decide`` um de cada vez.
+    """
+    from iip.portfolio.batch_analyze import analyze_portfolio
+
+    bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
+    brapi_token = _unwrap_secret(get_settings().brapi_token)
+    vault_path = vault or str(get_settings().obsidian_vault)
+
+    console.print(f"[dim]Analisando carteira em {vault_path}...[/]\n")
+
+    resultado = analyze_portfolio(
+        bolsai_api_key=bolsai_key,
+        brapi_token=brapi_token,
+        vault_path=vault_path,
+        ano=ano,
+        mes=mes,
+    )
+
+    table = Table(title="Análise da carteira")
     table.add_column("Ticker")
     table.add_column("Status")
     table.add_column("Detalhe")
@@ -586,6 +659,40 @@ def refresh_portfolio_command(
     "(IIP_OBSIDIAN_VAULT), na seção 'IIP:analysis' de "
     "'{symbol} - Score e Ranking.md'.",
 )
+@click.option(
+    "--decide",
+    "gerar_decisao",
+    is_flag=True,
+    default=False,
+    help="Gera uma Decision de verdade (decision_engine.decide()) a partir "
+    "desta análise, via iip.decision.analysis_bridge — fecha o ciclo "
+    "analisar->decidir que antes não existia em código nenhum. Requer "
+    "pelo menos um --evidence-id.",
+)
+@click.option(
+    "--thesis-signal",
+    type=click.Choice(["Reforço", "Neutro", "Ponto de atenção", "Mudança de tese"]),
+    default="Neutro",
+    help="Sinal de tese pra decisão (só usado com --decide).",
+)
+@click.option(
+    "--evidence-id",
+    "evidence_ids",
+    multiple=True,
+    help="ID de evidência real já existente no vault (repita a opção pra mais "
+    "de uma). Obrigatório com --decide — nunca inventado automaticamente. "
+    "Se --persist também for usado e a evidência não existir de verdade no "
+    "vault, a persistência da decisão falha honestamente (contrato de "
+    "auditoria), em vez de fabricar evidência pra passar.",
+)
+@click.option(
+    "--valuation-score",
+    type=float,
+    default=None,
+    help="Nota de valuation de 0 a 10, se você tiver uma de verdade (preço-alvo, "
+    "margem de segurança calculada à mão). Sem isso, fica neutro (5.0) com "
+    "aviso — nenhum dos 5 analisadores calcula valuation de verdade hoje.",
+)
 def analyze(
     symbol: str,
     asset_type: str,
@@ -593,6 +700,10 @@ def analyze(
     output_format: str,
     output: str | None,
     persist: bool,
+    gerar_decisao: bool,
+    thesis_signal: str,
+    evidence_ids: tuple[str, ...],
+    valuation_score: float | None,
 ) -> None:
     """Run an IIP framework analysis on SYMBOL using data from --data-file."""
     try:
@@ -632,6 +743,67 @@ def analyze(
             )
         except Exception as exc:  # noqa: BLE001 — falha ao gravar no vault não deve impedir a análise em si de ser exibida
             console.print(f"[yellow]Aviso: não consegui salvar no vault: {exc}[/]")
+
+    if gerar_decisao:
+        if not evidence_ids:
+            console.print(
+                "[bold red]--decide precisa de pelo menos um --evidence-id[/] "
+                "(nunca inventado automaticamente — veja --help)."
+            )
+            raise SystemExit(1)
+
+        import datetime as _dt
+
+        from iip.decision.analysis_bridge import analysis_to_intelligence_input
+        from iip.decision.decision_engine import decide as _decide
+        from iip.decision.models import EvidenceRef
+
+        intelligence_input, bridge_warnings = analysis_to_intelligence_input(
+            report,
+            thesis_signal=thesis_signal,
+            evidence=tuple(EvidenceRef(eid) for eid in evidence_ids),
+            valuation_score=valuation_score,
+        )
+        for w in bridge_warnings:
+            console.print(f"[yellow]Aviso: {w}[/]")
+
+        decision = _decide(intelligence_input)
+        verdict_color = {
+            "COMPRAR": "bold green",
+            "MANTER": "green",
+            "AGUARDAR": "yellow",
+            "REDUZIR": "red",
+            "VENDER": "bold red",
+        }.get(decision.verdict.value, "white")
+        console.print(
+            f"\n[bold]Decision:[/] [{verdict_color}]{decision.verdict.value}[/] "
+            f"(score={decision.score:.2f}/10, confidence={decision.confidence:.2f})"
+        )
+        for reason in decision.reasons:
+            console.print(f"[dim]  {reason}[/]")
+
+        if persist:
+            from iip.decision.knowledge_bridge import to_knowledge_decision
+            from iip.knowledge.bridge import KnowledgeBridge as _KnowledgeBridge
+
+            knowledge_decision = to_knowledge_decision(
+                decision,
+                decision_id=f"DEC-{symbol.upper()}-{_dt.date.today().isoformat()}",  # noqa: DTZ011 — data de calendário (data da decisão), não timestamp
+                date=_dt.date.today(),  # noqa: DTZ011 — mesma razão
+            )
+            try:
+                _KnowledgeBridge(str(get_settings().obsidian_vault)).persist_decision(
+                    knowledge_decision
+                )
+                console.print(
+                    f"[dim]Decision persistida: {knowledge_decision.decision_id}[/]"
+                )
+            except ValueError as exc:
+                console.print(
+                    f"[yellow]Aviso: não consegui persistir a decisão: {exc}[/]\n"
+                    "[dim]A evidência citada precisa já existir no vault antes da "
+                    "decisão — não é fabricada automaticamente aqui.[/]"
+                )
 
     if output_format == "table":
         table = Table(title=f"{report.asset_symbol} — {asset_type.upper()} Analysis")
@@ -680,6 +852,95 @@ def analyze(
         console.print(f"[green]Report saved to {output}[/]")
     else:
         console.print(content)
+
+
+@cli.command("persist-evidence")
+@click.argument("evidence_id")
+@click.option("--ticker", required=True, help="Ticker do ativo que essa evidência sustenta.")
+@click.option(
+    "--source-type",
+    required=True,
+    help="De onde vem essa evidência (ex: cvm_fii, mziq, relatorio_gerencial, manual).",
+)
+@click.option(
+    "--date",
+    "data_referencia",
+    default=None,
+    help="Data da evidência, formato YYYY-MM-DD (padrão: hoje).",
+)
+@click.option("--source-url", default=None, help="URL da fonte, se houver.")
+@click.option("--title", default=None, help="Título/descrição curta do documento.")
+@click.option(
+    "--fact",
+    "relevant_facts",
+    multiple=True,
+    help="Um fato relevante que essa evidência sustenta (repita a opção pra mais de um).",
+)
+def persist_evidence(
+    evidence_id: str,
+    ticker: str,
+    source_type: str,
+    data_referencia: str | None,
+    source_url: str | None,
+    title: str | None,
+    relevant_facts: tuple[str, ...],
+) -> None:
+    """Persiste uma evidência real no vault Obsidian (IIP_OBSIDIAN_VAULT).
+
+    É append-only — persistir o mesmo EVIDENCE_ID de novo falha
+    (evidência já registrada não pode ser reescrita, só uma nova pode
+    ser criada com outro id). Essa evidência precisa existir aqui
+    ANTES de `iip analyze --decide --persist` conseguir persistir uma
+    decisão que a cite — é o mesmo contrato de auditoria que
+    `DecisionAuditor` já impunha, agora com um jeito de satisfazê-lo
+    sem cair pro Python direto.
+
+    Não fabrica fato nenhum sozinho — ``--fact`` é o que você
+    realmente observou (do relatório, do documento, da fonte citada
+    em ``--source-type``), não um resumo gerado automaticamente.
+    """
+    import datetime as _dt
+
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.knowledge.models import Evidence
+
+    if data_referencia:
+        try:
+            data_evidencia = _dt.date.fromisoformat(data_referencia)
+        except ValueError as exc:
+            console.print(
+                f"[bold red]--date precisa ser YYYY-MM-DD, recebi: {data_referencia}[/]"
+            )
+            raise SystemExit(1) from exc
+    else:
+        data_evidencia = _dt.date.today()  # noqa: DTZ011 — data de calendário (data da evidência), não timestamp
+
+    evidence = Evidence(
+        evidence_id=evidence_id,
+        ticker=ticker.upper(),
+        date=data_evidencia,
+        source_type=source_type,
+        source_url=source_url,
+        title=title,
+        relevant_facts=tuple(relevant_facts),
+    )
+
+    vault_path = str(get_settings().obsidian_vault)
+    try:
+        path = KnowledgeBridge(vault_path).persist_evidence(evidence)
+    except FileExistsError as exc:
+        console.print(f"[bold red]Evidência já existe:[/] {exc}")
+        console.print(
+            "[dim]Append-only — use um evidence_id diferente pra registrar uma "
+            "nova evidência, não reescreva a existente.[/]"
+        )
+        raise SystemExit(1) from exc
+
+    console.print(f"[green]Evidência persistida:[/] {path}")
+    console.print(
+        f"[dim]Agora `iip analyze {ticker.upper()} ... --decide --evidence-id "
+        f'"{evidence_id}" --persist` consegue citar essa evidência de verdade.[/]'
+    )
 
 
 if __name__ == "__main__":

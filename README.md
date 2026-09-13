@@ -80,6 +80,34 @@ Para ETF, o fluxo é o mesmo, trocando `--type fii` por `--type etf` no passo 3
 e usando `--type etf` no passo 1 (que aí busca via CVM Informe Diário, não
 CVM FII).
 
+### Do relatório à decisão de verdade
+
+`iip analyze` sozinho só produz um `AnalysisReport` — nunca gerava uma
+`Decision` de verdade (achado real de uma auditoria: `analysis` e
+`decision` nunca foram conectados em código nenhum, apesar de terem
+formatos compatíveis). Isso agora existe:
+
+```powershell
+# 4. Registra uma evidência real (obrigatório citar pra poder decidir)
+python -m iip.cli.main persist-evidence "EV-BTLG11-2026-08" --ticker BTLG11 --source-type cvm_fii --fact "Dividend yield 0.94% no mês, ocupação 85%"
+
+# 5. Gera e persiste uma decisão de verdade, citando essa evidência
+python -m iip.cli.main analyze BTLG11 --type fii --data-file btlg11.json --decide --evidence-id "EV-BTLG11-2026-08" --thesis-signal "Reforço" --persist
+```
+
+`--decide` nunca fabrica evidência — se o `--evidence-id` citado não
+existir de verdade no vault, a persistência da decisão falha
+honestamente (mesmo contrato de auditoria que já existia via
+`DecisionAuditor`), em vez de inventar uma pra "passar". `persist-evidence`
+é append-only — o mesmo `EVIDENCE_ID` não pode ser reescrito, só criado
+uma vez.
+
+`--valuation-score` (0-10) é opcional — nenhum dos 5 analisadores calcula
+valor intrínseco, preço-alvo ou margem de segurança de verdade (também
+achado de auditoria: sem DCF/Graham/Bazin no projeto), então sem essa nota
+explícita a decisão usa um valor neutro (5.0) com aviso, nunca emprestado
+de outro pilar disfarçado de valuation.
+
 ### Atualizar a carteira inteira de uma vez
 
 ```powershell
@@ -87,15 +115,28 @@ python -m iip.cli.main refresh-portfolio
 ```
 
 Busca automaticamente todas as posições de
-`iip.portfolio.registry.PORTFOLIO_ASSETS` que já têm CNPJ verificado, uma
-por uma (uma posição com erro não trava as outras), e salva um snapshot
-JSON por ticker em `portfolio_snapshots/{data}/`.
+`iip.portfolio.registry.PORTFOLIO_ASSETS` que já têm CNPJ verificado (hoje:
+todos os 22 fundos/ETF da carteira real) mais todas as ações (buscadas por
+ticker, não precisam de CNPJ) — uma por uma, uma posição com erro não trava
+as outras — e salva um snapshot JSON por ticker em
+`portfolio_snapshots/{data}/`.
 
-Hoje só **BTLG11** e **LFTB11** têm CNPJ preenchido nesse registro — os
-demais precisam do CNPJ adicionado manualmente em
-`src/iip/portfolio/registry.py` antes de entrarem na atualização automática
-(nunca adivinhe um CNPJ — um valor errado busca dado de outro fundo
-silenciosamente).
+### Analisar e persistir a carteira inteira de uma vez
+
+```powershell
+python -m iip.cli.main analyze-portfolio
+```
+
+Busca dado real, roda o analisador certo, e grava no vault — uma posição
+por vez, sem `Decision` nenhuma (isso continua exigindo evidência real e
+julgamento por ativo, um de cada vez, via `iip analyze --decide`).
+
+Só analisa posições com `sector`/`industry` **reais** disponíveis no
+registro — nunca fabrica um placeholder pra "funcionar" com todas.
+Preencha `PortfolioAsset.sector`/`.industry` (ações) ou
+`.structure`/`.segment` (fundos, geralmente já preenchido) antes de rodar;
+o que não tiver isso aparece como "pulado" com o motivo exato, nunca como
+"ok" com dado inventado.
 
 ### Automatizar isso todo dia (Windows)
 

@@ -40,25 +40,33 @@ class PortfolioAsset:
     # posição abaixo). Nunca adivinhado: um CNPJ errado buscaria dados
     # de outro fundo silenciosamente.
     cnpj: str | None = None
+    # Nomes iguais aos que `iip analyze --data-file` espera literalmente
+    # (``sector``/``industry``), pra mapear direto sem ambiguidade num
+    # comando de análise em lote. Deliberadamente separado de
+    # ``segment``/``structure`` (que são termos de fundo, não de ação) —
+    # só preenchido quando o usuário confirma o valor real, nunca
+    # adivinhado a partir do ticker ou de conhecimento geral.
+    sector: str | None = None
+    industry: str | None = None
 
 
 # This table deliberately avoids inventing classifications not supported by
 # the DATABASE or explicitly supplied by the user.
 PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
-    PortfolioAsset("BBSE3", "equity"),
-    PortfolioAsset("ISAE4", "equity"),
-    PortfolioAsset("CXSE3", "equity"),
-    PortfolioAsset("CPFE3", "equity"),
-    PortfolioAsset("ABCB4", "equity"),
-    PortfolioAsset("CMIG4", "equity"),
-    PortfolioAsset("SAUD3", "equity"),
-    PortfolioAsset("ALOS3", "equity"),
-    PortfolioAsset("CSUD3", "equity"),
-    PortfolioAsset("VBBR3", "equity"),
-    PortfolioAsset("KLBN4", "equity"),
-    PortfolioAsset("FESA4", "equity"),
-    PortfolioAsset("LEVE3", "equity"),
-    PortfolioAsset("PASS3", "equity"),
+    PortfolioAsset("BBSE3", "equity", sector="Financeiro", industry="Previdência e Seguros"),
+    PortfolioAsset("ISAE4", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
+    PortfolioAsset("CXSE3", "equity", sector="Financeiro", industry="Previdência e Seguros"),
+    PortfolioAsset("CPFE3", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
+    PortfolioAsset("ABCB4", "equity", sector="Financeiro", industry="Intermediários Financeiros (Bancos)"),
+    PortfolioAsset("CMIG4", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
+    PortfolioAsset("SAUD3", "equity", sector="Saúde", industry="Serviços Médico-Hospitalares, Analíticos e Diagnósticos"),
+    PortfolioAsset("ALOS3", "equity", sector="Financeiro", industry="Exploração de Imóveis"),
+    PortfolioAsset("CSUD3", "equity", sector="Utilidade Pública / Tecnologia", industry="Processamento de Dados e Serviços"),
+    PortfolioAsset("VBBR3", "equity", sector="Petróleo, Gás e Biocombustíveis", industry="Comércio Varejista e Atacadista"),
+    PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel"),
+    PortfolioAsset("FESA4", "equity", sector="Materiais Básicos", industry="Siderurgia e Metalurgia"),
+    PortfolioAsset("LEVE3", "equity", sector="Bens Industriais", industry="Material de Transporte"),
+    PortfolioAsset("PASS3", "equity", sector="Utilidade Pública", industry="Gás"),
     PortfolioAsset(
         "BTLG11",
         "fund",
@@ -74,7 +82,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "TRXF11",
         "fund",
         subtype="FII",
-        structure="Híbrido",
+        structure="Tijolo",
+        segment="Híbrido (Renda Urbana/Logística)",
         manager="TRX",
         source_url="https://trxf11.com.br/relatorios-gerenciais-2",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -109,6 +118,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "JURO11",
         "fund",
         subtype="FI-Infra",
+        structure="Papel (Crédito Privado)",
+        segment="Infraestrutura (Debêntures Incentivadas)",
         manager="Sparta",
         source_url="https://sparta.com.br/juro11",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -144,6 +155,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "fund",
         subtype="FII",
         structure="Papel",
+        segment="Títulos e Valores Mobiliários (CRI - IPCA)",
         manager="Valora Invest (fonte agregadora)",
         source_url="https://valorainvest.com.br/fundo/vgip11",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -153,9 +165,15 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "PCIP11",
         "fund",
         subtype="FII",
-        structure="Híbrido",
+        # Classificação mudou de "Híbrido"/High Grade para "Papel"/Middle
+        # Risk (confirmado pelo usuário em 12/09/2026) -- não foi erro de
+        # digitação nem de fonte: o fundo incorporou outros fundos, o que
+        # mudou seu perfil de risco de verdade. A URL antiga
+        # (.../tijolo/pcip11) também estava errada e foi corrigida junto.
+        structure="Papel",
+        segment="Títulos e Valores Mobiliários (CRI - Middle Risk)",
         manager="Pátria",
-        source_url="https://realestate.patria.com/tijolo/pcip11",
+        source_url="https://realestate.patria.com/papel/pcip11/",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.729.197/0001-13",  # verificado via busca (2 fontes concordam)
     ),
@@ -187,6 +205,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "CPTI11",
         "fund",
         subtype="FI-Infra",
+        structure="Papel (Crédito Privado)",
+        segment="Infraestrutura (Debêntures Incentivadas)",
         manager="Capitânia",
         source_url="https://capitaniainfra.com.br/cpti11",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -243,7 +263,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "RBVA11",
         "fund",
         subtype="FII",
-        structure="Híbrido",
+        structure="Tijolo",
+        segment="Varejo / Renda Urbana",
         manager="Rio Bravo",
         source_url="https://riobravo.com.br/rbva11",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -264,7 +285,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "ALZR11",
         "fund",
         subtype="FII",
-        structure="Híbrido",
+        structure="Tijolo",
+        segment="Híbrido / Multicategoria (Renda Urbana/Logística)",
         manager="Alianza",
         source_url="https://alzr11.alianza.com.br",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -274,7 +296,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "KNRI11",
         "fund",
         subtype="FII",
-        structure="Híbrido",
+        structure="Tijolo",
+        segment="Misto / Híbrido (Escritórios e Logística)",
         manager="Kinea",
         source_url="https://kinea.com.br/fundos/.../knri11",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -295,6 +318,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "LFTB11",
         "etf",
         subtype="ETF Renda Fixa",
+        structure="Renda Fixa (Títulos Públicos)",
+        segment="Pós-fixado (Selic com Duration Alvo / IPCA)",
         manager="Investo",
         source_url="https://www.investoetf.com/etf/lftb11/",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -304,6 +329,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "AXIA3",
         "fixed_income",
         subtype="Daycoval FMP FGTS / subjacente AXIA3",
+        sector="Utilities",
+        industry="Electric Utilities / Renewable",
         manager="Daycoval",
         classification_provenance=ClassificationProvenance.DATABASE,
         # CNPJ do FUNDO Daycoval FMP-FGTS Eletrobras (verificado via

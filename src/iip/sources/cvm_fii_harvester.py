@@ -29,6 +29,9 @@ class FetchedFiiReport:
     geral: tuple[FiiGeral, ...]
     ativo_passivo: tuple[FiiAtivoPassivo, ...]
     complemento: tuple[FiiComplemento, ...]
+    content_type: str = ""
+    body: bytes = b""
+    final_url: str = ""
 
 
 class CvmFiiHTTPHarvester:
@@ -55,7 +58,19 @@ class CvmFiiHTTPHarvester:
         response = self._opener(request, timeout=self.timeout)
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
+
+        headers = getattr(response, "headers", {})
+        content_type = str(
+            headers.get("Content-Type", "")
+        ).split(";", 1)[0].strip().lower()
+
         body = response.read()
+
+        final_url = str(
+            response.geturl()
+            if hasattr(response, "geturl")
+            else target.url
+        )
 
         return FetchedFiiReport(
             target=target,
@@ -63,4 +78,7 @@ class CvmFiiHTTPHarvester:
             geral=parse_geral(body),
             ativo_passivo=parse_ativo_passivo(body),
             complemento=parse_complemento(body),
+            content_type=content_type,
+            body=body,
+            final_url=final_url,
         )

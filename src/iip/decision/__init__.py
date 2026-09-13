@@ -6,5 +6,6 @@ from .portfolio_decision import *
 from .risk_bridge import *
 from .scoring import *
 from .thesis_bridge import *
+from .thesis_exit_gate import *
 from .validation import *
 from .valuation_bridge import *

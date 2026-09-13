@@ -44,6 +44,9 @@ FIIS_URL = f"{BASE_URL}/fiis"
 class BolsaiTarget:
     ticker: str
     url: str
+    provider: str = "b3"
+    role: str = "market_validation"
+    year: int | None = None
 
 
 @dataclass(frozen=True)

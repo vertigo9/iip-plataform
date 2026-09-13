@@ -52,6 +52,19 @@ _FIRST_AVAILABLE_YEAR = 2016
 class CvmFiiTarget:
     ano: int
     url: str
+    provider: str = "cvm"
+    role: str = "regulatory"
+    year: int | None = None
+    # CVM's monthly informe is ONE file covering hundreds of funds at
+    # once -- there is no single real ticker this document is "about",
+    # unlike bolsai (one request per FII) or XP Asset (one document per
+    # asset). "MULTI" is a deliberate, self-documenting sentinel (not
+    # "" or None) so AtlasDocumentAdapter.from_fetched() -- which
+    # assumes one-document-one-ticker everywhere else -- has something
+    # explicit to read, without pretending this bulk file belongs to
+    # any specific fund. Confirmed live in TRACE 15.13/15.13.1: the
+    # adapter unconditionally reads target.ticker.
+    ticker: str = "MULTI"
 
 
 @dataclass(frozen=True)
@@ -95,7 +108,7 @@ def build_target(ano: int) -> CvmFiiTarget:
             f"CVM's structured FII monthly report starts in {_FIRST_AVAILABLE_YEAR}"
         )
     url = f"{BASE_URL}/inf_mensal_fii_{ano}.zip"
-    return CvmFiiTarget(ano=ano, url=url)
+    return CvmFiiTarget(ano=ano, url=url, year=ano)
 
 
 def _parse_number(raw: str) -> float | None:

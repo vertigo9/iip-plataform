@@ -1,4 +1,5 @@
 import json
+from typing import ClassVar
 
 import pytest
 
@@ -91,6 +92,69 @@ def test_fetch_defaults_status_when_none():
     assert result.status_code == 200
     assert result.fundamentals.close_price is None
 
+
+def test_fetch_fii_preserves_transport_metadata():
+    captured = {}
+
+    def opener(request, timeout):
+        captured["request"] = request
+
+        class Response:
+            status = 200
+            headers: ClassVar[dict[str, str]] = {
+                "Content-Type": "application/json; charset=utf-8"
+            }
+
+            def read(self):
+                return json.dumps(
+                    {
+                        "ticker": "HGLG11",
+                        "reference_date": "2026-09-12",
+                        "close_price": 160.0,
+                        "book_value_per_share": 150.0,
+                        "pvp": 1.0667,
+                        "dividend_yield_ttm": 8.5,
+                        "net_asset_value": 150.0,
+                        "shares_outstanding": 1000000,
+                    }
+                ).encode()
+
+            def geturl(self):
+                return "https://api.usebolsai.com/v2/fii/HGLG11"
+
+        return Response()
+
+    harvester = BolsaiHTTPHarvester(api_key="key", opener=opener)
+    result = harvester.fetch_fii(build_fii_target("hglg11"))
+
+    assert result.status_code == 200
+    assert result.content_type == "application/json"
+    assert result.body
+    assert result.body.startswith(b"{")
+    assert result.final_url == "https://api.usebolsai.com/v2/fii/HGLG11"
+    assert result.target.provider == "b3"
+    assert result.target.role == "market_validation"
+    assert result.target.year is None
+
+
+def test_fetch_fii_falls_back_to_target_url_without_geturl():
+    def opener(request, timeout):
+        class Response:
+            status = 200
+            headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json"}
+
+            def read(self):
+                return b'{"ticker":"HGLG11"}'
+
+        return Response()
+
+    target = build_fii_target("HGLG11")
+    harvester = BolsaiHTTPHarvester(api_key="key", opener=opener)
+    result = harvester.fetch_fii(target)
+
+    assert result.final_url == target.url
+    assert result.content_type == "application/json"
+    assert result.body == b'{"ticker":"HGLG11"}'
 
 def test_fetch_fii_uses_the_fii_target_and_parser():
     def opener(request, timeout):

@@ -32,6 +32,9 @@ class FetchedFii:
     target: BolsaiTarget
     status_code: int
     fii: BolsaiFiiData
+    content_type: str = ""
+    body: bytes = b""
+    final_url: str = ""
 
 
 class BolsaiHTTPHarvester:
@@ -50,7 +53,7 @@ class BolsaiHTTPHarvester:
         self.timeout = timeout
         self.user_agent = user_agent
 
-    def _request(self, target: BolsaiTarget) -> tuple[int, bytes]:
+    def _request(self, target: BolsaiTarget) -> tuple[int, str, bytes, str]:
         request = Request(
             target.url,
             headers={
@@ -63,11 +66,21 @@ class BolsaiHTTPHarvester:
         response = self._opener(request, timeout=self.timeout)
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
-        return status_code, response.read()
+
+        headers = getattr(response, "headers", {})
+        content_type = str(
+            headers.get("Content-Type", "")
+        ).split(";", 1)[0].strip().lower()
+
+        body = response.read()
+        final_url = str(
+            response.geturl() if hasattr(response, "geturl") else target.url
+        )
+        return status_code, content_type, body, final_url
 
     def fetch(self, target: BolsaiTarget) -> FetchedFundamentals:
         """Fetch a **stock** target (built with ``build_target``)."""
-        status_code, body = self._request(target)
+        status_code, _content_type, body, _final_url = self._request(target)
         return FetchedFundamentals(
             target=target,
             status_code=status_code,
@@ -76,11 +89,14 @@ class BolsaiHTTPHarvester:
 
     def fetch_fii(self, target: BolsaiTarget) -> FetchedFii:
         """Fetch a **FII** target (built with ``build_fii_target``)."""
-        status_code, body = self._request(target)
+        status_code, content_type, body, final_url = self._request(target)
         return FetchedFii(
             target=target,
             status_code=status_code,
             fii=parse_fii_response(body),
+            content_type=content_type,
+            body=body,
+            final_url=final_url,
         )
 
     def fetch_many(
