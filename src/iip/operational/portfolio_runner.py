@@ -88,43 +88,51 @@ def run_portfolio_cycle(
         ticker = item.get("ticker", "UNKNOWN")
         asset_class = item.get("asset_class", "EQUITY")
         fetched_data = item.get("fetched_data")
-        metrics = item.get("metrics", {})
+        raw_metrics = item.get("metrics", {})
         report_text = item.get("report_text", "")
 
         try:
             # 1. Preço Spot & Normalização Cambial
             spot_data = quote_gateway.fetch_spot_price(ticker)
-            metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
+            raw_metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
 
             if spot_data["currency"] != "BRL":
                 fx_rate = quote_gateway.fetch_exchange_rate(spot_data["currency"], "BRL")
-                metrics["FX_RATE"] = float(fx_rate)
-                metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"] * fx_rate)
+                raw_metrics["FX_RATE"] = float(fx_rate)
+                raw_metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"] * fx_rate)
             else:
-                metrics["FX_RATE"] = 1.0
-                metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"])
+                raw_metrics["FX_RATE"] = 1.0
+                raw_metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"])
 
             # 2. Processamento RAG
             if report_text:
                 rag_result = rag_analyzer.analyze_report(ticker, report_text)
-                metrics["RAG_CONFIDENCE"] = float(rag_result.confidence)
+                raw_metrics["RAG_CONFIDENCE"] = float(rag_result.confidence)
 
-            # 3. Despacho ao Decision Engine
-            obs = dispatch_harvest_to_engine(fetched_data, asset_class, metrics)
+            # 3. Filtragem Estrita de Métricas Numéricas para o DecisionEngine
+            engine_metrics = {}
+            for k, v in raw_metrics.items():
+                try:
+                    engine_metrics[k] = float(v)
+                except (ValueError, TypeError):
+                    pass
+
+            # 4. Despacho ao Decision Engine
+            obs = dispatch_harvest_to_engine(fetched_data, asset_class, engine_metrics)
             results["observations"].extend(obs)
             results["processed"] += 1
 
-            # 4. Sync de Nota Individual no Obsidian Vault (se vault_path for fornecido)
+            # 5. Sync de Nota Individual no Obsidian Vault
             if vault_path:
                 update_asset_note(
                     vault_path=vault_path,
                     ticker=ticker,
                     asset_class=asset_class,
-                    metrics=metrics,
+                    metrics=raw_metrics,
                     verdict_data={
-                        "score": metrics.get("SCORE", "N/A"),
-                        "verdict": metrics.get("VERDICT", "AGUARDAR"),
-                        "confidence": metrics.get("RAG_CONFIDENCE", 0.0),
+                        "score": raw_metrics.get("SCORE", "N/A"),
+                        "verdict": raw_metrics.get("VERDICT", "AGUARDAR"),
+                        "confidence": raw_metrics.get("RAG_CONFIDENCE", 0.0),
                     },
                 )
         except Exception as exc:
