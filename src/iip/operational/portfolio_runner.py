@@ -6,6 +6,7 @@ import logging
 from dataclasses import dataclass
 from typing import Any
 
+from iip.data.quotes import YFinanceGateway
 from iip.decision.decision_engine import (
     ingest_equity_harvest,
     ingest_etf_harvest,
@@ -53,10 +54,10 @@ def dispatch_harvest_to_engine(
 
     class_map = {
         "FII": ingest_fii_harvest,
-        "REIT": ingest_fii_harvest,      # REUSO: REITs usam lógica imobiliária
+        "REIT": ingest_fii_harvest,
         "EQUITY": ingest_equity_harvest,
-        "STOCKS": ingest_equity_harvest, # REUSO: Ações Internacionais
-        "BDR": ingest_equity_harvest,    # REUSO: Recibos Locais
+        "STOCKS": ingest_equity_harvest,
+        "BDR": ingest_equity_harvest,
         "ACAO": ingest_equity_harvest,
         "ACOES": ingest_equity_harvest,
         "ETF": ingest_etf_harvest,
@@ -72,8 +73,9 @@ def dispatch_harvest_to_engine(
 
 
 def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]:
-    """Executa o ciclo completo da carteira para múltiplos ativos."""
+    """Executa o ciclo completo da carteira para múltiplos ativos com enriquecimento spot/cambial."""
     results = {"processed": 0, "errors": 0, "observations": []}
+    quote_gateway = YFinanceGateway()
 
     for item in assets_manifest:
         ticker = item.get("ticker", "UNKNOWN")
@@ -82,6 +84,17 @@ def run_portfolio_cycle(assets_manifest: list[dict[str, Any]]) -> dict[str, Any]
         metrics = item.get("metrics", {})
 
         try:
+            spot_data = quote_gateway.fetch_spot_price(ticker)
+            metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
+
+            if spot_data["currency"] != "BRL":
+                fx_rate = quote_gateway.fetch_exchange_rate(spot_data["currency"], "BRL")
+                metrics["FX_RATE"] = float(fx_rate)
+                metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"] * fx_rate)
+            else:
+                metrics["FX_RATE"] = 1.0
+                metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"])
+
             obs = dispatch_harvest_to_engine(fetched_data, asset_class, metrics)
             results["observations"].extend(obs)
             results["processed"] += 1
