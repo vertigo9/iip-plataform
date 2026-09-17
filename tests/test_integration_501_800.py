@@ -87,3 +87,91 @@ def test_integrated_pipeline():
     result = run(signals)
     assert result.top.ticker == "HGRU11"
     assert result.contribution_candidates[0].ticker == "HGRU11"
+
+def test_asset_signal_preserves_thesis_exit_projection():
+    signal = AssetSignal(
+        "PCIP11",
+        "fund",
+        7.5,
+        0.9,
+        Action.MANTER,
+        4,
+        "REVIEW",
+        ("fundamentals",),
+        ("valuation", "dividends"),
+        ("opportunity_cost",),
+        False,
+    )
+
+    assert signal.thesis_exit_state == "REVIEW"
+    assert signal.thesis_exit_failed_gates == ("fundamentals",)
+    assert signal.thesis_exit_attention_gates == ("valuation", "dividends")
+    assert signal.thesis_exit_unknown_gates == ("opportunity_cost",)
+    assert signal.thesis_exit_critical_failure is False
+
+
+def test_rank_preserves_thesis_exit_projection():
+    signal = AssetSignal(
+        "PCIP11",
+        "fund",
+        7.5,
+        0.9,
+        Action.MANTER,
+        4,
+        "BREAK",
+        ("fundamentals", "governance"),
+        (),
+        (),
+        True,
+    )
+
+    decision = rank((signal,))[0]
+
+    assert decision.ticker == "PCIP11"
+    assert decision.thesis_exit_state == "BREAK"
+    assert decision.thesis_exit_failed_gates == ("fundamentals", "governance")
+    assert decision.thesis_exit_critical_failure is True
+
+
+def test_integrated_pipeline_preserves_thesis_exit_projection():
+    signal = AssetSignal(
+        "PCIP11",
+        "fund",
+        7.5,
+        0.9,
+        Action.MANTER,
+        4,
+        "INSUFFICIENT_EVIDENCE",
+        (),
+        (),
+        ("valuation", "opportunity_cost"),
+        False,
+    )
+
+    result = run((signal,))
+
+    decision = result.top
+
+    assert decision is not None
+    assert decision.thesis_exit_state == "INSUFFICIENT_EVIDENCE"
+    assert decision.thesis_exit_unknown_gates == (
+        "valuation",
+        "opportunity_cost",
+    )
+
+
+def test_asset_signal_without_thesis_exit_remains_backward_compatible():
+    signal = AssetSignal(
+        "HGRU11",
+        "fund",
+        9.0,
+        1.0,
+        Action.APORTAR,
+        3,
+    )
+
+    assert signal.thesis_exit_state is None
+    assert signal.thesis_exit_failed_gates == ()
+    assert signal.thesis_exit_attention_gates == ()
+    assert signal.thesis_exit_unknown_gates == ()
+    assert signal.thesis_exit_critical_failure is None

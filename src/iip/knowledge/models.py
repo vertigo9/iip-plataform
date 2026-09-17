@@ -34,7 +34,11 @@ class Decision:
     risks: tuple[str, ...] = ()
     evidence_ids: tuple[str, ...] = ()
     review_triggers: tuple[str, ...] = ()
-
+    thesis_exit_state: str | None = None
+    thesis_exit_failed_gates: tuple[str, ...] = ()
+    thesis_exit_attention_gates: tuple[str, ...] = ()
+    thesis_exit_unknown_gates: tuple[str, ...] = ()
+    thesis_exit_critical_failure: bool | None = None
 
 @dataclass(frozen=True)
 class Evidence:

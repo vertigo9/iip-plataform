@@ -1,0 +1,281 @@
+========================================================================================
+POL_25_27_PERSISTENCE_CALL_GRAPH_AUDIT
+Generated: 2026-09-16T23:14:50
+Repository root: D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1
+Package root: D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip
+Mode: READ-ONLY STATIC AST SCAN
+No source files changed. No tests executed. No runtime calls made.
+========================================================================================
+
+[1] SCAN SUMMARY
+Python files discovered: 411
+Production-candidate files: 406
+Test/non-production-path files: 5
+Files parsed: 409
+Parse errors: 2
+Unreadable/skipped files: 0
+Matching definitions: 20
+Matching imports: 20
+Matching calls: 32
+
+[2] TARGET DEFINITIONS
+PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:12 | class AtlasKnowledgeAdapter
+PRODUCTION CANDIDATE | src\iip\cli\main.py:491 | function refresh_portfolio_command
+PRODUCTION CANDIDATE | src\iip\cli\main.py:569 | function analyze_portfolio_command
+PRODUCTION CANDIDATE | src\iip\cli\main.py:879 | function persist_evidence
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:153 | function persist_if_eligible
+PRODUCTION CANDIDATE | src\iip\intelligence\harvest_metric_adapter.py:83 | function harvest_metrics_to_evidence
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_evidence.py:90 | class HistoricalMetricEvidence
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_identity.py:39 | class MetricObservationIdentity
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py:19 | function persist_evidence
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py:387 | class SimulatedKnowledgeBridgeAdapter
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py:399 | function persist_evidence
+PRODUCTION CANDIDATE | src\iip\knowledge\bridge.py:12 | class KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\knowledge\bridge.py:22 | function persist_evidence
+PRODUCTION CANDIDATE | src\iip\operational\portfolio_runner.py:34 | function run_asset
+PRODUCTION CANDIDATE | src\iip\operational\portfolio_runner.py:44 | function dispatch_harvest_to_engine
+PRODUCTION CANDIDATE | src\iip\platform\execution.py:25 | function run_asset
+PRODUCTION CANDIDATE | src\iip\portfolio\batch_analyze.py:77 | function analyze_portfolio
+PRODUCTION CANDIDATE | src\iip\portfolio\refresh.py:91 | function refresh_portfolio
+PRODUCTION CANDIDATE | src\iip\sources\patch\bridge.py:12 | class KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\sources\patch\bridge.py:22 | function persist_evidence
+
+[3] TARGET IMPORTS
+PRODUCTION CANDIDATE | src\iip\atlas\__init__.py:4 | from .knowledge_adapter import AtlasKnowledgeAdapter
+PRODUCTION CANDIDATE | src\iip\cli\main.py:509 | from iip.portfolio.refresh import refresh_portfolio
+PRODUCTION CANDIDATE | src\iip\cli\main.py:587 | from iip.portfolio.batch_analyze import analyze_portfolio
+PRODUCTION CANDIDATE | src\iip\cli\main.py:734 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\cli\main.py:787 | from iip.knowledge.bridge import _KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\cli\main.py:904 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\core\__init__.py:15 | from iip.knowledge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\decision\contribution_persistence.py:28 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\decision\income_forecast_persistence.py:21 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\decision\persistence.py:23 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:44 | from iip.intelligence.metric_evidence import HistoricalMetricEvidence
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:55 | from iip.intelligence.metric_identity import MetricObservationIdentity
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:57 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\intelligence\harvest_metric_adapter.py:44 | from iip.intelligence.metric_evidence import HistoricalMetricEvidence
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence.py:8 | from .metric_identity import MetricObservationIdentity
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py:8 | from .metric_identity import MetricObservationIdentity
+PRODUCTION CANDIDATE | src\iip\knowledge\__init__.py:4 | from .bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\portfolio\batch_analyze.py:101 | from iip.knowledge.bridge import KnowledgeBridge
+PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:7 | from .bridge import KnowledgeBridge
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:4 | from iip.knowledge import KnowledgeBridge
+
+[4] CALL-SITE CANDIDATES
+PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:43 | scope=AtlasKnowledgeAdapter.persist | call=self.bridge.persist_evidence
+    SOURCE: self.bridge.persist_evidence(evidence)
+PRODUCTION CANDIDATE | src\iip\cli\main.py:525 | scope=refresh_portfolio_command | call=refresh_portfolio
+    SOURCE: refresh_portfolio(         Path(output_dir),         bolsai_api_key=bolsai_key,         brapi_token=brapi_token,         ano=ano,         mes=mes,     )
+PRODUCTION CANDIDATE | src\iip\cli\main.py:595 | scope=analyze_portfolio_command | call=analyze_portfolio
+    SOURCE: analyze_portfolio(         bolsai_api_key=bolsai_key,         brapi_token=brapi_token,         vault_path=vault_path,         ano=ano,         mes=mes,     )
+PRODUCTION CANDIDATE | src\iip\cli\main.py:738 | scope=analyze | call=KnowledgeBridge.sync_analysis_projection
+    SOURCE: KnowledgeBridge(vault_path).sync_analysis_projection(                 report, symbol, asset_type             )
+PRODUCTION CANDIDATE | src\iip\cli\main.py:738 | scope=analyze | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(vault_path)
+PRODUCTION CANDIDATE | src\iip\cli\main.py:795 | scope=analyze | call=_KnowledgeBridge.persist_decision
+    SOURCE: _KnowledgeBridge(str(get_settings().obsidian_vault)).persist_decision(                     knowledge_decision                 )
+PRODUCTION CANDIDATE | src\iip\cli\main.py:795 | scope=analyze | call=_KnowledgeBridge
+    SOURCE: _KnowledgeBridge(str(get_settings().obsidian_vault))
+PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | scope=persist_evidence | call=KnowledgeBridge.persist_evidence
+    SOURCE: KnowledgeBridge(vault_path).persist_evidence(evidence)
+PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | scope=persist_evidence | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(vault_path)
+PRODUCTION CANDIDATE | src\iip\core\__init__.py:52 | scope=Runtime.start | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(str(settings.obsidian_vault))
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:191 | scope=persist_if_eligible | call=MetricObservationIdentity
+    SOURCE: MetricObservationIdentity(         canonical_ticker=evidence.canonical_ticker,         original_ticker=evidence.original_ticker,         metric_name=evidence.observation.metric_name,         value=str(evidence.observation.value),         unit=evidence.observation.unit,         scale=evidence.observation.scale,         period=period_yyyy_mm,         # Deliberadamente None, nao uma lacuna (TRACE 15.16, investigado         # antes de mudar por intuicao): semantic_dimension existe pra         # desambiguar um VALOR EXTRAIDO DE TEXTO LIVRE (confirmado lendo         # resolve_value_dimension() -- busca janela de contexto textual         # ao redor do numero, tipo "P/VP=0,92 / NAV=R$100 / Preco=R$92"         # no mesmo documento). Nossos tres metrics vem de COLUNAS         # NOMEADAS E ESTRUTURADAS do CSV da CVM (Patrimonio_Liquido,         # Valor_Patrimonial_Cotas, Cotas_Emitidas) -- zero ambiguidade         # pra resolver, o nome da coluna ja diz o que e. Confirmado         # tambem que IDENTITY_READY (sem dimensao) e         # IDENTITY_READY_WITH_DIMENSION sao status PARES em         # PersistenceBatch.ready, nao um hierarquico sobre o outro, e         # que assess_promotion() (nosso Promotion Gate real) nem         # referencia esse campo. Forcar NAV aqui seria usar o contrato         # errado, nao completar um incompleto.         semantic_dimension=None,         document_hash=evidence.document_hash or "",         document_id=evidence.document_id,         source_locator=evidence.source_locator,         lineage=evidence.lineage.status.value,     )
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:245 | scope=persist_if_eligible | call=bridge.persist_evidence
+    SOURCE: bridge.persist_evidence(real_evidence)
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:291 | scope=_cvm_complemento_field_to_evidence | call=HistoricalMetricEvidence
+    SOURCE: HistoricalMetricEvidence(         evidence_id=evidence_id,         document_id=document.document_id,         document_hash=document.content_hash,         original_ticker=ticker,         canonical_ticker=ticker,         lineage=lineage,         source_role=EvidenceSourceRole.NAV_PL,         source_title=f"CVM Informe Mensal FII — {complemento.data_referencia}",         source_date=date.fromisoformat(complemento.data_referencia),         observation=observation,         confidence=CVM_REGULATORY_CONFIDENCE,         source_locator=f"complemento[{complemento.cnpj_fundo_classe}].{field_name}",     )
+PRODUCTION CANDIDATE | src\iip\intelligence\harvest_metric_adapter.py:129 | scope=harvest_metrics_to_evidence | call=HistoricalMetricEvidence
+    SOURCE: HistoricalMetricEvidence(                 evidence_id=f"{evidence_id_prefix}-{field.metric_name}",                 document_id=document.document_id,                 document_hash=document.content_hash,                 original_ticker=ticker,                 canonical_ticker=ticker,                 lineage=lineage,                 source_role=source_role,                 source_title=f"{provider.upper()} — {period}",                 source_date=date.fromisoformat(period[:10]),                 observation=observation,                 confidence=confidence,                 source_locator=field.source_locator,             )
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_identity.py:237 | scope=resolve_identity | call=MetricObservationIdentity
+    SOURCE: MetricObservationIdentity(             canonical_ticker=canonical_ticker,             original_ticker=original_ticker,             metric_name=metric_name,             value=value_parsed,             unit=unit,             scale=scale,             period=period,             semantic_dimension=None,             document_hash=document_hash,             document_id=document_id,             source_locator=source_locator,             lineage=lineage,         )
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_identity.py:281 | scope=resolve_identity | call=MetricObservationIdentity
+    SOURCE: MetricObservationIdentity(         canonical_ticker=canonical_ticker,         original_ticker=original_ticker,         metric_name=metric_name,         value=value_parsed,         unit=unit,         scale=scale,         period=period,         semantic_dimension=dimension,         document_hash=document_hash,         document_id=document_id,         source_locator=source_locator,         lineage=lineage,     )
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py:162 | scope=_identity_from_row | call=MetricObservationIdentity
+    SOURCE: MetricObservationIdentity(         canonical_ticker=canonical_ticker,         original_ticker=original_ticker or None,         metric_name=_clean(row.get("Metric")),         value=_resolve_value(row),         unit=(_clean(row.get("Resolved_Unit")) or None),         scale=(_clean(row.get("Scale")) or None),         period=_clean(row.get("Resolved_Period")),         semantic_dimension=semantic_dimension,         document_hash=_clean(row.get("SHA256")),         document_id=(_clean(row.get("Document_ID")) or None),         source_locator=(_clean(row.get("Source_Locator")) or None),         lineage=(_clean(row.get("Lineage")) or None),     )
+PRODUCTION CANDIDATE | src\iip\knowledge\event_adapter.py:107 | scope=KnowledgeEventAdapter.on_document | call=self.bridge.persist_evidence
+    SOURCE: self.bridge.persist_evidence(e)
+PRODUCTION CANDIDATE | src\iip\operational\portfolio_runner.py:136 | scope=run_portfolio_cycle | call=dispatch_harvest_to_engine
+    SOURCE: dispatch_harvest_to_engine(fetched_data, asset_class, engine_metrics)
+PRODUCTION CANDIDATE | src\iip\platform\execution.py:79 | scope=ProviderExecutionEngine.run_portfolio | call=self.run_asset
+    SOURCE: self.run_asset(ticker, providers)
+PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:85 | scope=KnowledgeEventAdapter.on_document | call=self.bridge.persist_evidence
+    SOURCE: self.bridge.persist_evidence(e)
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:14 | scope=test_decision_event_projection_creates_canonical_asset_note | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(tmp_path / "vault")
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:30 | scope=test_repeating_projection_is_unchanged | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(tmp_path / "vault")
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:45 | scope=test_changed_projection_updates_only_iip_block | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(tmp_path / "vault")
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:74 | scope=test_evidence_event_projects_into_sources_note | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(tmp_path / "vault")
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:92 | scope=test_event_adapter_persists_and_projects_decision | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(tmp_path / "vault")
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:113 | scope=test_empty_projection_is_skipped_without_creating_a_file | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(tmp_path / "vault")
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:10 | scope=test_pcip11_roundtrip_and_history | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(str(tmp_path / "vault"))
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:18 | scope=test_pcip11_roundtrip_and_history | call=bridge.persist_evidence
+    SOURCE: bridge.persist_evidence(ev)
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:47 | scope=test_append_only_and_audit | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(str(tmp_path / "vault"))
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:60 | scope=test_append_only_and_audit | call=bridge.persist_evidence
+    SOURCE: bridge.persist_evidence(e)
+TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:75 | scope=test_snapshot_and_redundancy | call=KnowledgeBridge
+    SOURCE: KnowledgeBridge(str(tmp_path / "vault"))
+
+[5] TARGET DEFINITIONS WITH KNOWN CALLERS
+
+SYMBOL: AtlasKnowledgeAdapter
+  DEFINITION: src\iip\atlas\knowledge_adapter.py:12 (class)
+    POSSIBLE CALLER: none found by static name matching
+
+SYMBOL: HistoricalMetricEvidence
+  DEFINITION: src\iip\intelligence\metric_evidence.py:90 (class)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:291 | _cvm_complemento_field_to_evidence | HistoricalMetricEvidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\harvest_metric_adapter.py:129 | harvest_metrics_to_evidence | HistoricalMetricEvidence
+
+SYMBOL: KnowledgeBridge
+  DEFINITION: src\iip\knowledge\bridge.py:12 (class)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:738 | analyze | KnowledgeBridge
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\core\__init__.py:52 | Runtime.start | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:14 | test_decision_event_projection_creates_canonical_asset_note | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:30 | test_repeating_projection_is_unchanged | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:45 | test_changed_projection_updates_only_iip_block | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:74 | test_evidence_event_projects_into_sources_note | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:92 | test_event_adapter_persists_and_projects_decision | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:113 | test_empty_projection_is_skipped_without_creating_a_file | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:10 | test_pcip11_roundtrip_and_history | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:47 | test_append_only_and_audit | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:75 | test_snapshot_and_redundancy | KnowledgeBridge
+  DEFINITION: src\iip\sources\patch\bridge.py:12 (class)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:738 | analyze | KnowledgeBridge
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\core\__init__.py:52 | Runtime.start | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:14 | test_decision_event_projection_creates_canonical_asset_note | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:30 | test_repeating_projection_is_unchanged | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:45 | test_changed_projection_updates_only_iip_block | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:74 | test_evidence_event_projects_into_sources_note | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:92 | test_event_adapter_persists_and_projects_decision | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_e2e_sync.py:113 | test_empty_projection_is_skipped_without_creating_a_file | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:10 | test_pcip11_roundtrip_and_history | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:47 | test_append_only_and_audit | KnowledgeBridge
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:75 | test_snapshot_and_redundancy | KnowledgeBridge
+
+SYMBOL: MetricObservationIdentity
+  DEFINITION: src\iip\intelligence\metric_identity.py:39 (class)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:191 | persist_if_eligible | MetricObservationIdentity
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\metric_identity.py:237 | resolve_identity | MetricObservationIdentity
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\metric_identity.py:281 | resolve_identity | MetricObservationIdentity
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py:162 | _identity_from_row | MetricObservationIdentity
+
+SYMBOL: analyze_portfolio
+  DEFINITION: src\iip\portfolio\batch_analyze.py:77 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:595 | analyze_portfolio_command | analyze_portfolio
+
+SYMBOL: dispatch_harvest_to_engine
+  DEFINITION: src\iip\operational\portfolio_runner.py:44 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\operational\portfolio_runner.py:136 | run_portfolio_cycle | dispatch_harvest_to_engine
+
+SYMBOL: harvest_metrics_to_evidence
+  DEFINITION: src\iip\intelligence\harvest_metric_adapter.py:83 (function)
+    POSSIBLE CALLER: none found by static name matching
+
+SYMBOL: persist_evidence
+  DEFINITION: src\iip\cli\main.py:879 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:43 | AtlasKnowledgeAdapter.persist | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:245 | persist_if_eligible | bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\knowledge\event_adapter.py:107 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:85 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:18 | test_pcip11_roundtrip_and_history | bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:60 | test_append_only_and_audit | bridge.persist_evidence
+  DEFINITION: src\iip\intelligence\metric_persistence_adapter.py:19 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:43 | AtlasKnowledgeAdapter.persist | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:245 | persist_if_eligible | bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\knowledge\event_adapter.py:107 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:85 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:18 | test_pcip11_roundtrip_and_history | bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:60 | test_append_only_and_audit | bridge.persist_evidence
+  DEFINITION: src\iip\intelligence\metric_persistence_adapter.py:399 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:43 | AtlasKnowledgeAdapter.persist | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:245 | persist_if_eligible | bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\knowledge\event_adapter.py:107 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:85 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:18 | test_pcip11_roundtrip_and_history | bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:60 | test_append_only_and_audit | bridge.persist_evidence
+  DEFINITION: src\iip\knowledge\bridge.py:22 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:43 | AtlasKnowledgeAdapter.persist | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:245 | persist_if_eligible | bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\knowledge\event_adapter.py:107 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:85 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:18 | test_pcip11_roundtrip_and_history | bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:60 | test_append_only_and_audit | bridge.persist_evidence
+  DEFINITION: src\iip\sources\patch\bridge.py:22 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\atlas\knowledge_adapter.py:43 | AtlasKnowledgeAdapter.persist | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:930 | persist_evidence | KnowledgeBridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py:245 | persist_if_eligible | bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\knowledge\event_adapter.py:107 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\sources\patch\event_adapter.py:85 | KnowledgeEventAdapter.on_document | self.bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:18 | test_pcip11_roundtrip_and_history | bridge.persist_evidence
+    POSSIBLE CALLER: TEST / NON-PRODUCTION | src\iip\sources\tests_knowledge\test_roundtrip.py:60 | test_append_only_and_audit | bridge.persist_evidence
+
+SYMBOL: persist_if_eligible
+  DEFINITION: src\iip\intelligence\fii_metric_adapter.py:153 (function)
+    POSSIBLE CALLER: none found by static name matching
+
+SYMBOL: refresh_portfolio
+  DEFINITION: src\iip\portfolio\refresh.py:91 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\cli\main.py:525 | refresh_portfolio_command | refresh_portfolio
+
+SYMBOL: run_asset
+  DEFINITION: src\iip\operational\portfolio_runner.py:34 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\platform\execution.py:79 | ProviderExecutionEngine.run_portfolio | self.run_asset
+  DEFINITION: src\iip\platform\execution.py:25 (function)
+    POSSIBLE CALLER: PRODUCTION CANDIDATE | src\iip\platform\execution.py:79 | ProviderExecutionEngine.run_portfolio | self.run_asset
+
+[6] RELEVANT FILE INVENTORY
+PRODUCTION CANDIDATE | src\iip\adaptive\refresh_policy.py
+PRODUCTION CANDIDATE | src\iip\decision\knowledge_bridge.py
+PRODUCTION CANDIDATE | src\iip\intelligence\fii_metric_adapter.py
+PRODUCTION CANDIDATE | src\iip\intelligence\harvest_metric_adapter.py
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence.py
+PRODUCTION CANDIDATE | src\iip\intelligence\metric_persistence_adapter.py
+PRODUCTION CANDIDATE | src\iip\operational\portfolio_runner.py
+PRODUCTION CANDIDATE | src\iip\portfolio\batch_analyze.py
+PRODUCTION CANDIDATE | src\iip\portfolio\refresh.py
+PRODUCTION CANDIDATE | src\iip\portfolio_data\refresh.py
+
+[7] STATIC CALL GRAPH LIMITATIONS
+- Name-based AST matching is not proof of runtime reachability.
+- Aliases, dependency injection, decorators, reflection, and dynamic dispatch
+  may hide or alter call relationships.
+- A call to an adapter is not proof that evidence was accepted or persisted.
+- A persistence method call is not proof of durable storage or transaction commit.
+- Test fixtures, mocks, and synthetic evidence must not be treated as production proof.
+- Provenance must be verified field-by-field at the actual production call path.
+
+[8] PARSE ERRORS
+src\iip\decision\thesis_semantic_adapter.py | SyntaxError: invalid non-printable character U+FEFF (thesis_semantic_adapter.py, line 1)
+src\iip\integration\allocation.py | SyntaxError: invalid non-printable character U+FEFF (allocation.py, line 1)
+
+[9] UNREADABLE / SKIPPED FILES
+None.
+
+[10] NEXT MANUAL VERIFICATION CHECKLIST
+- Trace production callers of harvest_metrics_to_evidence().
+- Trace production callers of persist_if_eligible().
+- Establish whether refresh/analyze paths reach either function.
+- Follow accepted evidence into KnowledgeBridge.persist_evidence().
+- Identify the concrete persistent repository/backend and commit boundary.
+- Verify ticker, period, document_id, document_hash, and source provenance.
+- Classify stubs, dry-run paths, mocks, fixtures, and synthetic examples separately.
+- Do not patch until the production path and missing contract are evidenced.

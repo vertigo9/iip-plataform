@@ -85,17 +85,42 @@ def to_knowledge_decision(
     new_verdict = to_knowledge_verdict(decision.verdict)
 
     return KnowledgeDecision(
-        decision_id=decision_id,
-        ticker=decision.ticker.upper(),
-        date=date,
-        new_verdict=new_verdict,
-        previous_verdict=previous_verdict,
-        change_type=(
-            change_type
-            if change_type is not None
-            else _infer_change_type(new_verdict, previous_verdict)
-        ),
-        confidence=decision.confidence,
-        reasons=decision.reasons,
-        evidence_ids=tuple(ref.evidence_id for ref in decision.evidence),
-    )
+    decision_id=decision_id,
+    ticker=decision.ticker.upper(),
+    date=date,
+    new_verdict=new_verdict,
+    previous_verdict=previous_verdict,
+    change_type=(
+        change_type
+        if change_type is not None
+        else _infer_change_type(new_verdict, previous_verdict)
+    ),
+    confidence=decision.confidence,
+    reasons=decision.reasons,
+    evidence_ids=tuple(ref.evidence_id for ref in decision.evidence),
+    thesis_exit_state=(
+        decision.thesis_exit.state.value
+        if decision.thesis_exit is not None
+        else None
+    ),
+    thesis_exit_failed_gates=(
+        tuple(decision.thesis_exit.failed_gates)
+        if decision.thesis_exit is not None
+        else ()
+    ),
+    thesis_exit_attention_gates=(
+        tuple(decision.thesis_exit.attention_gates)
+        if decision.thesis_exit is not None
+        else ()
+    ),
+    thesis_exit_unknown_gates=(
+        tuple(decision.thesis_exit.unknown_gates)
+        if decision.thesis_exit is not None
+        else ()
+    ),
+    thesis_exit_critical_failure=(
+        decision.thesis_exit.critical_failure
+        if decision.thesis_exit is not None
+        else None
+    ),
+)

@@ -1,0 +1,1567 @@
+POL-25.8.29.6 � SOURCE INSPECTION
+
+
+========== FILE: src\iip\production_integration\reconciliation.py ==========
+"""Portfolio reconciliation across holdings and snapshots."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Reconciliation:
+    matched: tuple[str, ...]
+    missing: tuple[str, ...]
+    unexpected: tuple[str, ...]
+
+    @property
+    def consistent(self) -> bool:
+        return not self.missing and not self.unexpected
+
+
+def reconcile(
+    expected: tuple[str, ...],
+    observed: tuple[str, ...],
+) -> Reconciliation:
+    expected_set = {item.upper() for item in expected}
+    observed_set = {item.upper() for item in observed}
+    return Reconciliation(
+        tuple(sorted(expected_set & observed_set)),
+        tuple(sorted(expected_set - observed_set)),
+        tuple(sorted(observed_set - expected_set)),
+    )
+
+
+
+========== FILE: src\iip\production_integration\production_cycle.py ==========
+"""Production portfolio cycle coordinator."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from .decision_guard import DecisionGuard
+from .portfolio_contract import PortfolioContract
+from .reconciliation import reconcile
+
+
+@dataclass(frozen=True)
+class CycleResult:
+    portfolio_valid: bool
+    reconciliation_ok: bool
+    decision_allowed: bool
+
+
+def run_cycle(
+    portfolio: PortfolioContract,
+    observed_tickers: tuple[str, ...],
+    guard: DecisionGuard,
+) -> CycleResult:
+    recon = reconcile(portfolio.tickers, observed_tickers)
+    return CycleResult(
+        portfolio.valid,
+        recon.consistent,
+        portfolio.valid and recon.consistent and guard.allowed,
+    )
+
+
+
+========== FILE: src\iip\production_integration\portfolio_contract.py ==========
+"""Production portfolio contract."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class PortfolioIdentity:
+    portfolio_id: str
+    owner_scope: str
+    version: int
+
+
+@dataclass(frozen=True)
+class PortfolioContract:
+    identity: PortfolioIdentity
+    tickers: tuple[str, ...]
+
+    @property
+    def valid(self) -> bool:
+        return (
+            bool(self.identity.portfolio_id)
+            and bool(self.identity.owner_scope)
+            and self.identity.version > 0
+            and len(self.tickers) == len(set(self.tickers))
+        )
+
+
+def normalize(
+    identity: PortfolioIdentity, tickers: tuple[str, ...]
+) -> PortfolioContract:
+    normalized = tuple(
+        sorted({ticker.upper().strip() for ticker in tickers if ticker.strip()})
+    )
+    return PortfolioContract(identity, normalized)
+
+
+
+========== FILE: src\iip\production\reconciliation.py ==========
+"""Reconciliation between generated decisions and persisted state."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ReconciliationResult:
+    consistent: bool
+    missing: tuple[str, ...] = ()
+    unexpected: tuple[str, ...] = ()
+
+
+def reconcile(
+    expected: tuple[str, ...], actual: tuple[str, ...]
+) -> ReconciliationResult:
+    expected_set = set(expected)
+    actual_set = set(actual)
+    return ReconciliationResult(
+        consistent=expected_set == actual_set,
+        missing=tuple(sorted(expected_set - actual_set)),
+        unexpected=tuple(sorted(actual_set - expected_set)),
+    )
+
+
+
+========== FILE: src\iip\production\portfolio_snapshot.py ==========
+"""Immutable portfolio snapshot contract."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class PortfolioSnapshot:
+    as_of: str
+    positions: tuple[tuple[str, float], ...]
+    total_value: float
+
+    def weight(self, ticker: str) -> float:
+        for item, value in self.positions:
+            if item.upper() == ticker.upper():
+                return value / self.total_value if self.total_value > 0 else 0.0
+        return 0.0
+
+
+
+========== FILE: src\iip\portfolio\registry.py ==========
+"""Portfolio-backed asset registry bootstrap.
+
+Source of the records: IIP DATABASE da Carteira v3.2.
+Classification fields are marked by provenance:
+- database: directly represented in the portfolio database;
+- user: classification explicitly supplied in the IIP discussion;
+- pending: intentionally not inferred.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class ClassificationProvenance(StrEnum):
+    DATABASE = "database"
+    USER = "user"
+    PENDING = "pending"
+
+
+@dataclass(frozen=True)
+class PortfolioAsset:
+    ticker: str
+    asset_class: str
+    subtype: str | None = None
+    structure: str | None = None
+    segment: str | None = None
+    manager: str | None = None
+    source_url: str | None = None
+    indexation: tuple[str, ...] = ()
+    risk_profile: str | None = None
+    strategy: str | None = None
+    classification_provenance: ClassificationProvenance = (
+        ClassificationProvenance.PENDING
+    )
+    # CNPJ do fundo, necessário para os providers da CVM (cvm_fii,
+    # cvm_renda_fixa). Deliberadamente None para a maioria das posições
+    # — só preenchido onde foi verificado ao vivo (ver notas por
+    # posição abaixo). Nunca adivinhado: um CNPJ errado buscaria dados
+    # de outro fundo silenciosamente.
+    cnpj: str | None = None
+    # Nomes iguais aos que `iip analyze --data-file` espera literalmente
+    # (``sector``/``industry``), pra mapear direto sem ambiguidade num
+    # comando de análise em lote. Deliberadamente separado de
+    # ``segment``/``structure`` (que são termos de fundo, não de ação) —
+    # só preenchido quando o usuário confirma o valor real, nunca
+    # adivinhado a partir do ticker ou de conhecimento geral.
+    sector: str | None = None
+    industry: str | None = None
+
+
+# This table deliberately avoids inventing classifications not supported by
+# the DATABASE or explicitly supplied by the user.
+PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
+    PortfolioAsset("BBSE3", "equity", sector="Financeiro", industry="Previdência e Seguros"),
+    PortfolioAsset("ISAE4", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
+    PortfolioAsset("CXSE3", "equity", sector="Financeiro", industry="Previdência e Seguros"),
+    PortfolioAsset("CPFE3", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
+    PortfolioAsset("ABCB4", "equity", sector="Financeiro", industry="Intermediários Financeiros (Bancos)"),
+    PortfolioAsset("CMIG4", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
+    PortfolioAsset("SAUD3", "equity", sector="Saúde", industry="Serviços Médico-Hospitalares, Analíticos e Diagnósticos"),
+    PortfolioAsset("ALOS3", "equity", sector="Financeiro", industry="Exploração de Imóveis"),
+    PortfolioAsset("CSUD3", "equity", sector="Utilidade Pública / Tecnologia", industry="Processamento de Dados e Serviços"),
+    PortfolioAsset("VBBR3", "equity", sector="Petróleo, Gás e Biocombustíveis", industry="Comércio Varejista e Atacadista"),
+    PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel"),
+    PortfolioAsset("FESA4", "equity", sector="Materiais Básicos", industry="Siderurgia e Metalurgia"),
+    PortfolioAsset("LEVE3", "equity", sector="Bens Industriais", industry="Material de Transporte"),
+    PortfolioAsset("PASS3", "equity", sector="Utilidade Pública", industry="Gás"),
+    PortfolioAsset(
+        "BTLG11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Logístico",
+        manager="BTG Pactual",
+        source_url="https://btlg.btgpactual.com",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="11.839.593/0001-09",  # verificado ao vivo nesta sessão
+    ),
+    PortfolioAsset(
+        "TRXF11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Híbrido (Renda Urbana/Logística)",
+        manager="TRX",
+        source_url="https://trxf11.com.br/relatorios-gerenciais-2",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.548.288/0001-52",  # verificado via busca (multiplas fontes concordam)
+    ),
+    PortfolioAsset(
+        "HGRU11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Renda Urbana",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/hgru",
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="29.641.226/0001-53",  # verificado via busca
+    ),
+    PortfolioAsset(
+        "CDII11",
+        "fund",
+        subtype="FI-Infra",
+        structure="Papel",
+        segment="Infraestrutura",
+        manager="Sparta",
+        source_url="https://sparta.com.br/sparta-cdii11",
+        indexation=("CDI",),
+        risk_profile="Baixo",
+        strategy="Crédito / Debêntures incentivadas",
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="48.973.783/0001-16",  # verificado via busca (multiplas fontes concordam)
+    ),
+    PortfolioAsset(
+        "JURO11",
+        "fund",
+        subtype="FI-Infra",
+        structure="Papel (Crédito Privado)",
+        segment="Infraestrutura (Debêntures Incentivadas)",
+        manager="Sparta",
+        source_url="https://sparta.com.br/juro11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="42.730.834/0001-00",  # verificado via busca (multiplas fontes concordam)
+    ),
+    PortfolioAsset(
+        "CRAA11",
+        "fund",
+        subtype="FI-Agro",
+        structure="Papel",
+        segment="Crédito Agrícola",
+        manager="Sparta",
+        source_url="https://sparta.com.br/craa11",
+        indexation=("CDI", "IPCA"),
+        risk_profile="Alto",
+        strategy="CRA",
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="48.903.610/0001-21",  # verificado via busca (multiplas fontes concordam)
+    ),
+    PortfolioAsset(
+        "BTCI11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        manager="BTG Pactual",
+        source_url="https://btgpactual.com/asset-management/.../BTCI11",
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="09.552.812/0001-14",  # confirmado pelo usuario via extrato real da corretora
+    ),
+    PortfolioAsset(
+        "VGIP11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Títulos e Valores Mobiliários (CRI - IPCA)",
+        manager="Valora Invest (fonte agregadora)",
+        source_url="https://valorainvest.com.br/fundo/vgip11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="34.197.811/0001-46",  # verificado via busca (5 fontes concordam)
+    ),
+    PortfolioAsset(
+        "PCIP11",
+        "fund",
+        subtype="FII",
+        # Classificação mudou de "Híbrido"/High Grade para "Papel"/Middle
+        # Risk (confirmado pelo usuário em 12/09/2026) -- não foi erro de
+        # digitação nem de fonte: o fundo incorporou outros fundos, o que
+        # mudou seu perfil de risco de verdade. A URL antiga
+        # (.../tijolo/pcip11) também estava errada e foi corrigida junto.
+        structure="Papel",
+        segment="Títulos e Valores Mobiliários (CRI - Middle Risk)",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/papel/pcip11/",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.729.197/0001-13",  # verificado via busca (2 fontes concordam)
+    ),
+    PortfolioAsset(
+        "LVBI11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Logístico",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/lvbi11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="30.629.603/0001-18",  # verificado via busca (3 fontes concordam)
+    ),
+    PortfolioAsset(
+        "AFHI11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        source_url="https://afhi11.com.br/documentos",
+        indexation=("CDI", "IPCA"),
+        risk_profile="Médio",
+        strategy="CRI",
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="36.642.293/0001-58",  # verificado via busca (muitas fontes concordam)
+    ),
+    PortfolioAsset(
+        "CPTI11",
+        "fund",
+        subtype="FI-Infra",
+        structure="Papel (Crédito Privado)",
+        segment="Infraestrutura (Debêntures Incentivadas)",
+        manager="Capitânia",
+        source_url="https://capitaniainfra.com.br/cpti11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="38.065.012/0001-77",  # verificado via busca (docs oficiais CVM/B3)
+    ),
+    PortfolioAsset(
+        "MANA11",
+        "fund",
+        subtype="FII",
+        structure="Multiestratégia",
+        segment="Multiestratégia",
+        manager="Manati/ICM",
+        source_url="https://manaticm.com/fundo/mana11",
+        indexation=("Multi-indexador",),
+        risk_profile="Médio",
+        strategy="Hedge Fund",
+        classification_provenance=ClassificationProvenance.USER,
+        cnpj="42.888.583/0001-89",  # verificado via busca
+    ),
+    PortfolioAsset(
+        "HSML11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Shopping",
+        manager="HSI",
+        source_url="https://hsml.hsifii.com",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="32.892.018/0001-31",  # verificado via busca (muitas fontes concordam)
+    ),
+    PortfolioAsset(
+        "XPML11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Shopping",
+        manager="XP Asset",
+        source_url="https://xpasset.com.br/fundos/xp-malls",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.757.546/0001-00",  # verificado via busca (muitas fontes concordam)
+    ),
+    PortfolioAsset(
+        "HGCR11",
+        "fund",
+        subtype="FII",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/hgcr11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="11.160.521/0001-22",  # verificado via busca
+    ),
+    PortfolioAsset(
+        "RBVA11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Varejo / Renda Urbana",
+        manager="Rio Bravo",
+        source_url="https://riobravo.com.br/rbva11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="15.576.907/0001-70",  # verificado via busca (site oficial)
+    ),
+    PortfolioAsset(
+        "PVBI11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Lajes",
+        manager="Pátria",
+        source_url="https://realestate.patria.com/tijolo/pvbi11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="35.652.102/0001-76",  # verificado via busca (doc oficial B3/FNET)
+    ),
+    PortfolioAsset(
+        "ALZR11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Híbrido / Multicategoria (Renda Urbana/Logística)",
+        manager="Alianza",
+        source_url="https://alzr11.alianza.com.br",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="28.737.771/0001-85",  # verificado via busca (site oficial)
+    ),
+    PortfolioAsset(
+        "KNRI11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Misto / Híbrido (Escritórios e Logística)",
+        manager="Kinea",
+        source_url="https://kinea.com.br/fundos/.../knri11",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="12.005.956/0001-65",  # verificado via busca
+    ),
+    PortfolioAsset(
+        "HGBS11",
+        "fund",
+        subtype="FII",
+        structure="Tijolo",
+        segment="Shopping",
+        manager="Hedge Investments",
+        source_url="https://hedgeinvest.com.br/fundos/hgbs",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="08.431.747/0001-06",  # verificado via busca (muitas fontes concordam)
+    ),
+    PortfolioAsset(
+        "LFTB11",
+        "etf",
+        subtype="ETF Renda Fixa",
+        structure="Renda Fixa (Títulos Públicos)",
+        segment="Pós-fixado (Selic com Duration Alvo / IPCA)",
+        manager="Investo",
+        source_url="https://www.investoetf.com/etf/lftb11/",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        cnpj="56.176.507/0001-55",  # verificado ao vivo nesta sessão
+    ),
+    PortfolioAsset(
+        "AXIA3",
+        "fixed_income",
+        subtype="Daycoval FMP FGTS / subjacente AXIA3",
+        sector="Utilities",
+        industry="Electric Utilities / Renewable",
+        manager="Daycoval",
+        classification_provenance=ClassificationProvenance.DATABASE,
+        # CNPJ do FUNDO Daycoval FMP-FGTS Eletrobras (verificado via
+        # busca, multiplas fontes concordam, inclusive documento do
+        # administrador). NAO confundir com o ticker "AXIA3" em si, que
+        # e a propria acao ordinaria da Eletrobras (CNPJ
+        # 00.001.180/0001-26) -- um ativo totalmente diferente. O
+        # fundo FMP-FGTS nao tem ticker/cotacao propria na B3 (so e
+        # acessado via FGTS, nao por corretora) -- por isso o fetch
+        # deste ativo busca só patrimonio/cota via CVM, nunca preço via
+        # bolsai/brapi (buscar preço usando "AXIA3" pegaria o preço da
+        # ação da Eletrobras por engano).
+        cnpj="45.121.022/0001-48",
+    ),
+)
+
+
+def get_asset(ticker: str) -> PortfolioAsset | None:
+    target = ticker.strip().upper()
+    return next((asset for asset in PORTFOLIO_ASSETS if asset.ticker == target), None)
+
+
+def assets_by_class(asset_class: str) -> tuple[PortfolioAsset, ...]:
+    target = asset_class.strip().lower()
+    return tuple(a for a in PORTFOLIO_ASSETS if a.asset_class == target)
+
+
+def assets_with_cnpj() -> tuple[PortfolioAsset, ...]:
+    """Positions with a verified CNPJ — the ones ``iip refresh-portfolio``
+    can actually fetch from the CVM today. Most FII/ETF positions in
+    ``PORTFOLIO_ASSETS`` don't have one yet (never guessed, only
+    populated after live verification) — this makes that gap visible
+    rather than silently skipping without explanation."""
+    return tuple(a for a in PORTFOLIO_ASSETS if a.cnpj)
+
+
+def assets_refreshable_now() -> tuple[PortfolioAsset, ...]:
+    """Everything ``iip refresh-portfolio`` can actually fetch today:
+    CNPJ-verified fund/ETF/fixed_income positions (see
+    ``assets_with_cnpj``) plus every equity position — equities are
+    fetched by ticker via bolsai/brapi, not by CNPJ, so they don't need
+    one to be refreshable."""
+    return tuple(
+        a for a in PORTFOLIO_ASSETS if a.cnpj or a.asset_class == "equity"
+    )
+
+
+
+========== FILE: src\iip\portfolio\source_router.py ==========
+"""Bridge the real portfolio registry into the existing multi-provider router."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from iip.portfolio.registry import PortfolioAsset
+from iip.sources.registry import AssetRef, SourceRef
+from iip.sources.router import SourceRoute, SourceRouter
+
+
+@dataclass(frozen=True)
+class RoutedPortfolioAsset:
+    """A real portfolio asset plus its resolved source routes."""
+
+    asset: PortfolioAsset
+    routes: tuple[SourceRoute, ...]
+
+    @property
+    def primary(self) -> SourceRoute | None:
+        return self.routes[0] if self.routes else None
+
+    @property
+    def fallbacks(self) -> tuple[SourceRoute, ...]:
+        return self.routes[1:] if len(self.routes) > 1 else ()
+
+
+class PortfolioSourceRouter:
+    """Create SourceRef records from a portfolio asset and use SourceRouter.
+
+    The existing SourceRouter remains the single routing implementation.
+    This bridge only adapts PortfolioAsset -> AssetRef and therefore keeps the
+    old Source Registry and Provider Registry contracts intact.
+    """
+
+    def __init__(self, router: SourceRouter) -> None:
+        self.router = router
+
+    @staticmethod
+    def _asset_ref(asset: PortfolioAsset) -> AssetRef:
+        source = None
+        if asset.source_url:
+            source_name = (asset.manager or "institutional").strip().lower()
+            source = SourceRef(
+                provider=source_name,
+                role="institutional_primary",
+                priority=3,
+                url=asset.source_url,
+                active=True,
+            )
+
+        sources = (source,) if source is not None else ()
+
+        return AssetRef(
+            ticker=asset.ticker,
+            asset_class=asset.asset_class,
+            asset_subtype=asset.subtype or "",
+            segment=asset.segment or "",
+            sources=sources,
+        )
+
+    def route(self, asset: PortfolioAsset) -> RoutedPortfolioAsset:
+        asset_ref = self._asset_ref(asset)
+        routes = self.router.routes_for(asset_ref)
+        return RoutedPortfolioAsset(asset=asset, routes=routes)
+
+
+
+========== FILE: src\iip\portfolio\refresh.py ==========
+"""Batch-refresh every portfolio position this project can fetch data for.
+
+Reuses ``iip.cli.fetch_template.fetch_fii_template_live`` /
+``fetch_etf_template_live`` / ``fetch_fixed_income_template_live`` /
+``fetch_equity_template_live`` / ``fetch_fiagro_template_live`` per
+position — no new fetching logic here, just the loop, per-position
+error isolation (one bad position must not abort the whole run), and
+dated snapshot output.
+
+``fund``/``etf``/``fixed_income`` positions need a verified CNPJ (see
+``iip.portfolio.registry.assets_with_cnpj``); ``equity`` positions
+don't (fetched by ticker via bolsai/brapi, not by CNPJ) — see
+``iip.portfolio.registry.assets_refreshable_now`` for the combined
+set this module refreshes by default. Positions outside these classes
+are skipped with a clear reason, never silently guessed.
+"""
+
+from __future__ import annotations
+
+import datetime as _dt
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
+
+
+@dataclass(frozen=True)
+class PositionOutcome:
+    ticker: str
+    status: str  # "ok", "erro", "pulado"
+    detail: str
+    fetched_fields: tuple[str, ...] = field(default_factory=tuple)
+
+
+@dataclass(frozen=True)
+class RefreshRunResult:
+    run_date: str
+    outcomes: tuple[PositionOutcome, ...]
+
+    @property
+    def succeeded(self) -> tuple[PositionOutcome, ...]:
+        return tuple(o for o in self.outcomes if o.status == "ok")
+
+    @property
+    def failed(self) -> tuple[PositionOutcome, ...]:
+        return tuple(o for o in self.outcomes if o.status == "erro")
+
+    @property
+    def skipped(self) -> tuple[PositionOutcome, ...]:
+        return tuple(o for o in self.outcomes if o.status == "pulado")
+
+
+def _template_type_for(position: PortfolioAsset) -> str | None:
+    """Which live-fetch function a position should use.
+
+    Real bug found and fixed here (12/09/2026): ``asset_class="fund"``
+    was routing EVERY subtype through the FII-specific CVM Informe
+    Mensal — but FI-Infra positions (CDII11, JURO11, CPTI11) are NOT
+    registered under that regulatory category at all (confirmed live:
+    CDII11's real CNPJ does not appear in the FII dataset). They ARE
+    registered as general ICVM 555 funds (confirmed live: CDII11's
+    CNPJ DOES appear in the Informe Diário) — the same dataset ETF and
+    fixed_income already use. Before this fix, ``refresh-portfolio``
+    reported "ok" for these positions while silently finding zero real
+    data, since an empty CNPJ match doesn't raise an error, just
+    leaves fields at their defaults with a buried warning.
+
+    FI-Agro (CRAA11) needed a THIRD dataset (confirmed live: its CNPJ
+    appears in neither the FII nor the Informe Diário dataset) — CVM's
+    own dedicated FIAGRO Informe Mensal, now wired via
+    ``fetch_fiagro_template_live``.
+    """
+    if position.asset_class == "fund":
+        if position.subtype == "FI-Infra":
+            return "fixed_income"
+        if position.subtype == "FI-Agro":
+            return "fiagro"
+        return "fii"
+    if position.asset_class in ("etf", "fixed_income", "equity"):
+        return position.asset_class
+    return None
+
+
+def _refreshable_positions(
+    positions: tuple[PortfolioAsset, ...],
+) -> tuple[PortfolioAsset, ...]:
+    return tuple(p for p in positions if _template_type_for(p) is not None)
+
+
+def refresh_portfolio(
+    output_dir: Path,
+    *,
+    bolsai_api_key: str | None,
+    brapi_token: str | None,
+    ano: int | None = None,
+    mes: int | None = None,
+    positions: tuple[PortfolioAsset, ...] | None = None,
+    fetch_fii=None,
+    fetch_etf=None,
+    fetch_fixed_income=None,
+    fetch_equity=None,
+    fetch_fiagro=None,
+) -> RefreshRunResult:
+    """Refresh every refreshable position, writing one JSON snapshot per
+    ticker under ``output_dir/{data}/{ticker}.json``.
+
+    ``fetch_fii``/``fetch_etf``/``fetch_fixed_income``/``fetch_equity``/
+    ``fetch_fiagro`` are injectable (default to the real live-fetch
+    functions) purely for testability — same pattern as the
+    harvesters' injectable ``opener``.
+    """
+    from iip.cli.fetch_template import (
+        fetch_equity_template_live,
+        fetch_etf_template_live,
+        fetch_fiagro_template_live,
+        fetch_fii_template_live,
+        fetch_fixed_income_template_live,
+    )
+
+    fetch_fii = fetch_fii or fetch_fii_template_live
+    fetch_etf = fetch_etf or fetch_etf_template_live
+    fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
+    fetch_equity = fetch_equity or fetch_equity_template_live
+    fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
+
+    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (data de referência do snapshot), não timestamp
+    ano_efetivo = ano or hoje.year
+    mes_efetivo = mes or hoje.month
+    run_date = hoje.isoformat()
+
+    all_positions = positions if positions is not None else assets_refreshable_now()
+    refreshable = _refreshable_positions(all_positions)
+
+    snapshot_dir = output_dir / run_date
+    snapshot_dir.mkdir(parents=True, exist_ok=True)
+
+    outcomes: list[PositionOutcome] = []
+    for position in refreshable:
+        template_type = _template_type_for(position)
+        try:
+            if template_type == "fii":
+                template, resultado = fetch_fii(
+                    position.ticker, position.cnpj, ano_efetivo, bolsai_api_key
+                )
+            elif template_type == "etf":
+                template, resultado = fetch_etf(
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
+                    brapi_token,
+                )
+            elif template_type == "equity":
+                template, resultado = fetch_equity(
+                    position.ticker, bolsai_api_key, brapi_token
+                )
+            elif template_type == "fiagro":
+                template, resultado = fetch_fiagro(
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
+                    brapi_token,
+                )
+            else:  # fixed_income
+                template, resultado = fetch_fixed_income(
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
+                )
+        except Exception as exc:  # noqa: BLE001 — isolamento por posição, ver docstring do módulo
+            outcomes.append(
+                PositionOutcome(
+                    ticker=position.ticker,
+                    status="erro",
+                    detail=str(exc),
+                )
+            )
+            continue
+
+        snapshot_path = snapshot_dir / f"{position.ticker}.json"
+        snapshot_path.write_text(
+            json.dumps(template, indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+        outcomes.append(
+            PositionOutcome(
+                ticker=position.ticker,
+                status="ok",
+                detail=str(snapshot_path),
+                fetched_fields=resultado.fetched_fields,
+            )
+        )
+
+    skipped_tickers = {p.ticker for p in all_positions} - {p.ticker for p in refreshable}
+    for ticker in sorted(skipped_tickers):
+        outcomes.append(
+            PositionOutcome(
+                ticker=ticker,
+                status="pulado",
+                detail="classe de ativo sem fetch automático ainda (só fund/etf/fixed_income/equity/fiagro)",
+            )
+        )
+
+    return RefreshRunResult(run_date=run_date, outcomes=tuple(outcomes))
+
+
+
+========== FILE: src\iip\portfolio\pipeline.py ==========
+"""Integrated portfolio -> source -> router -> Atlas orchestration."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from iip.portfolio.registry import PortfolioAsset
+from iip.portfolio.source_router import PortfolioSourceRouter
+
+
+@dataclass(frozen=True)
+class PortfolioPipelineResult:
+    asset: PortfolioAsset
+    routed: object
+    discovered: tuple[object, ...]
+    errors: tuple[str, ...] = ()
+
+
+class IntegratedPortfolioPipeline:
+    """Thin orchestration layer over the already-tested IIP components."""
+
+    def __init__(
+        self,
+        *,
+        source_router: PortfolioSourceRouter,
+        atlas_pipeline_factory,
+    ) -> None:
+        self.source_router = source_router
+        self.atlas_pipeline_factory = atlas_pipeline_factory
+
+    def run(self, asset: PortfolioAsset, years: range) -> PortfolioPipelineResult:
+        routed = self.source_router.route(asset)
+        if routed.primary is None:
+            return PortfolioPipelineResult(
+                asset=asset,
+                routed=routed,
+                discovered=(),
+                errors=("no_route",),
+            )
+
+        documents: list[object] = []
+        errors: list[str] = []
+
+        for route in routed.routes:
+            try:
+                atlas_pipeline = self.atlas_pipeline_factory(route.provider)
+                report = atlas_pipeline.ingest(
+                    self.source_router._asset_ref(asset), years
+                )
+                documents.extend(report.documents)
+                if documents:
+                    break
+            except Exception as exc:  # noqa: BLE001 — isola falha de uma rota, permite tentar a proxima
+                errors.append(f"{route.source.provider}:{type(exc).__name__}")
+
+        return PortfolioPipelineResult(
+            asset=asset,
+            routed=routed,
+            discovered=tuple(documents),
+            errors=tuple(errors),
+        )
+
+
+
+========== FILE: src\iip\portfolio_intelligence\holdings.py ==========
+"""Position and exposure intelligence."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Holding:
+    ticker: str
+    weight: float
+    asset_class: str
+    manager: str | None = None
+    segment: str | None = None
+    risk_profile: str | None = None
+
+
+def normalize_holdings(holdings: tuple[Holding, ...]) -> tuple[Holding, ...]:
+    return tuple(
+        Holding(
+            ticker=h.ticker.upper(),
+            weight=round(max(0.0, min(1.0, h.weight)), 12),
+            asset_class=h.asset_class,
+            manager=h.manager,
+            segment=h.segment,
+            risk_profile=h.risk_profile,
+        )
+        for h in holdings
+    )
+
+
+
+========== FILE: src\iip\operational_integration\system_reconciliation.py ==========
+"""Cross-layer reconciliation."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class ReconciliationSummary:
+    expected: int
+    observed: int
+    missing: tuple[str, ...]
+    unexpected: tuple[str, ...]
+
+    @property
+    def consistent(self) -> bool:
+        return (
+            not self.missing and not self.unexpected and self.expected == self.observed
+        )
+
+
+def reconcile(
+    expected: tuple[str, ...], observed: tuple[str, ...]
+) -> ReconciliationSummary:
+    expected_set = set(expected)
+    observed_set = set(observed)
+    return ReconciliationSummary(
+        expected=len(expected_set),
+        observed=len(observed_set),
+        missing=tuple(sorted(expected_set - observed_set)),
+        unexpected=tuple(sorted(observed_set - expected_set)),
+    )
+
+
+
+========== FILE: src\iip\operational_integration\portfolio_integration.py ==========
+"""Operational integration facade over existing portfolio capabilities."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from typing import Any
+
+
+@dataclass(frozen=True)
+class IntegrationResult:
+    component: str
+    success: bool
+    value: Any = None
+    error: str | None = None
+
+
+class PortfolioIntegrationFacade:
+    COMPONENTS = (
+        "registry",
+        "source_policy",
+        "source_router",
+        "pipeline",
+        "validation",
+        "health",
+    )
+
+    def __init__(self, handlers: dict[str, Callable[..., Any]]) -> None:
+        self.handlers = dict(handlers)
+
+    def execute(self, component: str, *args, **kwargs) -> IntegrationResult:
+        handler = self.handlers.get(component)
+        if handler is None:
+            return IntegrationResult(component, False, error="component_not_registered")
+        try:
+            return IntegrationResult(component, True, handler(*args, **kwargs))
+        except Exception as exc:  # noqa: BLE001 — isola falha do handler num IntegrationResult, nao deixa propagar
+            return IntegrationResult(
+                component, False, error=f"{type(exc).__name__}:{exc}"
+            )
+
+
+
+========== FILE: src\iip\orchestration\portfolio_cycle.py ==========
+"""Portfolio-wide closed-loop orchestration.
+
+Distinct concept from ``iip.system.pipeline.FullSystemPipeline`` (the
+canonical asset-onboarding pipeline) despite the same staged-executor
+shape (Stage enum + ORDER tuple + injected handlers) — confirmed by
+audit, not assumed from the shape alone. This one models a
+**recurring cycle over an already-onboarded portfolio**: its stages
+start at SNAPSHOT/DATA, skipping SOURCE/ATLAS/KNOWLEDGE entirely,
+because it assumes the assets involved have already been through
+onboarding and just need periodic re-evaluation (intelligence ->
+decision -> validation -> report on current holdings).
+
+Do not treat this as legacy or fold it into ``FullSystemPipeline`` —
+they answer different questions ("bring this new asset's documents
+all the way to a decision" vs. "re-run intelligence/decision/
+validation over the portfolio I already have"). If a future portfolio
+cycle needs to onboard a not-yet-known asset mid-cycle, the natural
+integration point is to invoke ``FullSystemPipeline`` from within this
+orchestrator's DATA stage handler — not to merge the two frameworks.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+from dataclasses import dataclass
+from enum import StrEnum
+from typing import Any
+
+
+class OrchestrationStage(StrEnum):
+    SNAPSHOT = "snapshot"
+    DATA = "data"
+    INTELLIGENCE = "intelligence"
+    DECISION = "decision"
+    VALIDATION = "validation"
+    REPORT = "report"
+
+
+@dataclass(frozen=True)
+class OrchestrationResult:
+    ticker: str
+    stage: OrchestrationStage
+    success: bool
+    payload: Any = None
+    error: str | None = None
+
+
+@dataclass(frozen=True)
+class PortfolioCycleResult:
+    cycle_id: str
+    results: tuple[OrchestrationResult, ...]
+
+    @property
+    def success(self) -> bool:
+        return bool(self.results) and all(item.success for item in self.results)
+
+
+class PortfolioCycleOrchestrator:
+    ORDER = (
+        OrchestrationStage.SNAPSHOT,
+        OrchestrationStage.DATA,
+        OrchestrationStage.INTELLIGENCE,
+        OrchestrationStage.DECISION,
+        OrchestrationStage.VALIDATION,
+        OrchestrationStage.REPORT,
+    )
+
+    def __init__(self, handlers: dict[OrchestrationStage, Callable[..., Any]]) -> None:
+        self.handlers = dict(handlers)
+
+    def run(self, cycle_id: str, ticker: str, **context) -> PortfolioCycleResult:
+        results = []
+        for stage in self.ORDER:
+            handler = self.handlers.get(stage)
+            if handler is None:
+                results.append(
+                    OrchestrationResult(
+                        ticker.upper(),
+                        stage,
+                        False,
+                        error=f"stage_not_registered:{stage.value}",
+                    )
+                )
+                break
+            try:
+                value = handler(ticker.upper(), context, tuple(results))
+                results.append(
+                    OrchestrationResult(ticker.upper(), stage, True, payload=value)
+                )
+            except Exception as exc:  # noqa: BLE001 — isola falha do handler por estagio, nao derruba o ciclo inteiro
+                results.append(
+                    OrchestrationResult(
+                        ticker.upper(),
+                        stage,
+                        False,
+                        error=f"{type(exc).__name__}:{exc}",
+                    )
+                )
+                break
+        return PortfolioCycleResult(cycle_id, tuple(results))
+
+
+
+========== FILE: src\iip\operational\portfolio_runner.py ==========
+"""Portfolio-wide operational data runner."""
+
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from iip.data.quotes import YFinanceGateway
+from iip.intelligence.thesis_rag import ThesisRAGAnalyzer
+from iip.obsidian.asset_updater import update_asset_note
+
+from .atlas_gateway import AtlasGateway
+from .discovery_chain import DiscoveryReport
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class AssetOperationalResult:
+    ticker: str
+    discovery: DiscoveryReport
+    atlas_results: tuple[object, ...] = ()
+
+
+class PortfolioOperationalRunner:
+    def __init__(
+        self, chain_factory, atlas_gateway: AtlasGateway | None = None
+    ) -> None:
+        self.chain_factory = chain_factory
+        self.atlas_gateway = atlas_gateway
+
+    def run_asset(self, ticker: str, years: range) -> AssetOperationalResult:
+        report = self.chain_factory(ticker).discover(ticker, years)
+        atlas_results = ()
+        if self.atlas_gateway is not None:
+            atlas_results = tuple(
+                self.atlas_gateway.ingest(document) for document in report.documents
+            )
+        return AssetOperationalResult(ticker.upper(), report, atlas_results)
+
+
+def dispatch_harvest_to_engine(
+    fetched_data: Any,
+    asset_class: str,
+    metrics_payload: dict[str, float],
+) -> list[Any]:
+    """Stub deliberado -- NÃO gera nenhum MetricObservationIdentity/
+    HistoricalMetricEvidence a partir deste payload.
+
+    Achado real (14/09/2026): YFinanceGateway e B3Gateway retornam dado
+    inteiramente mockado -- ``fetch_spot_price`` sempre devolve 100.00
+    pra qualquer ticker, ``fetch_exchange_rate`` sempre 5.50 fixo,
+    ``fetch_dividends`` só olha o sufixo do ticker, e
+    ``B3Gateway.fetch_user_positions`` ignora o CPF recebido e sempre
+    retorna a mesma lista fixa de 3 posições. Nenhum desses tem
+    chamada de rede real, então não há ``body``/``content_type``/
+    ``final_url`` nenhum pra capturar -- não é uma lacuna de
+    "transporte não fechado" (como era o caso do FII antes do
+    TRACE 15.13), é ausência total de fonte real.
+
+    As 4 funções antigas (``ingest_fii_harvest`` etc., removidas de
+    ``decision_engine.py``) criavam evidência de métrica a partir
+    desse dado mockado como se fosse real -- exatamente o tipo de
+    proveniência fabricada que este projeto existe pra evitar. Este
+    stub existe só pra manter o import/dispatch funcionando sem
+    quebrar o restante do pipeline (RAG, sync com Obsidian) enquanto
+    YFinanceGateway/B3Gateway não tiverem uma implementação real.
+
+    Retorna sempre lista vazia. Loga um aviso explícito, uma vez por
+    chamada, pra não esconder a limitação.
+    """
+    logger.warning(
+        "dispatch_harvest_to_engine chamado para ticker de classe '%s' -- "
+        "nenhuma evidência real é gerada aqui (YFinanceGateway/B3Gateway "
+        "ainda são mock, sem chamada de rede real). Isso é esperado até "
+        "esses gateways terem implementação real.",
+        str(asset_class or "").upper().strip(),
+    )
+    return []
+
+
+def run_portfolio_cycle(
+    assets_manifest: list[dict[str, Any]],
+    vault_path: Path | str | None = None,
+) -> dict[str, Any]:
+    """Executa o ciclo completo da carteira com enriquecimento spot, cambial, RAG e sync no Obsidian.
+
+    Aviso honesto: hoje ``quote_gateway`` (YFinanceGateway) é mock fixo
+    -- ``SPOT_PRICE``/``FX_RATE``/dividendos gerados aqui NÃO são dado
+    de mercado real. Mantido funcionando (não removido) porque outras
+    partes do ciclo (sync com Obsidian, RAG) ainda são úteis pra
+    desenvolvimento/teste, mas nenhum desses valores deve ser tratado
+    como decisão real até YFinanceGateway ter implementação real.
+    """
+    results = {"processed": 0, "errors": 0, "observations": []}
+    quote_gateway = YFinanceGateway()
+    rag_analyzer = ThesisRAGAnalyzer()
+
+    for item in assets_manifest:
+        ticker = item.get("ticker", "UNKNOWN")
+        asset_class = item.get("asset_class", "EQUITY")
+        fetched_data = item.get("fetched_data")
+        raw_metrics = item.get("metrics", {})
+        report_text = item.get("report_text", "")
+
+        try:
+            # 1. Preço Spot & Normalização Cambial
+            spot_data = quote_gateway.fetch_spot_price(ticker)
+            raw_metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
+
+            if spot_data["currency"] != "BRL":
+                fx_rate = quote_gateway.fetch_exchange_rate(spot_data["currency"], "BRL")
+                raw_metrics["FX_RATE"] = float(fx_rate)
+                raw_metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"] * fx_rate)
+            else:
+                raw_metrics["FX_RATE"] = 1.0
+                raw_metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"])
+
+            # 2. Processamento RAG
+            if report_text:
+                rag_result = rag_analyzer.analyze_report(ticker, report_text)
+                raw_metrics["RAG_CONFIDENCE"] = float(rag_result.confidence)
+
+            # 3. Filtragem Estrita de Métricas Numéricas para o DecisionEngine
+            engine_metrics = {}
+            for k, v in raw_metrics.items():
+                try:
+                    engine_metrics[k] = float(v)
+                except (ValueError, TypeError):
+                    pass
+
+            # 4. Despacho ao Decision Engine -- stub, ver docstring de
+            # dispatch_harvest_to_engine: nao gera evidencia real hoje.
+            obs = dispatch_harvest_to_engine(fetched_data, asset_class, engine_metrics)
+            results["observations"].extend(obs)
+            results["processed"] += 1
+
+            # 5. Sync de Nota Individual no Obsidian Vault
+            if vault_path:
+                update_asset_note(
+                    vault_path=vault_path,
+                    ticker=ticker,
+                    asset_class=asset_class,
+                    metrics=raw_metrics,
+                    verdict_data={
+                        "score": raw_metrics.get("SCORE", "N/A"),
+                        "verdict": raw_metrics.get("VERDICT", "AGUARDAR"),
+                        "confidence": raw_metrics.get("RAG_CONFIDENCE", 0.0),
+                    },
+                )
+        except Exception as exc:  # noqa: BLE001 -- isolamento por ativo, uma falha nao trava os outros
+            logger.error("Falha ao processar ativo %s: %s", ticker, exc)
+            results["errors"] += 1
+
+    return results
+
+
+
+========== FILE: vault\02_Portfolio\Position Registry.md ==========
+---
+type: position_registry
+scope: portfolio
+schema_version: "0.1"
+state: current
+source: Investidor10
+---
+
+# Portfolio Position Registry
+
+Registro estruturado das posições atuais.
+
+A coluna Peso é calculada pelo IIP usando o valor individual da posição dividido pelo valor operacional total calculado a partir das posições.
+
+## Posições
+
+| ID | Nome | Classe | Quantidade | PM | Preço atual | Valor | Peso | Peso alvo |
+|---|---|---|---:|---:|---:|---:|---:|---:|
+| BBSE3 | BBSE3 | acao | 881,0000 | 33,81 | 41,69 | 36.728,89 | 12,80% | |
+| ISAE4 | ISAE4 | acao | 400,0000 | 24,40 | 27,38 | 10.952,00 | 3,82% | |
+| CXSE3 | CXSE3 | acao | 520,0000 | 11,25 | 19,64 | 10.212,80 | 3,56% | |
+| ABCB4 | ABCB4 | acao | 398,0000 | 25,49 | 24,26 | 9.655,48 | 3,37% | |
+| CMIG4 | CMIG4 | acao | 867,0000 | 10,88 | 11,02 | 9.554,34 | 3,33% | |
+| CPFE3 | CPFE3 | acao | 205,0000 | 34,86 | 46,24 | 9.479,20 | 3,30% | |
+| ALOS3 | ALOS3 | acao | 239,0000 | 28,67 | 28,54 | 6.821,06 | 2,38% | |
+| CSUD3 | CSUD3 | acao | 463,0000 | 16,80 | 14,13 | 6.542,19 | 2,28% | |
+| SAUD3 | SAUD3 | acao | 450,0000 | 11,32 | 14,46 | 6.507,00 | 2,27% | |
+| VBBR3 | VBBR3 | acao | 176,0000 | 22,61 | 36,34 | 6.395,84 | 2,23% | |
+| KLBN4 | KLBN4 | acao | 1.132,0000 | 3,44 | 3,86 | 4.369,52 | 1,52% | |
+| FESA4 | FESA4 | acao | 653,0000 | 8,38 | 5,61 | 3.663,33 | 1,28% | |
+| LEVE3 | LEVE3 | acao | 106,0000 | 33,17 | 33,07 | 3.505,42 | 1,22% | |
+| PASS3 | PASS3 | acao | 60,0000 | 25,73 | 23,74 | 1.424,40 | 0,50% | |
+| LVBI11 | LVBI11 | fii | 136,0000 | 110,99 | 98,67 | 13.419,12 | 4,68% | |
+| BTLG11 | BTLG11 | fii | 111,0000 | 98,47 | 99,01 | 10.990,11 | 3,83% | |
+| HGRU11 | HGRU11 | fii | 87,0000 | 118,65 | 114,09 | 9.925,83 | 3,46% | |
+| CDII11 | CDII11 | fi-infra | 100,0000 | 101,56 | 94,87 | 9.487,00 | 3,31% | |
+| TRXF11 | TRXF11 | fii | 115,0000 | 101,74 | 75,60 | 8.694,00 | 3,03% | |
+| AFHI11 | AFHI11 | fii | 92,0000 | 92,49 | 93,55 | 8.606,60 | 3,00% | |
+| CPTI11 | CPTI11 | fi-infra | 80,0000 | 97,05 | 81,58 | 6.526,40 | 2,28% | |
+| MANA11 | MANA11 | fii | 705,0000 | 8,64 | 9,04 | 6.373,20 | 2,22% | |
+| VGIP11 | VGIP11 | fii | 76,0000 | 98,54 | 74,24 | 5.642,24 | 1,97% | |
+| HSML11 | HSML11 | fii | 65,0000 | 88,24 | 81,92 | 5.324,80 | 1,86% | |
+| JURO11 | JURO11 | fi-infra | 55,0000 | 96,13 | 95,60 | 5.258,00 | 1,83% | |
+| XPML11 | XPML11 | fii | 50,0000 | 108,12 | 102,65 | 5.132,50 | 1,79% | |
+| PCIP11 | PCIP11 | fii | 65,0000 | 100,01 | 74,55 | 4.845,75 | 1,69% | |
+| CRAA11 | CRAA11 | fiagro | 50,0000 | 95,92 | 93,00 | 4.650,00 | 1,62% | |
+| HGCR11 | HGCR11 | fii | 45,0000 | 93,00 | 95,80 | 4.311,00 | 1,50% | |
+| RBVA11 | RBVA11 | fii | 447,0000 | 9,11 | 8,61 | 3.848,67 | 1,34% | |
+| ALZR11 | ALZR11 | fii | 321,0000 | 10,02 | 9,94 | 3.190,74 | 1,11% | |
+| BTCI11 | BTCI11 | fii | 283,0000 | 9,21 | 9,14 | 2.586,62 | 0,90% | |
+| KNRI11 | KNRI11 | fii | 16,0000 | 145,56 | 154,95 | 2.479,20 | 0,86% | |
+| HGBS11 | HGBS11 | fii | 127,0000 | 20,66 | 18,63 | 2.366,01 | 0,82% | |
+| RF-NUBANK-120CDI | CDB NuBank 120% CDI | renda_fixa |  |  |  | 11.404,21 | 3,98% | |
+| RF-DIGIMAIS-123CDI | CDB Banco Digimais 123% CDI | renda_fixa |  |  |  | 3.305,31 | 1,15% | |
+| RF-MP-115CDI | CDB Mercado Pago 115% CDI | renda_fixa |  |  |  | 3.087,27 | 1,08% | |
+| RF-JF-CDI2_60 | CDB J&F Investimentos CDI + 2,60% | renda_fixa |  |  |  | 454,72 | 0,16% | |
+| RF-MB-BINVEST03 | CDB Mercado Bitcoin BINVEST 03 | renda_fixa |  |  |  | 275,25 | 0,10% | |
+| RF-MB-JEITTO14 | CDB Mercado Bitcoin JEITTO 14 | renda_fixa |  |  |  | 198,23 | 0,07% | |
+| RF-MB-ROOFTOP04 | CDB Mercado Bitcoin ROOFTOP 04 | renda_fixa |  |  |  | 148,29 | 0,05% | |
+| RF-MB-MULTIPLIKE12 | CDB Mercado Bitcoin MULTIPLIKE 12 | renda_fixa |  |  |  | 116,71 | 0,04% | |
+| RF-MB-JEITTO03 | CDB Mercado Bitcoin JEITTO 03 | renda_fixa |  |  |  | 59,58 | 0,02% | |
+| RF-BMG-IPCA14_50 | CDB Banco BMG IPCA + 14,50% | renda_fixa |  |  |  | 56,63 | 0,02% | |
+| LFTB11 | LFTB11 | etf | 93,0000 | 120,72 | 126,00 | 11.718,00 | 4,09% | |
+| FMP-FGTS-DAYCOVAL | DAYCOVAL FUNDO MÚTUO DE PRIVATIZAÇÃO DO FGTS ELETROBRAS (FMP-FGTS) | fundo | 3.639,9600 | 1,00 | 1,80 | 6.551,93 | 2,28% | |
+
+## Regras
+
+1. Peso alvo permanece vazio enquanto não existir política formal de alocação.
+2. Valores da posição individual prevalecem sobre totais resumidos da fonte.
+3. Diferenças entre totais da categoria e soma das posições devem permanecer rastreáveis.
+4. Não transformar esta fotografia em histórico imutável; snapshots futuros serão adicionados separadamente.
+
+
+
+========== FILE: vault\02_Portfolio\Portfolio Integrity.md ==========
+---
+type: portfolio_integrity
+scope: portfolio
+schema_version: "0.1"
+state: current
+source: Position Registry
+status: active
+---
+
+# Portfolio Integrity
+
+## Estado
+
+VALIDATED
+
+## Quantidade
+
+- Posições esperadas: 46
+- Posições lidas: 46
+
+## Valor operacional
+
+R$ 286.845,39
+
+## Soma dos pesos
+
+100,0000%
+
+## PCIP11
+
+- Valor: R$ 4.845,75
+- Peso da carteira: 1,6893%
+
+## Agregação por classe
+
+| Classe | Posições | Valor | Peso |
+|---|---:|---:|---:|
+| acao | 14 | R$ 125.811,47 | 43,86% |
+| etf | 1 | R$ 11.718,00 | 4,09% |
+| fiagro | 1 | R$ 4.650,00 | 1,62% |
+| fii | 16 | R$ 97.736,39 | 34,07% |
+| fi-infra | 3 | R$ 21.271,40 | 7,42% |
+| fundo | 1 | R$ 6.551,93 | 2,28% |
+| renda_fixa | 10 | R$ 19.106,20 | 6,66% |
+
+## Top 10 posições
+
+| ID | Ativo | Classe | Valor | Peso |
+|---|---|---|---:|---:|
+| BBSE3 | BBSE3 | acao | R$ 36.728,89 | 12,80% |
+| LVBI11 | LVBI11 | fii | R$ 13.419,12 | 4,68% |
+| LFTB11 | LFTB11 | etf | R$ 11.718,00 | 4,09% |
+| RF-NUBANK-120CDI | CDB NuBank 120% CDI | renda_fixa | R$ 11.404,21 | 3,98% |
+| BTLG11 | BTLG11 | fii | R$ 10.990,11 | 3,83% |
+| ISAE4 | ISAE4 | acao | R$ 10.952,00 | 3,82% |
+| CXSE3 | CXSE3 | acao | R$ 10.212,80 | 3,56% |
+| HGRU11 | HGRU11 | fii | R$ 9.925,83 | 3,46% |
+| ABCB4 | ABCB4 | acao | R$ 9.655,48 | 3,37% |
+| CMIG4 | CMIG4 | acao | R$ 9.554,34 | 3,33% |
+
+## Regras
+
+1. O valor operacional é a soma das posições individuais.
+2. Os pesos são derivados desse valor.
+3. Peso alvo não é inferido.
+4. Classificação econômica avançada requer camada própria.
+5. Divergências entre totais da plataforma e posições devem permanecer rastreáveis.
+
+## Fonte
+
+Position Registry / snapshot de carteira fornecido pelo usuário.
+
+## Controle
+
+schema_version: 0.1
+state: current
+status: active
+
+
+
+========== FILE: MeuVaultFinanceiro\00 - Vis�o Geral do Portfolio.md ==========
+---
+type: dashboard
+updated_by: IIP Engine
+tags:
+  - iip/dashboard
+  - iip/portfolio
+---
+
+# 📊 Visão Geral do Portfolio — IIP Engine
+
+<!-- IIP:BEGIN:METRICS_SUMMARY -->
+> [!info] Status do Sistema
+> Painel atualizado pelo **DecisionEngine**. Cotações spot, taxas de câmbio, proventos e alertas de rebalanceamento são sincronizados automaticamente.
+<!-- IIP:END:METRICS_SUMMARY -->
+
+---
+
+## 🟢 Matriz de Decisão e Vereditos Globais
+
+```dataviewjs
+const pages = dv.pages('"01 - Portfolio/Assets"')
+    .where(p => p.file.name !== "00 - Visão Geral do Portfolio");
+
+const tableData = pages.map(p => [
+    p.file.link,
+    p.asset_class || "N/A",
+    p.score || "N/A",
+    p.verdict || "AGUARDAR",
+    p.currency || "BRL",
+    p.spot_price_brl ? "R$ " + Number(p.spot_price_brl).toFixed(2) : "N/A",
+    p.file.mtime.toFormat("dd/MM/yyyy HH:mm")
+]);
+
+dv.table(["Ativo", "Classe", "Score", "Veredito", "Moeda", "Preço (BRL)", "Atualização"], tableData);
+```
+
+---
+
+## 💵 Exposição Cambial do Portfolio
+
+```dataviewjs
+const pages = dv.pages('"01 - Portfolio/Assets"');
+const groups = pages.groupBy(p => p.currency || "BRL");
+
+const summary = groups.map(g => {
+    const total = g.rows.length;
+    const pct = ((total / Math.max(pages.length, 1)) * 100).toFixed(1) + "%";
+    return [g.key, total, pct];
+});
+
+dv.table(["Moeda Base", "Qtd. Ativos", "Participação Relativa"], summary);
+```
+
+---
+
+## 💰 Projeção de Renda Passiva Mensal
+
+```dataviewjs
+const pages = dv.pages('"01 - Portfolio/Assets"');
+const incomeData = pages.map(p => [
+    p.file.link,
+    p.dividend_yield_ttm ? (Number(p.dividend_yield_ttm) * 100).toFixed(2) + "%" : "N/A",
+    p.monthly_payout_brl ? "R$ " + Number(p.monthly_payout_brl).toFixed(2) : "N/A",
+    p.annual_payout_brl ? "R$ " + Number(p.annual_payout_brl).toFixed(2) : "N/A"
+]);
+
+dv.table(["Ativo", "DY TTM", "Est. Mensal (BRL)", "Est. Anual (BRL)"], incomeData);
+```
+
+---
+
+## ⚠️ Alertas de Rebalanceamento & Desvios
+
+```dataviewjs
+const pages = dv.pages('"01 - Portfolio/Assets"');
+const rebalanceData = pages
+    .where(p => p.verdict === "REDUZIR" || p.verdict === "COMPRAR")
+    .map(p => [
+        p.file.link,
+        p.asset_class || "N/A",
+        p.verdict === "COMPRAR" ? "🎯 APORTAR" : "🔻 REDUZIR",
+        p.score || "N/A"
+    ]);
+
+dv.table(["Ativo", "Classe", "Ação Sugerida", "Score"], rebalanceData);
+```
+
+
+========== ACTIVE-CODE REFERENCES (EXCLUDING ARCHIVE) ==========
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\docs\CONTRACT_MATRIX.md:83: | `portfolio/registry.py` (`PORTFOLIO_ASSETS`) | Registro real da carteira do usuario, com CNPJ verificado | Provado ponta-a-ponta (validado com dado real nesta sessao) |
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\examples\pcip11_knowledge_roundtrip.py:39:         "snapshot_records": len(ctx.portfolio_snapshots),
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\cli\main.py:479:     default="portfolio_snapshots",
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\cli\main.py:495:     (``iip.portfolio.registry.PORTFOLIO_ASSETS``) que j� t�m CNPJ
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\data\b3_notas.py:129:     ``ticker`` com o registro real (``PORTFOLIO_ASSETS``) para obter a
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\knowledge\context.py:13:     portfolio_snapshots: tuple[str, ...]
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\knowledge\repository.py:208:             "type: portfolio_snapshot\n"
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\knowledge\repository_PATCH3C2.py:211:             "type: portfolio_snapshot\n"
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\knowledge\repository_PATCH3C2_FINAL.py:208:             "type: portfolio_snapshot\n"
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\operational_integration\system_reconciliation.py:22: def reconcile(
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\pipeline.py:8: from iip.portfolio.source_router import PortfolioSourceRouter
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\pipeline.py:25:         source_router: PortfolioSourceRouter,
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\registry.py:55: PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\registry.py:353:     return next((asset for asset in PORTFOLIO_ASSETS if asset.ticker == target), None)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\registry.py:358:     return tuple(a for a in PORTFOLIO_ASSETS if a.asset_class == target)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\registry.py:364:     ``PORTFOLIO_ASSETS`` don't have one yet (never guessed, only
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\registry.py:367:     return tuple(a for a in PORTFOLIO_ASSETS if a.cnpj)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\registry.py:377:         a for a in PORTFOLIO_ASSETS if a.cnpj or a.asset_class == "equity"
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\source_policy.py:7: from iip.portfolio.registry import PORTFOLIO_ASSETS, PortfolioAsset
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\source_policy.py:28:         assets: tuple[PortfolioAsset, ...] = PORTFOLIO_ASSETS,
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\source_router.py:28: class PortfolioSourceRouter:
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\__init__.py:4:     PORTFOLIO_ASSETS,
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\__init__.py:11: from .source_router import PortfolioSourceRouter, RoutedPortfolioAsset
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\__init__.py:38:     "PORTFOLIO_ASSETS",
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\portfolio\__init__.py:49:     "PortfolioSourceRouter",
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\production\reconciliation.py:15: def reconcile(
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\production\__init__.py:6: from .portfolio_snapshot import *
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\production_integration\production_cycle.py:21:     observed_tickers: tuple[str, ...],
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\production_integration\production_cycle.py:24:     recon = reconcile(portfolio.tickers, observed_tickers)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\src\iip\production_integration\reconciliation.py:19: def reconcile(
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_operational_integration_22001_30000.py:68:     result = reconcile(("A", "B"), ("B", "C"))
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_count_reconciliation.py:1: from iip.portfolio.registry import PORTFOLIO_ASSETS, assets_by_class
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_count_reconciliation.py:5: def test_all_real_portfolio_assets_can_be_resolved():
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_count_reconciliation.py:11:     assert len(PORTFOLIO_ASSETS) == 37
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_refresh.py:89:             # "commodity" is not a real PORTFOLIO_ASSETS class today --
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_source_policy.py:50: def test_all_real_portfolio_assets_can_be_resolved():
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_source_router.py:4: from iip.portfolio.source_router import PortfolioSourceRouter
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_source_router.py:28:     ref = PortfolioSourceRouter._asset_ref(asset)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_source_router.py:41:     ref = PortfolioSourceRouter._asset_ref(asset)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_source_router.py:49:     bridge = PortfolioSourceRouter(fake_router)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_portfolio_source_router.py:70:     result = PortfolioSourceRouter(Router()).route(asset)
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_production_1201_2000.py:6: from iip.production.portfolio_snapshot import PortfolioSnapshot
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_production_1201_2000.py:51:     result = reconcile(("A", "B"), ("B", "C"))
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_production_1201_2000.py:87: def test_portfolio_snapshot_weight():
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_production_integration_180001_220000.py:32:     result = reconcile(("HGRU11", "CPFE3"), ("cpfe3", "LVBI11"))
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_provider_operations_api_fix2.py:24:     from iip.portfolio import PORTFOLIO_ASSETS, get_asset
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\tests\test_provider_operations_api_fix2.py:27:     assert len(PORTFOLIO_ASSETS) == 37
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\02_Portfolio\Portfolio Integrity.md:6: source: Position Registry
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\02_Portfolio\Portfolio Integrity.md:10: # Portfolio Integrity
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\02_Portfolio\Portfolio Integrity.md:71: Position Registry / snapshot de carteira fornecido pelo usu�rio.
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\02_Portfolio\Position Registry.md:9: # Portfolio Position Registry
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\06_Exposures\PCIP11\PCIP11 - Portfolio Context.md:93: ## Portfolio Integrity
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\06_Exposures\PCIP11\PCIP11 - Portfolio Context.md:96: - [[Position Registry]]
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\06_Exposures\PCIP11\PCIP11 - Portfolio Context.md:97: - [[Portfolio Integrity]]
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\vault\06_Exposures\EXPOSURE-MAP.md:49: Fonte estrutural: [[Position Registry]]
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\README.md:118: `iip.portfolio.registry.PORTFOLIO_ASSETS` que j� t�m CNPJ verificado (hoje:
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\README.md:122: `portfolio_snapshots/{data}/`.
+D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1\README.md:184:   portfolio/      # Registro real da carteira (PORTFOLIO_ASSETS) + refresh em lote

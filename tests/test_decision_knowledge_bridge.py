@@ -6,6 +6,11 @@ from iip.decision.knowledge_bridge import to_knowledge_decision, to_knowledge_ve
 from iip.decision.models import Decision as EngineDecision
 from iip.decision.models import EvidenceRef
 from iip.decision.models import Verdict as EngineVerdict
+from iip.decision.thesis_exit_gate import (
+    GateStatus,
+    ThesisExitState,
+    assess_thesis_exit,
+)
 from iip.knowledge.models import DecisionChange
 from iip.knowledge.models import Verdict as KnowledgeVerdict
 
@@ -116,3 +121,51 @@ def test_to_knowledge_decision_explicit_change_type_overrides_inference():
     )
 
     assert knowledge_decision.change_type == DecisionChange.THESIS_CHANGE
+
+
+
+def make_thesis_exit_assessment():
+    return assess_thesis_exit(
+        fundamentals=GateStatus.FAIL,
+        balance_sheet=GateStatus.PASS,
+        valuation=GateStatus.ATTENTION,
+        dividends=GateStatus.ATTENTION,
+        governance=GateStatus.PASS,
+        opportunity_cost=GateStatus.UNKNOWN,
+    )
+
+
+def test_to_knowledge_decision_projects_thesis_exit_semantic_fields():
+    thesis_exit = make_thesis_exit_assessment()
+    decision = make_engine_decision(thesis_exit=thesis_exit)
+
+    knowledge_decision = to_knowledge_decision(
+        decision,
+        decision_id="DEC-PCIP11-THESIS-001",
+        date=date(2026, 7, 31),
+    )
+
+    assert knowledge_decision.thesis_exit_state == ThesisExitState.BREAK.value
+    assert knowledge_decision.thesis_exit_failed_gates == ("fundamentals",)
+    assert knowledge_decision.thesis_exit_attention_gates == (
+        "valuation",
+        "dividends",
+    )
+    assert knowledge_decision.thesis_exit_unknown_gates == ("opportunity_cost",)
+    assert knowledge_decision.thesis_exit_critical_failure is True
+
+
+def test_to_knowledge_decision_without_thesis_exit_remains_backward_compatible():
+    decision = make_engine_decision()
+
+    knowledge_decision = to_knowledge_decision(
+        decision,
+        decision_id="DEC-PCIP11-NO-THESIS-001",
+        date=date(2026, 7, 31),
+    )
+
+    assert knowledge_decision.thesis_exit_state is None
+    assert knowledge_decision.thesis_exit_failed_gates == ()
+    assert knowledge_decision.thesis_exit_attention_gates == ()
+    assert knowledge_decision.thesis_exit_unknown_gates == ()
+    assert knowledge_decision.thesis_exit_critical_failure is None

@@ -1,4 +1,4 @@
-"""Capital allocation ranking from normalized decision signals."""
+﻿"""Capital allocation ranking from normalized decision signals."""
 
 from __future__ import annotations
 
@@ -19,6 +19,11 @@ def rank(
             action=s.action,
             allocation_score=allocation_score(s),
             rationale=f"score={s.decision_score:.2f};confidence={s.confidence:.2f}",
+            thesis_exit_state=s.thesis_exit_state,
+            thesis_exit_failed_gates=s.thesis_exit_failed_gates,
+            thesis_exit_attention_gates=s.thesis_exit_attention_gates,
+            thesis_exit_unknown_gates=s.thesis_exit_unknown_gates,
+            thesis_exit_critical_failure=s.thesis_exit_critical_failure,
         )
         for s in signals
     )

@@ -196,6 +196,21 @@ def persist_if_eligible(
         unit=evidence.observation.unit,
         scale=evidence.observation.scale,
         period=period_yyyy_mm,
+        # Deliberadamente None, nao uma lacuna (TRACE 15.16, investigado
+        # antes de mudar por intuicao): semantic_dimension existe pra
+        # desambiguar um VALOR EXTRAIDO DE TEXTO LIVRE (confirmado lendo
+        # resolve_value_dimension() -- busca janela de contexto textual
+        # ao redor do numero, tipo "P/VP=0,92 / NAV=R$100 / Preco=R$92"
+        # no mesmo documento). Nossos tres metrics vem de COLUNAS
+        # NOMEADAS E ESTRUTURADAS do CSV da CVM (Patrimonio_Liquido,
+        # Valor_Patrimonial_Cotas, Cotas_Emitidas) -- zero ambiguidade
+        # pra resolver, o nome da coluna ja diz o que e. Confirmado
+        # tambem que IDENTITY_READY (sem dimensao) e
+        # IDENTITY_READY_WITH_DIMENSION sao status PARES em
+        # PersistenceBatch.ready, nao um hierarquico sobre o outro, e
+        # que assess_promotion() (nosso Promotion Gate real) nem
+        # referencia esse campo. Forcar NAV aqui seria usar o contrato
+        # errado, nao completar um incompleto.
         semantic_dimension=None,
         document_hash=evidence.document_hash or "",
         document_id=evidence.document_id,

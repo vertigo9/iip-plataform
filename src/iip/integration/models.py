@@ -22,6 +22,12 @@ class AssetSignal:
     confidence: float
     action: Action
     evidence_count: int = 0
+    thesis_exit_state: str | None = None
+    thesis_exit_failed_gates: tuple[str, ...] = ()
+    thesis_exit_attention_gates: tuple[str, ...] = ()
+    thesis_exit_unknown_gates: tuple[str, ...] = ()
+    thesis_exit_critical_failure: bool | None = None
+    evidence_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -37,3 +43,8 @@ class PortfolioDecision:
     action: Action
     allocation_score: float
     rationale: str
+    thesis_exit_state: str | None = None
+    thesis_exit_failed_gates: tuple[str, ...] = ()
+    thesis_exit_attention_gates: tuple[str, ...] = ()
+    thesis_exit_unknown_gates: tuple[str, ...] = ()
+    thesis_exit_critical_failure: bool | None = None

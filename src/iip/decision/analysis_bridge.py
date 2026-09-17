@@ -33,6 +33,10 @@ from __future__ import annotations
 
 from iip.analysis import AnalysisReport, Pillar
 from iip.decision.models import EvidenceRef, IntelligenceInput
+from iip.decision.thesis_exit_gate import assess_thesis_exit
+from iip.decision.thesis_semantic_adapter import (
+    adapt_analysis_report_to_thesis_gates,
+)
 
 _RISK_LEVEL_MAP = {
     "Low": "Baixo",
@@ -99,6 +103,17 @@ def analysis_to_intelligence_input(
             "valor não mapeado)."
         )
 
+    thesis_gates = adapt_analysis_report_to_thesis_gates(report)
+
+    thesis_exit = assess_thesis_exit(
+        fundamentals=thesis_gates["fundamentals"],
+        balance_sheet=thesis_gates["balance_sheet"],
+        valuation=thesis_gates["valuation"],
+        dividends=thesis_gates["dividends"],
+        governance=thesis_gates["governance"],
+        opportunity_cost=thesis_gates["opportunity_cost"],
+    )
+
     intelligence_input = IntelligenceInput(
         ticker=report.asset_symbol,
         thesis_signal=thesis_signal,
@@ -108,5 +123,6 @@ def analysis_to_intelligence_input(
         quality_score=quality_score,
         opportunity_score=opportunity_score,
         evidence=evidence,
+        thesis_exit=thesis_exit,
     )
     return intelligence_input, tuple(warnings)

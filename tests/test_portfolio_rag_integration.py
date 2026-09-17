@@ -16,4 +16,9 @@ def test_run_portfolio_cycle_with_rag_enrichment():
     results = run_portfolio_cycle(manifest)
     assert results["processed"] == 1
     assert results["errors"] == 0
-    assert len(results["observations"]) > 0
+    # Achado real (14/09/2026): YFinanceGateway/B3Gateway sao mock fixo,
+    # sem chamada de rede real -- dispatch_harvest_to_engine e' um stub
+    # deliberado que NUNCA fabrica evidencia a partir desse dado. Ate'
+    # esses gateways terem implementacao real, observations fica
+    # sempre vazio -- isso e' o comportamento honesto esperado.
+    assert results["observations"] == []

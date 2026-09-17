@@ -1,6 +1,7 @@
 from .allocation import *
 from .analyzer_bridge import *
 from .contribution import *
+from .decision_adapter import *
 from .decision_history import *
 from .models import *
 from .portfolio_bridge import *

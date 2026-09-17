@@ -1,0 +1,11 @@
+﻿POL 25.23 — FOCUSED CALLSITE AUDIT
+Timestamp: 2026-09-16 22:17:22
+Repository: D:\IIP_Obsidian_Integration_v1.0\iip_obsidian_integration_v1
+Files scanned: 623
+Scope: src\iip and tests; backups excluded
+Mode: READ-ONLY; no imports, tests, CLI, or network
+
+================================================================================
+CATEGORY: CLI refresh entrypoints
+================================================================================
+END — textual matches only; reachability and runtime behavior unverified.

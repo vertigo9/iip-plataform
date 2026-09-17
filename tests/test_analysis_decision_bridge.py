@@ -87,7 +87,16 @@ def test_bridge_output_is_directly_usable_by_decide():
 
     assert decision.ticker == "BTLG11"
     assert decision.score >= 0
-    assert len(decision.reasons) == 4
+    # Thesis Exit is part of the current Decision contract: when present,
+    # the engine appends three diagnostic reasons to the four legacy reasons.
+    assert len(decision.reasons) == 7
+    assert decision.reasons[0].startswith("composite_score=")
+    assert decision.reasons[1].startswith("confidence=")
+    assert decision.reasons[2] == "thesis=reforco"
+    assert decision.reasons[3].startswith("risk=")
+    assert decision.reasons[4].startswith("thesis_exit=")
+    assert decision.reasons[5].startswith("thesis_exit_failed=")
+    assert decision.reasons[6].startswith("thesis_exit_attention=")
 
 
 def test_bridge_ticker_matches_report_symbol():
@@ -96,3 +105,26 @@ def test_bridge_ticker_matches_report_symbol():
         report, thesis_signal="reforco", evidence=(EvidenceRef("EV-1"),)
     )
     assert intelligence_input.ticker == report.asset_symbol
+def test_bridge_populates_thesis_exit():
+    report = make_report()
+
+    intelligence_input, _ = analysis_to_intelligence_input(
+        report,
+        thesis_signal="reforco",
+        evidence=(EvidenceRef("EV-1"),),
+    )
+
+    assert intelligence_input.thesis_exit is not None
+    
+def test_bridge_thesis_exit_is_semantic_assessment():
+    from iip.decision.thesis_exit_gate import ThesisExitAssessment
+
+    report = make_report()
+
+    intelligence_input, _ = analysis_to_intelligence_input(
+        report,
+        thesis_signal="reforco",
+        evidence=(EvidenceRef("EV-1"),),
+    )
+
+    assert isinstance(intelligence_input.thesis_exit, ThesisExitAssessment)

@@ -57,6 +57,6 @@ def send_html_report_email(
 
         logger.info("E-mail com relatório enviado com sucesso para: %s", recipient_email)
         return True
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 — isolamento de falha de envio, não deve derrubar o chamador
         logger.error("Falha ao enviar e-mail via SMTP: %s", exc)
         return False

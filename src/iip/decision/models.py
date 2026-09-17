@@ -44,26 +44,3 @@ class Decision:
     reasons: tuple[str, ...]
     evidence: tuple[EvidenceRef, ...] = ()
     thesis_exit: ThesisExitAssessment | None = None
-from dataclasses import dataclass
-from datetime import datetime
-from enum import Enum
-
-
-class SemanticDimension(str, Enum):
-    """Dimensão semântica para métricas financeiras (Trace 14/15)."""
-    NAV = "NAV"
-    MARKET_VALUE = "MARKET_VALUE"
-
-
-@dataclass(frozen=True)
-class MetricObservationIdentity:
-    """Contrato canônico de observação de métrica rastreável pelo Atlas."""
-    ticker: str
-    metric_type: str
-    semantic_dimension: SemanticDimension
-    value: float
-    confidence_score: float
-    source_provider: str
-    source_url: str
-    raw_payload_hash: str
-    observed_at: datetime
