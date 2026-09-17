@@ -26,7 +26,7 @@ class AtlasKnowledgeAdapter:
             date=evidence_date,
             source_type="atlas",
             source_url=document.final_url or document.url,
-            title=None,
+            title=document.title,
             document_hash=document.content_hash,
             relevant_facts=(
                 f"provider={document.provider}",

@@ -65,6 +65,7 @@ class CvmFiiTarget:
     # any specific fund. Confirmed live in TRACE 15.13/15.13.1: the
     # adapter unconditionally reads target.ticker.
     ticker: str = "MULTI"
+    cnpj: str | None = None
 
 
 @dataclass(frozen=True)

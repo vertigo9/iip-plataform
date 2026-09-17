@@ -19,6 +19,9 @@ class FetchedQuotes:
     target: BrapiTarget
     status_code: int
     quotes: tuple[BrapiQuote, ...]
+    content_type: str = "application/json"
+    body: bytes = b""
+    final_url: str = ""
 
 
 class BrapiHTTPHarvester:
@@ -50,9 +53,19 @@ class BrapiHTTPHarvester:
         response = self._opener(request, timeout=self.timeout)
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
+        headers = getattr(response, "headers", {})
+        content_type = str(headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
         body = response.read()
         quotes = parse_quote_response(body)
-        return FetchedQuotes(target=target, status_code=status_code, quotes=quotes)
+        final_url = str(response.geturl() if hasattr(response, "geturl") else target.url)
+        return FetchedQuotes(
+            target=target,
+            status_code=status_code,
+            quotes=quotes,
+            content_type=content_type or "application/json",
+            body=body,
+            final_url=final_url,
+        )
 
     def fetch_many(self, targets: tuple[BrapiTarget, ...]) -> tuple[FetchedQuotes, ...]:
         return tuple(self.fetch(target) for target in targets)

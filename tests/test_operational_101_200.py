@@ -1,6 +1,7 @@
 from iip.operational.atlas_gateway import AtlasGateway
 from iip.operational.checkpoint import OperationalCheckpoint
 from iip.operational.discovery_chain import DiscoveryChain
+from iip.operational.knowledge_sink import OperationalEvidenceSink
 from iip.operational.normalization import normalize
 from iip.operational.portfolio_runner import PortfolioOperationalRunner
 from iip.operational.provider_adapter import (
@@ -100,6 +101,66 @@ def test_portfolio_runner_executes_discovery_and_atlas():
     assert result.ticker == "XPML11"
     assert len(result.discovery.documents) == 1
     assert result.atlas_results[0].success
+
+
+def test_portfolio_runner_persists_successful_documents_to_knowledge(tmp_path):
+    from iip.knowledge import KnowledgeBridge
+
+    adapter = ProviderAdapter(
+        "b3",
+        None,
+        lambda ticker, years: (
+            RawDocument(
+                "b3:XPML11:2026:real",
+                ticker,
+                "Documento real",
+                "https://b3.test/documento.pdf",
+                category="Relatorios",
+                year=2026,
+                content=b"documento real",
+            ),
+        ),
+    )
+    bridge = KnowledgeBridge(tmp_path / "vault")
+    runner = PortfolioOperationalRunner(
+        lambda ticker: DiscoveryChain((adapter,)),
+        AtlasGateway(lambda document: document.document_id),
+        OperationalEvidenceSink(bridge),
+    )
+
+    result = runner.run_asset("XPML11", range(2026, 2027))
+
+    paths = bridge.repository.list_evidence("XPML11")
+    assert len(result.knowledge_results) == 1
+    assert len(paths) == 1
+    text = paths[0].read_text(encoding="utf-8")
+    assert "title: Documento real" in text
+    assert "document_hash:" in text
+    assert "b3:XPML11:2026:real" in bridge.assemble("XPML11").evidence[0]
+
+
+def test_portfolio_runner_does_not_persist_failed_atlas_documents(tmp_path):
+    from iip.knowledge import KnowledgeBridge
+
+    adapter = ProviderAdapter(
+        "b3",
+        None,
+        lambda ticker, years: (
+            RawDocument("b3:1", ticker, "Documento", "https://b3.test"),
+        ),
+    )
+    bridge = KnowledgeBridge(tmp_path / "vault")
+    runner = PortfolioOperationalRunner(
+        lambda ticker: DiscoveryChain((adapter,)),
+        AtlasGateway(lambda document: (_ for _ in ()).throw(RuntimeError("offline"))),
+        OperationalEvidenceSink(bridge),
+    )
+
+    result = runner.run_asset("XPML11", range(2026, 2027))
+
+    assert result.atlas_results[0].success is False
+    assert result.knowledge_results == ()
+    assert bridge.repository.list_evidence("XPML11") == ()
 
 
 def test_quality_gate_accepts_complete_document():

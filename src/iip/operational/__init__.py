@@ -1,6 +1,7 @@
 from .atlas_gateway import *
 from .checkpoint import *
 from .discovery_chain import *
+from .knowledge_sink import *
 from .normalization import *
 from .portfolio_runner import *
 from .provider_adapter import *

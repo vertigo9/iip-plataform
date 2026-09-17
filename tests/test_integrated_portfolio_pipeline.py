@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 from iip.portfolio.pipeline import IntegratedPortfolioPipeline
+from iip.portfolio.pipeline import ingest_registered_assets
 from iip.portfolio.registry import get_asset
 
 
@@ -95,3 +96,29 @@ def test_integrated_pipeline_reports_missing_route():
 
     assert result.discovered == ()
     assert result.errors == ("no_route",)
+
+
+def test_registered_assets_are_converted_and_sent_to_universal_ingestion():
+    class Result:
+        def __init__(self, ticker, succeeded):
+            self.ticker = ticker
+            self.succeeded = succeeded
+
+    class Service:
+        def __init__(self):
+            self.assets = ()
+
+        def ingest_many(self, assets, years):
+            self.assets = tuple(assets)
+            return tuple(Result(asset.ticker, asset.ticker == "XPML11") for asset in self.assets)
+
+    service = Service()
+    result = ingest_registered_assets(
+        service,
+        range(2026, 2027),
+        (get_asset("XPML11"), get_asset("BBSE3")),
+    )
+
+    assert [asset.ticker for asset in service.assets] == ["XPML11", "BBSE3"]
+    assert result.succeeded[0].ticker == "XPML11"
+    assert result.failed[0].ticker == "BBSE3"

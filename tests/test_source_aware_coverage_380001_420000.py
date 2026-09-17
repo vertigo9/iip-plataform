@@ -28,6 +28,9 @@ from iip.sources.provider_registry import ProviderRegistry
 from iip.sources.registry import AssetRef, SourceRef, SourceRegistry
 from iip.sources.router import SourceRouter
 from iip.sources.xp_asset import DocumentTarget, XPAssetProvider
+from iip.atlas import AtlasDocument, AtlasKnowledgeAdapter, SourceIngestionService, SourceTransportBinding
+from iip.knowledge import KnowledgeBridge
+from iip.sources.provider import DocumentProvider
 from iip.strategy.allocation_planner import plan
 from iip.strategy.e2e import execute as execute_e2e
 from iip.strategy.income_plan import build as build_income
@@ -360,6 +363,67 @@ def test_xp_asset_provider_and_router_discovery():
     pr3.register(bad)
     router3 = SourceRouter(source_registry=sr, provider_registry=pr3)
     assert MultiProviderDiscovery(router3).discover(asset2, range(2026, 2027)) == ()
+
+
+def test_source_ingestion_service_reuses_same_path_for_other_provider(tmp_path):
+    class BtgProvider(DocumentProvider):
+        provider_name = "btg"
+
+        def supports(self, asset):
+            return any(source.provider == self.provider_name for source in asset.sources)
+
+        def discover(self, asset, years):
+            return (SimpleNamespace(ticker=asset.ticker, year=2026),)
+
+    provider = BtgProvider()
+    asset = AssetRef(
+        "BTLG11",
+        "fund",
+        "FII",
+        manager="BTG Pactual",
+        sources=(SourceRef("btg", "institutional_primary", 1, "https://btg.test/doc"),),
+    )
+    provider_registry = ProviderRegistry()
+    provider_registry.register(provider)
+    source_registry = SourceRegistry()
+    source_registry.register(asset)
+    bridge = KnowledgeBridge(tmp_path / "vault")
+    service = SourceIngestionService(
+        router=SourceRouter(
+            source_registry=source_registry,
+            provider_registry=provider_registry,
+        ),
+        providers={"btg": provider},
+        transports={
+            "btg": SourceTransportBinding(
+                "btg",
+                lambda targets: tuple(targets),
+                lambda target: AtlasDocument.build(
+                    ticker=target.ticker,
+                    provider="btg",
+                    role="institutional_primary",
+                    url="https://btg.test/doc",
+                    final_url="https://btg.test/doc",
+                    content_type="application/pdf",
+                    status_code=200,
+                    body=b"btg document",
+                    discovered_year=target.year,
+                ),
+            )
+        },
+        knowledge_adapter=AtlasKnowledgeAdapter(bridge),
+    )
+
+    result = service.ingest(asset, range(2026, 2027))
+
+    assert result.provider == "btg"
+    assert len(result.documents) == 1
+    assert len(bridge.repository.list_evidence("BTLG11")) == 1
+    assert "provider=btg" in bridge.assemble("BTLG11").evidence[0]
+    batch = service.ingest_many((asset,), range(2026, 2027))
+    assert len(batch) == 1
+    assert batch[0].ticker == "BTLG11"
+    assert batch[0].provider == "btg"
 
 
 def test_harvester_and_adapter():

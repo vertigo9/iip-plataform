@@ -25,6 +25,7 @@ class AssetRef:
     segment: str | None = None
     manager: str | None = None
     administrator: str | None = None
+    cnpj: str | None = None
     sources: tuple[SourceRef, ...] = field(default_factory=tuple)
 
 
@@ -49,6 +50,7 @@ class SourceRegistry:
             segment=asset.segment,
             manager=asset.manager,
             administrator=asset.administrator,
+            cnpj=asset.cnpj,
             sources=tuple(
                 sorted(
                     asset.sources,

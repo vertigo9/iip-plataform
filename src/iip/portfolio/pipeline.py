@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
-from iip.portfolio.registry import PortfolioAsset
+from iip.portfolio.registry import PORTFOLIO_ASSETS, PortfolioAsset
 from iip.portfolio.source_router import PortfolioSourceRouter
 
 
@@ -14,6 +15,33 @@ class PortfolioPipelineResult:
     routed: object
     discovered: tuple[object, ...]
     errors: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class PortfolioEvidenceBatchResult:
+    """Document-ingestion results aligned with the real portfolio registry."""
+
+    results: tuple[Any, ...]
+
+    @property
+    def succeeded(self) -> tuple[Any, ...]:
+        return tuple(result for result in self.results if result.succeeded)
+
+    @property
+    def failed(self) -> tuple[Any, ...]:
+        return tuple(result for result in self.results if not result.succeeded)
+
+
+def ingest_registered_assets(
+    ingestion_service: Any,
+    years: range,
+    assets: tuple[PortfolioAsset, ...] = PORTFOLIO_ASSETS,
+) -> PortfolioEvidenceBatchResult:
+    """Run the universal ingestion service against registered portfolio assets."""
+    asset_refs = tuple(PortfolioSourceRouter.asset_ref(asset) for asset in assets)
+    return PortfolioEvidenceBatchResult(
+        ingestion_service.ingest_many(asset_refs, years)
+    )
 
 
 class IntegratedPortfolioPipeline:

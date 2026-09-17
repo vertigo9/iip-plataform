@@ -25,6 +25,9 @@ class FetchedFundamentals:
     target: BolsaiTarget
     status_code: int
     fundamentals: BolsaiFundamentals
+    content_type: str = ""
+    body: bytes = b""
+    final_url: str = ""
 
 
 @dataclass(frozen=True)
@@ -80,11 +83,14 @@ class BolsaiHTTPHarvester:
 
     def fetch(self, target: BolsaiTarget) -> FetchedFundamentals:
         """Fetch a **stock** target (built with ``build_target``)."""
-        status_code, _content_type, body, _final_url = self._request(target)
+        status_code, content_type, body, final_url = self._request(target)
         return FetchedFundamentals(
             target=target,
             status_code=status_code,
             fundamentals=parse_fundamentals_response(body),
+            content_type=content_type,
+            body=body,
+            final_url=final_url,
         )
 
     def fetch_fii(self, target: BolsaiTarget) -> FetchedFii:

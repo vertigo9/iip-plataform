@@ -9,6 +9,17 @@ from .provider_registry import ProviderRegistry
 from .registry import AssetRef, SourceRef, SourceRegistry
 from .router import SourceRoute, SourceRouter
 from .xp_asset import DocumentTarget, XPAssetProvider
+from .b3_equity_provider import BolsaiEquityProvider
+from .cvm_fii_provider import CvmFiiProvider
+from .b3_brapi_provider import BrapiMarketProvider
+from .adapter_catalog import (
+    ADAPTER_CATALOG,
+    AdapterDescriptor,
+    AdapterKind,
+    AdapterReadiness,
+    adapter_descriptor,
+    ready_adapters,
+)
 
 __all__ = [
     "AssetRef",
@@ -26,4 +37,13 @@ __all__ = [
     "SourceRouter",
     "XPAssetHTTPHarvester",
     "XPAssetProvider",
+    "BolsaiEquityProvider",
+    "CvmFiiProvider",
+    "BrapiMarketProvider",
+    "ADAPTER_CATALOG",
+    "AdapterDescriptor",
+    "AdapterKind",
+    "AdapterReadiness",
+    "adapter_descriptor",
+    "ready_adapters",
 ]

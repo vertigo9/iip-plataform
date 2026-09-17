@@ -23,6 +23,7 @@ class AtlasDocument:
     content_hash: str
     discovered_year: int | None
     ingested_at: datetime
+    title: str | None = None
 
     @classmethod
     def build(
@@ -37,6 +38,7 @@ class AtlasDocument:
         status_code: int,
         body: bytes,
         discovered_year: int | None,
+        title: str | None = None,
     ) -> AtlasDocument:
         payload = bytes(body)
         content_hash = sha256(payload).hexdigest()
@@ -61,4 +63,5 @@ class AtlasDocument:
             content_hash=content_hash,
             discovered_year=discovered_year,
             ingested_at=datetime.now(UTC),
+            title=title.strip() if title else None,
         )

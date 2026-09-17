@@ -9,6 +9,13 @@ from .registry import (
 )
 from .source_policy import AssetSourcePolicy, PortfolioSourcePolicyResolver
 from .source_router import PortfolioSourceRouter, RoutedPortfolioAsset
+from .e2e import AssetE2EResult, AssetE2ERunner, E2EStep
+from .historical_series import (
+    HistoricalObservation,
+    HistoricalSeries,
+    HistoricalSeriesStore,
+    collect_cvm_fii_history,
+)
 
 try:
     from .capabilities import Capability, ProviderCapabilities
@@ -29,20 +36,35 @@ except ImportError:
     IncrementalTracker = None
 
 try:
-    from .pipeline import IntegratedPortfolioPipeline, PortfolioPipelineResult
+    from .pipeline import (
+        IntegratedPortfolioPipeline,
+        PortfolioEvidenceBatchResult,
+        PortfolioPipelineResult,
+        ingest_registered_assets,
+    )
 except ImportError:
     IntegratedPortfolioPipeline = None
+    PortfolioEvidenceBatchResult = None
     PortfolioPipelineResult = None
+    ingest_registered_assets = None
 
 __all__ = [
     "PORTFOLIO_ASSETS",
     "AssetSourcePolicy",
+    "AssetE2EResult",
+    "AssetE2ERunner",
     "Capability",
     "ClassificationProvenance",
     "HealthAwareProviderSelector",
     "IncrementalDocument",
     "IncrementalTracker",
+    "E2EStep",
+    "HistoricalObservation",
+    "HistoricalSeries",
+    "HistoricalSeriesStore",
+    "collect_cvm_fii_history",
     "IntegratedPortfolioPipeline",
+    "PortfolioEvidenceBatchResult",
     "PortfolioAsset",
     "PortfolioPipelineResult",
     "PortfolioSourcePolicyResolver",
@@ -52,4 +74,5 @@ __all__ = [
     "RoutedPortfolioAsset",
     "assets_by_class",
     "get_asset",
+    "ingest_registered_assets",
 ]
