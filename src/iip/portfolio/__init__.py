@@ -15,6 +15,7 @@ from .historical_series import (
     HistoricalSeries,
     HistoricalSeriesStore,
     collect_cvm_fii_history,
+    normalize_quota_splits,
 )
 
 try:
@@ -63,6 +64,7 @@ __all__ = [
     "HistoricalSeries",
     "HistoricalSeriesStore",
     "collect_cvm_fii_history",
+    "normalize_quota_splits",
     "IntegratedPortfolioPipeline",
     "PortfolioEvidenceBatchResult",
     "PortfolioAsset",

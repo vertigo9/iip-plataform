@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 from typing import Any
 
 from iip.atlas.models import AtlasDocument
 from iip.sources.cvm_fii import build_target
 from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
+
+# A ratio at/above this factor between two consecutive monthly NAV-per-quota
+# values is treated as a scale break -- almost certainly a quota split or
+# grouping (desdobramento/grupamento), never organic monthly price movement.
+_SCALE_BREAK_RATIO = 5.0
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,7 @@ class HistoricalSeries:
     provider: str
     observations: tuple[HistoricalObservation, ...]
     source_documents: tuple[dict[str, Any], ...]
+    adjustments: tuple[dict[str, Any], ...] = ()
 
     @property
     def nav_values(self) -> tuple[float, ...]:
@@ -50,11 +56,62 @@ class HistoricalSeries:
             current = item.valor_patrimonial_cotas
             if previous is not None and current is not None:
                 ratio = max(previous, current) / min(previous, current)
-                if ratio >= 5.0:
+                if ratio >= _SCALE_BREAK_RATIO:
                     breaks.append((item.period, f"ratio={ratio:.6f}"))
             if current is not None:
                 previous = current
         return tuple(breaks)
+
+
+def normalize_quota_splits(series: HistoricalSeries) -> HistoricalSeries:
+    """Rescale NAV-per-quota values before each detected break onto the
+    current quota basis, so the whole series is comparable for volatility
+    and return calculations.
+
+    Only ``valor_patrimonial_cotas`` is per-quota; ``patrimonio_liquido``,
+    ``valor_ativo`` and ``total_numero_cotistas`` are fund/shareholder
+    totals unaffected by a split and are left untouched.
+
+    Call this only after confirming a ``scale_breaks`` entry is a genuine
+    quota split/grouping -- e.g. ``patrimonio_liquido`` and
+    ``total_numero_cotistas`` stay continuous across the break, ruling out
+    a data error. This function rescales unconditionally once called; it
+    does not re-verify that the break is legitimate.
+    """
+    observations = list(series.observations)
+    breaks: list[tuple[int, float]] = []
+    previous_value: float | None = None
+    for index, item in enumerate(observations):
+        current_value = item.valor_patrimonial_cotas
+        if previous_value is not None and current_value is not None:
+            ratio = max(previous_value, current_value) / min(
+                previous_value, current_value
+            )
+            if ratio >= _SCALE_BREAK_RATIO:
+                breaks.append((index, previous_value / current_value))
+        if current_value is not None:
+            previous_value = current_value
+
+    adjustments = list(series.adjustments)
+    for break_index, factor in breaks:
+        for i in range(break_index):
+            item = observations[i]
+            if item.valor_patrimonial_cotas is not None:
+                observations[i] = replace(
+                    item, valor_patrimonial_cotas=item.valor_patrimonial_cotas / factor
+                )
+        adjustments.append(
+            {
+                "period": observations[break_index].period,
+                "field": "valor_patrimonial_cotas",
+                "factor": factor,
+                "reason": "quota split/grouping confirmed via patrimonio_liquido continuity",
+            }
+        )
+
+    return replace(
+        series, observations=tuple(observations), adjustments=tuple(adjustments)
+    )
 
 
 class HistoricalSeriesStore:
@@ -76,6 +133,7 @@ class HistoricalSeriesStore:
             "provider": series.provider,
             "observations": [asdict(item) for item in series.observations],
             "source_documents": list(series.source_documents),
+            "adjustments": list(series.adjustments),
         }
         path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2),
@@ -93,6 +151,7 @@ class HistoricalSeriesStore:
                 HistoricalObservation(**item) for item in payload["observations"]
             ),
             source_documents=tuple(payload["source_documents"]),
+            adjustments=tuple(payload.get("adjustments", ())),
         )
 
 
