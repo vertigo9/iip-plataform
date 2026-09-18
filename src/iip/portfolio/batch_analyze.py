@@ -112,6 +112,9 @@ def analyze_portfolio(
     hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (referência CVM), não timestamp
     ano_efetivo = ano or hoje.year
     mes_efetivo = mes or hoje.month
+    # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
+    # mesmo comentário em iip.cli.main's fetch-template equity branch.
+    ano_dfp_efetivo = ano or (hoje.year - 1)
 
     all_positions = positions if positions is not None else assets_refreshable_now()
     bridge = knowledge_bridge_cls(vault_path)
@@ -154,7 +157,13 @@ def analyze_portfolio(
                     position.ticker, position.cnpj, ano_efetivo, mes_efetivo, brapi_token
                 )
             elif template_type == "equity":
-                template, _ = fetch_equity(position.ticker, bolsai_api_key, brapi_token)
+                template, _ = fetch_equity(
+                    position.ticker,
+                    position.cnpj,
+                    ano_dfp_efetivo,
+                    bolsai_api_key,
+                    brapi_token,
+                )
             elif template_type == "fiagro":
                 template, _ = fetch_fiagro(
                     position.ticker, position.cnpj, ano_efetivo, mes_efetivo, brapi_token

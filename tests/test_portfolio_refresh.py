@@ -101,7 +101,7 @@ def test_refresh_portfolio_skips_positions_without_fetchable_asset_class(tmp_pat
     assert result.skipped[0].ticker == "XAU11"
 
 
-def fake_fetch_equity_ok(symbol, bolsai_api_key, brapi_token):
+def fake_fetch_equity_ok(symbol, cnpj, ano, bolsai_api_key, brapi_token):
     return (
         {"symbol": symbol, "financials": {"dividend_yield": 5.0}},
         FetchResult(fetched_fields=("dividend_yield",)),
@@ -122,7 +122,7 @@ def test_refresh_portfolio_defaults_to_assets_refreshable_now(tmp_path):
     tickers = {o.ticker for o in result.outcomes}
     assert "BTLG11" in tickers
     assert "LFTB11" in tickers
-    assert "BBSE3" in tickers  # equity -- refreshable now too, no CNPJ needed
+    assert "BBSE3" in tickers  # equity -- CNPJ-verified in the registry, refreshable via CVM DFP
 
 
 def test_refresh_portfolio_reports_fetched_fields_per_position(tmp_path):

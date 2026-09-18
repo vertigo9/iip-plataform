@@ -19,7 +19,7 @@ def _clear_settings_cache(monkeypatch):
 def test_analyze_portfolio_runs_and_reports_summary(monkeypatch, tmp_path):
     from iip.cli.fetch_template import FetchResult
 
-    def fake_fetch_equity(symbol, bolsai_api_key, brapi_token):
+    def fake_fetch_equity(symbol, cnpj, ano, bolsai_api_key, brapi_token):
         return (
             {"price": 33.81, "financials": {"dividend_yield": 7.5}},
             FetchResult(fetched_fields=("price",)),

@@ -53,20 +53,25 @@ class PortfolioAsset:
 # This table deliberately avoids inventing classifications not supported by
 # the DATABASE or explicitly supplied by the user.
 PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
-    PortfolioAsset("BBSE3", "equity", sector="Financeiro", industry="Previdência e Seguros"),
-    PortfolioAsset("ISAE4", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
-    PortfolioAsset("CXSE3", "equity", sector="Financeiro", industry="Previdência e Seguros"),
-    PortfolioAsset("CPFE3", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
-    PortfolioAsset("ABCB4", "equity", sector="Financeiro", industry="Intermediários Financeiros (Bancos)"),
-    PortfolioAsset("CMIG4", "equity", sector="Utilidade Pública", industry="Energia Elétrica"),
-    PortfolioAsset("SAUD3", "equity", sector="Saúde", industry="Serviços Médico-Hospitalares, Analíticos e Diagnósticos"),
-    PortfolioAsset("ALOS3", "equity", sector="Financeiro", industry="Exploração de Imóveis"),
-    PortfolioAsset("CSUD3", "equity", sector="Utilidade Pública / Tecnologia", industry="Processamento de Dados e Serviços"),
-    PortfolioAsset("VBBR3", "equity", sector="Petróleo, Gás e Biocombustíveis", industry="Comércio Varejista e Atacadista"),
-    PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel"),
-    PortfolioAsset("FESA4", "equity", sector="Materiais Básicos", industry="Siderurgia e Metalurgia"),
-    PortfolioAsset("LEVE3", "equity", sector="Bens Industriais", industry="Material de Transporte"),
-    PortfolioAsset("PASS3", "equity", sector="Utilidade Pública", industry="Gás"),
+    # CNPJs abaixo verificados ao vivo em 18/09/2026 contra o cadastro
+    # aberto da CVM (dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/
+    # cad_cia_aberta.csv), cruzando razão social/nome comercial com cada
+    # ticker (nunca adivinhado) -- usados para localizar cada empresa no
+    # dataset de DFP (ver iip.sources.cvm_dfp).
+    PortfolioAsset("BBSE3", "equity", sector="Financeiro", industry="Previdência e Seguros", cnpj="17.344.597/0001-94"),
+    PortfolioAsset("ISAE4", "equity", sector="Utilidade Pública", industry="Energia Elétrica", cnpj="02.998.611/0001-04"),
+    PortfolioAsset("CXSE3", "equity", sector="Financeiro", industry="Previdência e Seguros", cnpj="22.543.331/0001-00"),
+    PortfolioAsset("CPFE3", "equity", sector="Utilidade Pública", industry="Energia Elétrica", cnpj="02.429.144/0001-93"),
+    PortfolioAsset("ABCB4", "equity", sector="Financeiro", industry="Intermediários Financeiros (Bancos)", cnpj="28.195.667/0001-06"),
+    PortfolioAsset("CMIG4", "equity", sector="Utilidade Pública", industry="Energia Elétrica", cnpj="17.155.730/0001-64"),
+    PortfolioAsset("SAUD3", "equity", sector="Saúde", industry="Serviços Médico-Hospitalares, Analíticos e Diagnósticos", cnpj="13.270.520/0001-66"),
+    PortfolioAsset("ALOS3", "equity", sector="Financeiro", industry="Exploração de Imóveis", cnpj="05.878.397/0001-32"),
+    PortfolioAsset("CSUD3", "equity", sector="Utilidade Pública / Tecnologia", industry="Processamento de Dados e Serviços", cnpj="01.896.779/0001-38"),
+    PortfolioAsset("VBBR3", "equity", sector="Petróleo, Gás e Biocombustíveis", industry="Comércio Varejista e Atacadista", cnpj="34.274.233/0001-02"),
+    PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel", cnpj="89.637.490/0001-45"),
+    PortfolioAsset("FESA4", "equity", sector="Materiais Básicos", industry="Siderurgia e Metalurgia", cnpj="15.141.799/0001-03"),
+    PortfolioAsset("LEVE3", "equity", sector="Bens Industriais", industry="Material de Transporte", cnpj="60.476.884/0001-87"),
+    PortfolioAsset("PASS3", "equity", sector="Utilidade Pública", industry="Gás", cnpj="21.389.501/0001-81"),
     PortfolioAsset(
         "BTLG11",
         "fund",
@@ -472,11 +477,13 @@ def assets_with_cnpj() -> tuple[PortfolioAsset, ...]:
 
 
 def assets_refreshable_now() -> tuple[PortfolioAsset, ...]:
-    """Everything ``iip refresh-portfolio`` can actually fetch today:
-    CNPJ-verified fund/ETF/fixed_income positions (see
-    ``assets_with_cnpj``) plus every equity position — equities are
-    fetched by ticker via bolsai/brapi, not by CNPJ, so they don't need
-    one to be refreshable."""
-    return tuple(
-        a for a in PORTFOLIO_ASSETS if a.cnpj or a.asset_class == "equity"
-    )
+    """Everything ``iip refresh-portfolio`` can actually fetch today —
+    same set as ``assets_with_cnpj`` now that every refreshable class
+    (fund/ETF/fixed_income/fiagro via their own CVM datasets, equity
+    via CVM DFP) is looked up by CNPJ. Kept as a separate function
+    since the two questions ("has a CNPJ" vs. "is refreshable today")
+    are conceptually distinct even though they resolve to the same set
+    for the current portfolio — before 18/09/2026, equities were
+    fetched by ticker only (bolsai/brapi price data) and didn't need
+    one; CVM DFP-based fundamentals changed that."""
+    return tuple(a for a in PORTFOLIO_ASSETS if a.cnpj)

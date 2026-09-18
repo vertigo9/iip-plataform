@@ -251,57 +251,74 @@ def fetch_fii_template_live(
     return template, resultado
 
 
+def _cagr_pct(start: float | None, end: float | None, years: int) -> float | None:
+    """CAGR as a plain percent number (e.g. 12.5, not 0.125) — matches
+    how ``EquityAnalyzer`` reads growth fields (``rg * 2`` in its own
+    scoring code only makes sense for a percent). Returns ``None`` for
+    any input that can't produce a real, meaningful rate: a missing
+    value, or a non-positive start/end (a loss year makes exponentiation
+    undefined/nonsensical — better to leave the field at the analyzer's
+    default than report a fabricated or complex-valued rate).
+    """
+    if start is None or end is None or start <= 0 or end <= 0:
+        return None
+    return round(((end / start) ** (1 / years) - 1) * 100, 4)
+
+
 def fetch_equity_template_live(
     symbol: str,
+    cnpj: str,
+    ano: int,
     bolsai_api_key: str | None,
     brapi_token: str | None,
 ) -> tuple[dict[str, Any], FetchResult]:
-    """Fill what's honestly fillable for an equity from real data — far
-    less than FII/ETF, and worth being upfront about why.
+    """Fill what's honestly fillable for an equity from real data.
 
-    bolsai's stock fundamentals endpoint (confirmed live earlier this
-    project with PETR4) exposes PRE-COMPUTED RATIOS (ROE, ROIC, net/
-    gross margin, EV/EBITDA, net debt/EBITDA) — not the raw absolute
-    financial-statement figures (``revenue``, ``net_income``, ``ebit``,
-    ``equity``, ``invested_capital``) that ``EquityAnalyzer`` actually
-    reads (confirmed by reading its own scoring code:
-    ``_calc_roe``/``_calc_roic`` compute ratios FROM those raw figures
-    internally — they don't accept pre-computed ratios). A ratio and
-    the absolute BRL figure behind it are not interchangeable, so
-    those fields are left at the analyzer's defaults, not guessed from
-    the ratio.
+    RESOLVED (18/09/2026) — this function used to fill only price/
+    market_cap/dividend_yield via bolsai/brapi, since bolsai's stock
+    fundamentals endpoint exposes PRE-COMPUTED RATIOS (ROE, ROIC,
+    margins) rather than the raw absolute financial-statement figures
+    (``revenue``, ``net_income``, ``ebit``, ``equity``,
+    ``invested_capital``) ``EquityAnalyzer`` actually reads. Confirmed
+    live: all 14 portfolio equities produced byte-for-byte identical
+    ``Decision`` objects, since those 3 fields alone couldn't
+    differentiate companies once ~26 other fields sat at identical
+    defaults (see ``vault/07_Research/02_Limitacao_Decisoes_Equity.md``
+    for the original finding).
 
-    Only three fields are genuinely, unambiguously fillable:
-      - ``dividend_yield`` — bolsai already returns this as a plain
-        percentage number (confirmed live: MXRF11 DY TTM=11.3, not
-        0.113), matching exactly what ``EquityAnalyzer`` expects
-        (``min(dy * 15, 100)`` in its own scoring code only makes
-        sense for a percent, not a fraction) — no conversion needed.
-      - ``price`` / ``market_cap`` — bolsai's own fields, used as-is.
+    Now also pulls CVM's DFP (Demonstrações Financeiras Padronizadas —
+    see ``iip.sources.cvm_dfp`` for the real, absolute figures CVM
+    publishes per company (same open-data channel as ``cvm_fii``):
+      - ``equity``, ``net_income``, ``revenue`` — straight from the
+        most recent DFP filing (year ``ano``).
+      - ``ebit`` — only for non-financial companies (CVM's standard
+        "Resultado Antes do Resultado Financeiro e dos Tributos" line
+        has no equivalent for banks, confirmed live with ABCB4 — left
+        at the default rather than approximated).
+      - ``invested_capital`` — equity + non-current liabilities, a
+        common simplified "capital employed" proxy; only computable
+        where the balance sheet splits circulante/não circulante
+        (confirmed absent for banks, which classify differently).
+      - ``revenue_growth_3y``/``earnings_growth_3y``/
+        ``book_value_growth_3y`` — real CAGR between ``ano`` and
+        ``ano - 3``'s DFP filings. May reflect M&A/corporate
+        restructuring, not organic growth (confirmed live: ALOS3's
+        CNPJ predates the 2023 Aliansce+BrMalls merger) — cross-check
+        before treating as a clean organic growth signal.
 
-    Falls back to brapi.dev for price alone if bolsai isn't configured
-    (brapi's quote response has no dividend_yield or market_cap field
-    at all, confirmed by its own dataclass shape) — so a brapi-only
-    fetch fills just ``price``, nothing else.
+    ``debt_to_equity`` is deliberately NOT computed here: CVM's DFP
+    doesn't cleanly separate interest-bearing debt from other
+    liabilities (provisions, deferred taxes...) at a stable label
+    across sectors, and a total-liabilities/equity proxy would
+    systematically and misleadingly penalize banks/insurers, whose
+    business model is intentionally leveraged. Left at the analyzer's
+    default rather than invented.
 
-    CONFIRMED LIVE CONSEQUENCE (18/09/2026): ran ``iip analyze --type
-    equity --decide --persist`` for all 14 portfolio equities using
-    templates built this way. Every one of the 14 real ``Decision``
-    objects came back byte-for-byte identical (same composite score,
-    same verdict, same all-9-pillar breakdown, same confidence) despite
-    real, different price/market_cap/dividend_yield per company --
-    confirmed by diffing two of the persisted "Score e Ranking" notes
-    directly (ABCB4 vs. CMIG4, zero diff in the IIP:analysis block).
-    The 3 genuinely-fetched fields do not move ``EquityAnalyzer``'s
-    composite score enough to differentiate real companies once the
-    other ~26 fields all sit at identical defaults -- meaning every
-    equity Decision produced this way is currently NOT a real,
-    differentiated recommendation, just the analyzer's default-driven
-    baseline wearing a real ticker's name. Treat any equity Decision
-    built from this function's output as low-confidence/placeholder
-    until EquityAnalyzer has a real source for revenue/net_income/
-    equity/invested_capital -- no source in this project provides
-    those absolute figures today (see the ROE/ROIC note above).
+    Qualitative/judgment fields (moat, governance, management quality,
+    pricing power, WACC, detailed cash flow...) remain at the
+    analyzer's defaults — no structured data source provides these;
+    they need real report reading or analyst judgment, out of scope
+    here, same as every other asset class's fetch-template function.
     """
     from iip.sources.b3_bolsai import build_target as _build_bolsai_target
     from iip.sources.b3_bolsai_harvester import (
@@ -309,6 +326,11 @@ def fetch_equity_template_live(
     )
     from iip.sources.b3_brapi import build_target as _build_brapi_target
     from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
+    from iip.sources.cvm_dfp import build_target as _build_cvm_dfp_target
+    from iip.sources.cvm_dfp import extract_fundamentals as _extract_dfp_fundamentals
+    from iip.sources.cvm_dfp_harvester import (
+        CvmDfpHTTPHarvester as _CvmDfpHTTPHarvester,
+    )
 
     default_financials = _equity_defaults()
     financials = dict(default_financials)
@@ -350,14 +372,104 @@ def fetch_equity_template_live(
             "nenhum dado de preço buscado."
         )
 
+    def _fetch_dfp(target_ano: int):
+        result = _CvmDfpHTTPHarvester().fetch(_build_cvm_dfp_target(target_ano))
+        return _extract_dfp_fundamentals(
+            target_ano,
+            cnpj,
+            bpa_con=result.bpa_con,
+            bpa_ind=result.bpa_ind,
+            bpp_con=result.bpp_con,
+            bpp_ind=result.bpp_ind,
+            dre_con=result.dre_con,
+            dre_ind=result.dre_ind,
+        )
+
+    current = None
+    try:
+        current = _fetch_dfp(ano)
+    except Exception as exc:  # noqa: BLE001 — DFP é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+        warnings.append(f"não consegui buscar DFP da CVM para {ano}: {exc}")
+
+    if current is None:
+        warnings.append(
+            f"Nenhum registro DFP encontrado na CVM para o CNPJ {cnpj} em {ano} — "
+            "equity/net_income/revenue/ebit/invested_capital continuam nos "
+            "valores-padrão."
+        )
+    else:
+        if current.patrimonio_liquido is not None:
+            financials["equity"] = current.patrimonio_liquido
+            fetched.append("equity")
+        if current.lucro_liquido is not None:
+            financials["net_income"] = current.lucro_liquido
+            fetched.append("net_income")
+        if current.receita is not None:
+            financials["revenue"] = current.receita
+            fetched.append("revenue")
+        else:
+            warnings.append(
+                "Receita (linha padrão CVM 3.01) veio zerada — provável holding "
+                "cujo resultado vem de equivalência patrimonial, não de receita "
+                "operacional direta (confirmado ao vivo: BBSE3, CXSE3); revenue "
+                "e EBIT Margin continuam no valor-padrão."
+            )
+        if current.ebit is not None:
+            financials["ebit"] = current.ebit
+            fetched.append("ebit")
+        else:
+            warnings.append(
+                "EBIT não encontrado — esperado para bancos/instituições "
+                "financeiras (confirmado ao vivo: ABCB4), que não separam "
+                "resultado financeiro do restante da operação; ebit e ROIC "
+                "continuam no valor-padrão."
+            )
+        if current.patrimonio_liquido is not None and current.passivo_nao_circulante is not None:
+            financials["invested_capital"] = round(
+                current.patrimonio_liquido + current.passivo_nao_circulante, 2
+            )
+            fetched.append("invested_capital")
+
+    ano_base = ano - 3
+    baseline = None
+    try:
+        baseline = _fetch_dfp(ano_base)
+    except Exception as exc:  # noqa: BLE001 — crescimento 3y é opcional; qualquer falha aqui não deve impedir o restante do template
+        warnings.append(
+            f"não consegui buscar DFP da CVM de {ano_base} (para crescimento 3y): {exc}"
+        )
+
+    if current is not None and baseline is not None:
+        rg = _cagr_pct(baseline.receita, current.receita, 3)
+        if rg is not None:
+            financials["revenue_growth_3y"] = rg
+            fetched.append("revenue_growth_3y")
+        eg = _cagr_pct(baseline.lucro_liquido, current.lucro_liquido, 3)
+        if eg is not None:
+            financials["earnings_growth_3y"] = eg
+            fetched.append("earnings_growth_3y")
+        bg = _cagr_pct(baseline.patrimonio_liquido, current.patrimonio_liquido, 3)
+        if bg is not None:
+            financials["book_value_growth_3y"] = bg
+            fetched.append("book_value_growth_3y")
+        if any(v is not None for v in (rg, eg, bg)):
+            warnings.append(
+                f"Crescimento 3y = CAGR real {ano_base}->{ano} via CVM — pode "
+                "refletir fusão/aquisição/reestruturação societária, não só "
+                "crescimento orgânico (ex.: ALOS3 nasceu de uma fusão em 2023); "
+                "cheque a origem antes de usar para decisão de investimento."
+            )
+    elif current is not None:
+        warnings.append(
+            f"Sem dado DFP de {ano_base} para calcular crescimento 3y — "
+            "revenue/earnings/book_value_growth_3y continuam no valor-padrão."
+        )
+
     warnings.append(
-        "Os ~26 campos restantes (receita, lucro líquido, patrimônio, "
-        "capital investido, dívida/patrimônio, governança, poder de "
-        "precificação etc.) continuam com os valores-padrão do "
-        "analisador — bolsai só fornece razões já calculadas (ROE, "
-        "ROIC, margens), não os valores absolutos que o EquityAnalyzer "
-        "precisa pra calcular essas razões por conta própria. Preencha "
-        "manualmente a partir do relatório financeiro real."
+        "Campos qualitativos/de julgamento (moat, governança, gestão, poder "
+        "de precificação, WACC, fluxo de caixa detalhado, debt_to_equity "
+        "etc.) continuam com os valores-padrão do analisador — não são "
+        "derivados de demonstrações financeiras estruturadas."
     )
 
     template = {

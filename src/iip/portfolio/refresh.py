@@ -7,12 +7,13 @@ position — no new fetching logic here, just the loop, per-position
 error isolation (one bad position must not abort the whole run), and
 dated snapshot output.
 
-``fund``/``etf``/``fixed_income`` positions need a verified CNPJ (see
-``iip.portfolio.registry.assets_with_cnpj``); ``equity`` positions
-don't (fetched by ticker via bolsai/brapi, not by CNPJ) — see
-``iip.portfolio.registry.assets_refreshable_now`` for the combined
-set this module refreshes by default. Positions outside these classes
-are skipped with a clear reason, never silently guessed.
+Every refreshable position needs a verified CNPJ (see
+``iip.portfolio.registry.assets_with_cnpj``/``assets_refreshable_now``)
+— fund/ETF/fixed_income/fiagro look themselves up in their own CVM
+dataset by CNPJ, and equity does too since 18/09/2026 (CVM DFP
+fundamentals, looked up by CNPJ same as everything else; price alone
+is still fetched by ticker via bolsai/brapi). Positions outside these
+classes are skipped with a clear reason, never silently guessed.
 """
 
 from __future__ import annotations
@@ -127,6 +128,9 @@ def refresh_portfolio(
     hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (data de referência do snapshot), não timestamp
     ano_efetivo = ano or hoje.year
     mes_efetivo = mes or hoje.month
+    # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
+    # mesmo comentário em iip.cli.main's fetch-template equity branch.
+    ano_dfp_efetivo = ano or (hoje.year - 1)
     run_date = hoje.isoformat()
 
     all_positions = positions if positions is not None else assets_refreshable_now()
@@ -153,7 +157,11 @@ def refresh_portfolio(
                 )
             elif template_type == "equity":
                 template, resultado = fetch_equity(
-                    position.ticker, bolsai_api_key, brapi_token
+                    position.ticker,
+                    position.cnpj,
+                    ano_dfp_efetivo,
+                    bolsai_api_key,
+                    brapi_token,
                 )
             elif template_type == "fiagro":
                 template, resultado = fetch_fiagro(

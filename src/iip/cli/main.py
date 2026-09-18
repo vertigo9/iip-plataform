@@ -345,11 +345,13 @@ def fetch_template(
     anos ou captação YTD não podem ser honestamente derivados de um
     mês só.
 
-    Equity: preenche só price, market_cap e dividend_yield (via
-    bolsai/brapi) — bem mais limitado que FII/ETF, porque bolsai só
-    fornece razões já calculadas (ROE, ROIC, margens), não os valores
-    absolutos (receita, lucro líquido, patrimônio) que o EquityAnalyzer
-    precisa pra calcular essas razões por conta própria.
+    Equity: preenche price/market_cap/dividend_yield (via bolsai/brapi)
+    e, desde 18/09/2026, também equity/net_income/revenue/ebit/
+    invested_capital/crescimento 3y a partir da DFP real da CVM (ver
+    ``iip.sources.cvm_dfp``) — ebit e invested_capital ficam vazios
+    para bancos/instituições financeiras (sem linha equivalente na
+    DFP), e debt_to_equity continua no valor-padrão de propósito (ver
+    docstring de ``fetch_equity_template_live``).
 
     fixed_income: preenche só patrimônio (via CVM Informe Diário) —
     nunca busca preço de mercado, mesmo se configurado, porque o
@@ -376,7 +378,7 @@ def fetch_template(
         fetch_fixed_income_template_live,
     )
 
-    if asset_type in ("fii", "etf", "fixed_income", "agro") and not cnpj:
+    if asset_type in ("fii", "etf", "fixed_income", "agro", "equity") and not cnpj:
         console.print(f"[bold red]--cnpj é obrigatório para --type {asset_type}[/]")
         raise SystemExit(1)
 
@@ -450,10 +452,24 @@ def fetch_template(
             raise SystemExit(1) from exc
 
     else:  # equity
+        # DFP de um ano fiscal só fica disponível meses depois do fim
+        # desse ano -- ano_efetivo (padrão hoje.year) apontaria pro ano
+        # corrente, ainda sem DFP nenhuma; o ano fiscal mais recente com
+        # dado real é sempre o anterior, salvo --ano explícito.
+        ano_dfp_efetivo = ano or (hoje.year - 1)
         bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
         brapi_token = _unwrap_secret(get_settings().brapi_token)
-        console.print(f"[dim]Buscando dados de {symbol.upper()} via bolsai/brapi...[/]")
-        template, resultado = fetch_equity_template_live(symbol, bolsai_key, brapi_token)
+        console.print(
+            f"[dim]Buscando dados de {symbol.upper()} via bolsai/brapi + "
+            f"DFP CVM {ano_dfp_efetivo}...[/]"
+        )
+        try:
+            template, resultado = fetch_equity_template_live(
+                symbol, cnpj, ano_dfp_efetivo, bolsai_key, brapi_token
+            )
+        except Exception as exc:
+            console.print(f"[bold red]Erro ao buscar DFP da CVM:[/] {exc}")
+            raise SystemExit(1) from exc
 
     console.print(f"\n[bold]Campos preenchidos com dado real:[/] {', '.join(resultado.fetched_fields) or '(nenhum)'}")
     for warning in resultado.warnings:

@@ -7,6 +7,10 @@ from iip.cli.main import cli
 from iip.config import get_settings
 from iip.sources.b3_bolsai import BolsaiFundamentals
 from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFundamentals
+from iip.sources.cvm_dfp_harvester import CvmDfpHTTPHarvester
+from tests.test_cvm_dfp import NON_FINANCIAL_CNPJ, make_zip
+
+CNPJ = NON_FINANCIAL_CNPJ
 
 
 @pytest.fixture(autouse=True)
@@ -17,6 +21,32 @@ def _clear_settings_cache(monkeypatch):
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
+
+
+@pytest.fixture(autouse=True)
+def _mock_cvm_dfp(monkeypatch):
+    """Every test in this file exercises the real `fetch-template
+    --type equity` CLI path end-to-end, which now also hits CVM DFP
+    (see fetch_equity_template_live) -- mocked here the same way the
+    other fetch-template CLI tests mock their CVM harvester, so these
+    tests never make a real network call."""
+
+    def fake_fetch(self, target):
+        import iip.sources.cvm_dfp_harvester as mod
+
+        body = make_zip()
+        return mod.FetchedDfpYear(
+            target=target,
+            status_code=200,
+            bpa_con=mod.parse_bpa_con(body),
+            bpa_ind=mod.parse_bpa_ind(body),
+            bpp_con=mod.parse_bpp_con(body),
+            bpp_ind=mod.parse_bpp_ind(body),
+            dre_con=mod.parse_dre_con(body),
+            dre_ind=mod.parse_dre_ind(body),
+        )
+
+    monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_fetch)
 
 
 def fake_fundamentals(**overrides):
@@ -41,18 +71,10 @@ def fake_fundamentals(**overrides):
     return BolsaiFundamentals(**defaults)
 
 
-def test_fetch_template_equity_does_not_require_cnpj(monkeypatch, tmp_path):
-    monkeypatch.delenv("IIP_BOLSAI_API_KEY", raising=False)
-    monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
-
+def test_fetch_template_equity_requires_cnpj():
     runner = CliRunner()
-    out_file = tmp_path / "bbse3.json"
-    result = runner.invoke(
-        cli, ["fetch-template", "BBSE3", "--type", "equity", "-o", str(out_file)]
-    )
-
-    assert result.exit_code == 0
-    assert out_file.exists()
+    result = runner.invoke(cli, ["fetch-template", "BBSE3", "--type", "equity"])
+    assert result.exit_code != 0
 
 
 def test_fetch_template_equity_fills_price_and_dividend_yield_with_credential(
@@ -70,13 +92,60 @@ def test_fetch_template_equity_fills_price_and_dividend_yield_with_credential(
     runner = CliRunner()
     out_file = tmp_path / "bbse3.json"
     result = runner.invoke(
-        cli, ["fetch-template", "BBSE3", "--type", "equity", "-o", str(out_file)]
+        cli,
+        [
+            "fetch-template",
+            "BBSE3",
+            "--type",
+            "equity",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2025",
+            "-o",
+            str(out_file),
+        ],
     )
 
     assert result.exit_code == 0
     data = json.loads(out_file.read_text(encoding="utf-8"))
     assert data["price"] == 39.62
     assert data["financials"]["dividend_yield"] == 17.18
+
+
+def test_fetch_template_equity_fills_real_dfp_fundamentals(monkeypatch, tmp_path):
+    monkeypatch.setenv("IIP_BOLSAI_API_KEY", "fake-key")
+
+    def fake_fetch(self, target):
+        return FetchedFundamentals(
+            target=target, status_code=200, fundamentals=fake_fundamentals()
+        )
+
+    monkeypatch.setattr(BolsaiHTTPHarvester, "fetch", fake_fetch)
+
+    runner = CliRunner()
+    out_file = tmp_path / "klbn4.json"
+    result = runner.invoke(
+        cli,
+        [
+            "fetch-template",
+            "KLBN4",
+            "--type",
+            "equity",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2025",
+            "-o",
+            str(out_file),
+        ],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(out_file.read_text(encoding="utf-8"))
+    assert data["financials"]["equity"] == 14401101.0
+    assert data["financials"]["net_income"] == 1678211.0
+    assert data["financials"]["revenue"] == 20697507.0
 
 
 def test_fetch_template_fii_still_requires_cnpj(tmp_path):
@@ -100,7 +169,19 @@ def test_fetch_template_equity_output_is_directly_usable_by_analyze(
     runner = CliRunner()
     out_file = tmp_path / "bbse3.json"
     fetch_result = runner.invoke(
-        cli, ["fetch-template", "BBSE3", "--type", "equity", "-o", str(out_file)]
+        cli,
+        [
+            "fetch-template",
+            "BBSE3",
+            "--type",
+            "equity",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2025",
+            "-o",
+            str(out_file),
+        ],
     )
     assert fetch_result.exit_code == 0
 

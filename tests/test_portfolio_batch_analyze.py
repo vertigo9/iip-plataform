@@ -3,7 +3,7 @@ from iip.portfolio.batch_analyze import _BatchDeps, analyze_portfolio
 from iip.portfolio.registry import PortfolioAsset
 
 
-def fake_fetch_equity_ok(symbol, bolsai_api_key, brapi_token):
+def fake_fetch_equity_ok(symbol, cnpj, ano, bolsai_api_key, brapi_token):
     return (
         {"price": 33.81, "market_cap": 25_000_000_000.0, "financials": {"dividend_yield": 7.5}},
         FetchResult(fetched_fields=("price",)),

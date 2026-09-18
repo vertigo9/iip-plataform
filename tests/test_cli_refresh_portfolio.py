@@ -7,6 +7,7 @@ from iip.cli.main import cli
 from iip.config import get_settings
 from iip.sources.b3_bolsai import BolsaiFiiData
 from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFii
+from iip.sources.cvm_dfp_harvester import CvmDfpHTTPHarvester, FetchedDfpYear
 from iip.sources.cvm_fiagro_harvester import CvmFiagroHTTPHarvester, FetchedFiagroReport
 from iip.sources.cvm_fii import FiiComplemento
 from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester, FetchedFiiReport
@@ -69,12 +70,30 @@ def fake_cvm_fiagro_fetch(self, target):
     return FetchedFiagroReport(target=target, status_code=200, informes=(), subclasses=())
 
 
+def fake_cvm_dfp_fetch(self, target):
+    # Mesmo motivo do fiagro acima: sem correspondencia de CNPJ real de
+    # proposito, so' precisa nao tentar rede de verdade -- equity's DFP
+    # fetch simplesmente nao encontra nada e deixa os campos financeiros
+    # no valor-padrao, o que e' um aviso, nao uma falha.
+    return FetchedDfpYear(
+        target=target,
+        status_code=200,
+        bpa_con=(),
+        bpa_ind=(),
+        bpp_con=(),
+        bpp_ind=(),
+        dre_con=(),
+        dre_ind=(),
+    )
+
+
 def test_refresh_portfolio_runs_without_credentials(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BOLSAI_API_KEY", raising=False)
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
+    monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -92,6 +111,7 @@ def test_refresh_portfolio_writes_real_snapshot_files(monkeypatch, tmp_path):
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
+    monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
@@ -117,6 +137,7 @@ def test_refresh_portfolio_uses_bolsai_and_brapi_when_credentials_present(
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
+    monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     def fake_fetch_fii(self, target):
         return FetchedFii(
@@ -161,6 +182,7 @@ def test_refresh_portfolio_exits_nonzero_when_a_position_fails(monkeypatch, tmp_
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", failing_fetch)
     monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
+    monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
