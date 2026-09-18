@@ -88,8 +88,25 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "those two.",
     ),
     AdapterDescriptor(
+        "btg_mziq", ("fund",), AdapterKind.DOCUMENT,
+        AdapterReadiness.READY,
+        "iip.sources.btg_mziq + iip.sources.mziq_harvester.MziqHTTPHarvester",
+        "Lightweight HTTP-only MZIQ document provider, confirmed live "
+        "(18/09/2026) for BTLG11 only -- its company_id/category config "
+        "is plainly embedded in its own static page HTML, no Playwright "
+        "needed even for discovery. BTCI11 (BTG's other registry "
+        "position) is on a different, non-MZIQ platform (Astro app) -- "
+        "not investigated, calling this module for it raises rather "
+        "than guessing.",
+    ),
+    AdapterDescriptor(
         "btg", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "BTCI11 only (see 'btg_mziq' for BTLG11). No validated transport "
+        "adapter is registered -- its own site (btgpactual.com/asset-"
+        "management/..., an Astro app) has no MZIQ or other API config "
+        "exposed in static HTML; would need the same network-capture "
+        "discovery pass already done for the 4 non-static Pátria funds.",
     ),
     AdapterDescriptor(
         "kinea", ("fund",), AdapterKind.MAPPED,

@@ -1136,6 +1136,123 @@ def collect_patria_documents_command(
     documentos que a CVM não replica (relatório de gestão, fatos
     relevantes, apresentações etc.).
     """
+    from iip.sources import patria_mziq
+
+    _collect_mziq_manager_documents(
+        manager_label="Pátria",
+        provider_name="patria_mziq",
+        fund_module=patria_mziq,
+        funds_registry=patria_mziq.PATRIA_MZIQ_FUNDS,
+        ticker=ticker,
+        ano=ano,
+        categoria=categoria,
+        limite=limite,
+        vault=vault,
+        sem_evidencia=sem_evidencia,
+        output_dir=output_dir,
+    )
+
+
+@cli.command("collect-btg-documents")
+@click.option(
+    "--ticker",
+    required=True,
+    help="Fundo BTG Pactual com config MZIQ registrada: hoje só BTLG11 "
+    "(BTCI11 está numa plataforma diferente, ainda não investigada).",
+)
+@click.option(
+    "--ano",
+    type=int,
+    default=None,
+    help="Ano dos documentos (padrão: ano mais recente disponível).",
+)
+@click.option(
+    "--categoria",
+    multiple=True,
+    help="Filtra por categoria(s) MZIQ (ex.: relatorios_gerenciais). "
+    "Pode repetir. Padrão: todas as categorias do fundo.",
+)
+@click.option(
+    "--limite",
+    type=int,
+    default=None,
+    help="Baixa só os N primeiros documentos encontrados (útil pra "
+    "teste/preview antes de rodar sem limite).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault -- só lista/baixa os documentos.",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help="Diretório onde também salvar uma cópia dos arquivos baixados "
+    "(padrão: não salva cópia local além da evidência no vault).",
+)
+def collect_btg_documents_command(
+    ticker: str,
+    ano: int | None,
+    categoria: tuple[str, ...],
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+    output_dir: str | None,
+) -> None:
+    """Lista e baixa documentos reais de um fundo da BTG Pactual via MZIQ
+    (``iip.sources.btg_mziq``) -- mesma abordagem leve do
+    ``collect-patria-documents``, aplicada à BTLG11.
+
+    Confirmado ao vivo só pra BTLG11: seu company_id/categorias MZIQ
+    estão expostos direto no HTML estático da própria página, sem
+    precisar de Playwright nem pra descoberta. BTCI11 (o outro fundo da
+    BTG na carteira) está numa plataforma diferente (Astro, não MZIQ) e
+    ainda não foi investigado -- ver ``iip.sources.btg_mziq`` docstring.
+    """
+    from iip.sources import btg_mziq
+
+    _collect_mziq_manager_documents(
+        manager_label="BTG",
+        provider_name="btg_mziq",
+        fund_module=btg_mziq,
+        funds_registry=btg_mziq.BTG_MZIQ_FUNDS,
+        ticker=ticker,
+        ano=ano,
+        categoria=categoria,
+        limite=limite,
+        vault=vault,
+        sem_evidencia=sem_evidencia,
+        output_dir=output_dir,
+    )
+
+
+def _collect_mziq_manager_documents(
+    *,
+    manager_label: str,
+    provider_name: str,
+    fund_module: Any,
+    funds_registry: dict[str, Any],
+    ticker: str,
+    ano: int | None,
+    categoria: tuple[str, ...],
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+    output_dir: str | None,
+) -> None:
+    """Shared implementation behind collect-patria-documents and
+    collect-btg-documents -- both wrap the same MZIQ document-catalog
+    protocol (``iip.sources.mziq``), differing only in which manager's
+    static fund-config module (``fund_for_ticker``/``build_years_target``/
+    ``build_documents_target``) they look tickers up in."""
     from urllib.error import HTTPError
     from urllib.request import Request, urlopen
 
@@ -1143,19 +1260,12 @@ def collect_patria_documents_command(
     from iip.atlas.models import AtlasDocument
     from iip.knowledge.bridge import KnowledgeBridge
     from iip.sources.mziq_harvester import MziqHTTPHarvester
-    from iip.sources.patria_mziq import (
-        build_documents_target,
-        build_years_target,
-        fund_for_ticker,
-    )
 
     normalized_ticker = ticker.strip().upper()
-    if fund_for_ticker(normalized_ticker) is None:
-        from iip.sources.patria_mziq import PATRIA_MZIQ_FUNDS
-
+    if fund_module.fund_for_ticker(normalized_ticker) is None:
         console.print(
             f"[bold red]Sem config MZIQ registrada para {normalized_ticker}.[/] "
-            f"Fundos disponíveis: {', '.join(sorted(PATRIA_MZIQ_FUNDS))}"
+            f"Fundos disponíveis: {', '.join(sorted(funds_registry)) or '(nenhum)'}"
         )
         raise SystemExit(1)
 
@@ -1163,7 +1273,7 @@ def collect_patria_documents_command(
 
     ano_efetivo = ano
     if ano_efetivo is None:
-        anos = harvester.fetch_years(build_years_target(normalized_ticker))
+        anos = harvester.fetch_years(fund_module.build_years_target(normalized_ticker))
         if not anos:
             console.print(f"[bold red]Nenhum ano disponível via MZIQ para {normalized_ticker}.[/]")
             raise SystemExit(1)
@@ -1171,7 +1281,9 @@ def collect_patria_documents_command(
 
     console.print(f"[dim]Buscando documentos de {normalized_ticker} ({ano_efetivo})...[/]\n")
 
-    documents = harvester.fetch_documents(build_documents_target(normalized_ticker, ano_efetivo))
+    documents = harvester.fetch_documents(
+        fund_module.build_documents_target(normalized_ticker, ano_efetivo)
+    )
     if categoria:
         wanted = set(categoria)
         documents = tuple(d for d in documents if d.category in wanted)
@@ -1184,7 +1296,7 @@ def collect_patria_documents_command(
     if out_dir is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
 
-    table = Table(title=f"Documentos Pátria/MZIQ — {normalized_ticker} ({ano_efetivo})")
+    table = Table(title=f"Documentos {manager_label}/MZIQ — {normalized_ticker} ({ano_efetivo})")
     table.add_column("Categoria")
     table.add_column("Título")
     table.add_column("Status")
@@ -1211,7 +1323,7 @@ def collect_patria_documents_command(
         if bridge is not None:
             atlas_document = AtlasDocument.build(
                 ticker=normalized_ticker,
-                provider="patria_mziq",
+                provider=provider_name,
                 role=document.category or "investor_relations_document",
                 url=document.url,
                 final_url=document.url,
