@@ -1234,6 +1234,82 @@ def collect_btg_documents_command(
     )
 
 
+@cli.command("collect-equity-documents")
+@click.option(
+    "--ticker",
+    required=True,
+    help="Ação com config MZIQ registrada: hoje só ABCB4.",
+)
+@click.option(
+    "--ano",
+    type=int,
+    default=None,
+    help="Ano dos documentos (padrão: ano mais recente disponível).",
+)
+@click.option(
+    "--categoria",
+    multiple=True,
+    help="Filtra por categoria(s) MZIQ (ex.: central-resultados-earnings-release). "
+    "Pode repetir. Padrão: todas as categorias da empresa.",
+)
+@click.option(
+    "--limite",
+    type=int,
+    default=None,
+    help="Baixa só os N primeiros documentos encontrados (útil pra "
+    "teste/preview antes de rodar sem limite).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault -- só lista/baixa os documentos.",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help="Diretório onde também salvar uma cópia dos arquivos baixados "
+    "(padrão: não salva cópia local além da evidência no vault).",
+)
+def collect_equity_documents_command(
+    ticker: str,
+    ano: int | None,
+    categoria: tuple[str, ...],
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+    output_dir: str | None,
+) -> None:
+    """Lista e baixa documentos reais de RI de uma ação via MZIQ
+    (``iip.sources.equity_mziq``) -- mesma abordagem leve dos comandos
+    `collect-patria-documents`/`collect-btg-documents`, aplicada à
+    ABCB4 (Banco ABC Brasil), a única ação da carteira confirmada na
+    plataforma MZIQ até agora.
+    """
+    from iip.sources import equity_mziq
+
+    _collect_mziq_manager_documents(
+        manager_label="Equity",
+        provider_name="equity_mziq",
+        fund_module=equity_mziq,
+        funds_registry=equity_mziq.EQUITY_MZIQ_COMPANIES,
+        ticker=ticker,
+        ano=ano,
+        categoria=categoria,
+        limite=limite,
+        vault=vault,
+        sem_evidencia=sem_evidencia,
+        output_dir=output_dir,
+    )
+
+
 def _collect_mziq_manager_documents(
     *,
     manager_label: str,
