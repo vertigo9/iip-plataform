@@ -1350,5 +1350,152 @@ def _collect_mziq_manager_documents(
         console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
 
 
+@cli.command("collect-static-documents")
+@click.option(
+    "--ticker",
+    required=True,
+    help="Fundo com listagem de documentos em HTML estático: TRXF11, "
+    "VGIP11, CPTI11, MANA11, RBVA11, HGBS11 ou KNRI11.",
+)
+@click.option(
+    "--limite",
+    type=int,
+    default=None,
+    help="Baixa só os N primeiros documentos encontrados na página "
+    "(útil pra teste/preview -- RBVA11 sozinho tem ~1200 documentos).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault -- só lista/baixa os documentos.",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help="Diretório onde também salvar uma cópia dos arquivos baixados "
+    "(padrão: não salva cópia local além da evidência no vault).",
+)
+def collect_static_documents_command(
+    ticker: str,
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+    output_dir: str | None,
+) -> None:
+    """Lista e baixa documentos reais de fundos cuja gestora expõe tudo
+    como links PDF diretos em HTML estático
+    (``iip.sources.static_pdf_listing``) -- nem API, nem Playwright,
+    só um GET na página de documentos do próprio fundo.
+
+    Cobre os 7 gestores que sobraram sem nenhum adapter (TRX, Valora,
+    Capitânia, Manati, Rio Bravo, Hedge, Kinea) -- ao contrário da
+    Pátria/BTG (plataforma MZIQ), nenhum desses usa uma API JSON; o
+    HTML da própria página já lista todos os PDFs.
+
+    Como os outros comandos `collect-*-documents`, não busca NAV/cota
+    patrimonial de propósito -- todos os 7 fundos aqui são FII com
+    CNPJ verificado, então a CVM (``iip.sources.cvm_fii``) já cobre
+    isso. Isso é só pra documentos que a CVM não replica.
+    """
+    import re
+    from urllib.error import HTTPError
+    from urllib.request import Request, urlopen
+
+    from iip.atlas.knowledge_adapter import AtlasKnowledgeAdapter
+    from iip.atlas.models import AtlasDocument
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.sources.static_pdf_listing import (
+        STATIC_PDF_LISTING_FUNDS,
+        build_target,
+        fund_for_ticker,
+    )
+    from iip.sources.static_pdf_listing_harvester import StaticPdfListingHTTPHarvester
+
+    normalized_ticker = ticker.strip().upper()
+    fund = fund_for_ticker(normalized_ticker)
+    if fund is None:
+        console.print(
+            f"[bold red]Sem config de listagem estática para {normalized_ticker}.[/] "
+            f"Fundos disponíveis: {', '.join(sorted(STATIC_PDF_LISTING_FUNDS))}"
+        )
+        raise SystemExit(1)
+
+    console.print(
+        f"[dim]Buscando página de documentos de {normalized_ticker} "
+        f"({fund.page_url})...[/]\n"
+    )
+
+    listing = StaticPdfListingHTTPHarvester().fetch(build_target(normalized_ticker))
+    documents = listing.documents
+    if limite is not None:
+        documents = documents[:limite]
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    bridge = None if sem_evidencia else KnowledgeBridge(vault_path)
+    out_dir = Path(output_dir) / normalized_ticker if output_dir else None
+    if out_dir is not None:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    table = Table(title=f"Documentos {fund.manager} — {normalized_ticker}")
+    table.add_column("Título")
+    table.add_column("Status")
+
+    baixados = 0
+    for document in documents:
+        try:
+            request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
+            with urlopen(request, timeout=30.0) as response:  # noqa: S310 — URL vem da própria página do fundo, não de entrada externa
+                body = response.read()
+                content_type = response.headers.get("Content-Type", "application/pdf")
+        except HTTPError as exc:
+            table.add_row(document.title, f"[red]HTTP {exc.code}[/]")
+            continue
+        except Exception as exc:  # noqa: BLE001 — hospedagens variadas (timeout, SSL, DNS); um documento ruim não deve abortar a coleta inteira
+            table.add_row(document.title, f"[red]{type(exc).__name__}[/]")
+            continue
+
+        if out_dir is not None:
+            suffix = Path(document.url.split("?", 1)[0]).suffix or ".pdf"
+            safe_name = re.sub(r"[^\w.-]", "_", document.title)[:150]
+            (out_dir / f"{safe_name}{suffix}").write_bytes(body)
+
+        if bridge is not None:
+            atlas_document = AtlasDocument.build(
+                ticker=normalized_ticker,
+                provider="static_pdf_listing",
+                role="investor_relations_document",
+                url=document.url,
+                final_url=document.url,
+                content_type=content_type,
+                status_code=200,
+                body=body,
+                discovered_year=None,
+                title=document.title,
+            )
+            evidence = AtlasKnowledgeAdapter.to_evidence(atlas_document)
+            try:
+                bridge.persist_evidence(evidence)
+            except FileExistsError:
+                pass
+
+        baixados += 1
+        table.add_row(document.title, "[green]ok[/]")
+
+    console.print(table)
+    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    if out_dir is not None:
+        console.print(f"[dim]Cópias salvas em {out_dir}[/]")
+    if bridge is not None:
+        console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
+
+
 if __name__ == "__main__":
     cli()

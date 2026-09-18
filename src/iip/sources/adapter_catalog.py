@@ -109,32 +109,54 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "discovery pass already done for the 4 non-static Pátria funds.",
     ),
     AdapterDescriptor(
+        "static_pdf_listing", ("fund",), AdapterKind.DOCUMENT,
+        AdapterReadiness.READY,
+        "iip.sources.static_pdf_listing + "
+        "iip.sources.static_pdf_listing_harvester.StaticPdfListingHTTPHarvester",
+        "Lightweight HTTP-only document provider covering the 7 managers "
+        "below (Kinea, Capitânia, Valora, Manati, TRX, Hedge, Rio Bravo) "
+        "-- confirmed live (18/09/2026) that every one of them lists its "
+        "reports as plain <a href=\"*.pdf\"> links directly in static "
+        "HTML (mostly WordPress uploads), simpler than even the MZIQ "
+        "platform: no API, no company_id, just a GET on the fund's own "
+        "documents page. KNRI11 and RBVA11's registry source_url values "
+        "were confirmed dead (404 live); working URLs were found via web "
+        "search and are registered in the module, not the registry.",
+    ),
+    AdapterDescriptor(
         "kinea", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- KNRI11 is covered there.",
     ),
     AdapterDescriptor(
         "capitania", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- CPTI11 is covered there.",
     ),
     AdapterDescriptor(
         "valora", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- VGIP11 is covered there.",
     ),
     AdapterDescriptor(
         "manati", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- MANA11 is covered there.",
     ),
     AdapterDescriptor(
         "trx", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- TRXF11 is covered there.",
     ),
     AdapterDescriptor(
         "hedge", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- HGBS11 is covered there.",
     ),
     AdapterDescriptor(
         "rio_bravo", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
+        AdapterReadiness.MAPPED, None,
+        "See 'static_pdf_listing' -- RBVA11 is covered there.",
     ),
 )
 
