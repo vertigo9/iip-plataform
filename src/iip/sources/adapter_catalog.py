@@ -100,13 +100,32 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "than guessing.",
     ),
     AdapterDescriptor(
+        "solutions_ir", ("fund",), AdapterKind.DOCUMENT,
+        AdapterReadiness.READY,
+        "iip.sources.solutions_ir + "
+        "iip.sources.solutions_ir_harvester.SolutionsIrHTTPHarvester",
+        "Closes out the BTCI11 gap ('btg' below). Its own IR page "
+        "(an Astro app, no MZIQ) actively blocked a Playwright headless "
+        "browser (net::ERR_HTTP2_PROTOCOL_ERROR, then a hard timeout "
+        "with HTTP/2 disabled) -- confirmed live (18/09/2026) via a "
+        "different method instead: the page's static HTML embeds an "
+        "astro-island with apiBaseUrl/siteId in its props attribute "
+        "(no execution needed), and its referenced JS component bundle "
+        "(fetched, never run) had apiFundId/apiFundCnpj as literal "
+        "default parameter values; the real endpoint path "
+        "(/v2/asset/{fund_id}/documents/{cnpj}) came from grep'ing the "
+        "larger vendor JS bundle for a template literal built from "
+        "this.apiBaseUrl. One plain GET returns all 803 real BTCI11 "
+        "documents, no pagination. Same platform (per this session's "
+        "equity_mziq.py investigation) as CSUD3's post-2024 IR site, "
+        "not yet registered here.",
+    ),
+    AdapterDescriptor(
         "btg", ("fund",), AdapterKind.MAPPED,
         AdapterReadiness.MAPPED, None,
-        "BTCI11 only (see 'btg_mziq' for BTLG11). No validated transport "
-        "adapter is registered -- its own site (btgpactual.com/asset-"
-        "management/..., an Astro app) has no MZIQ or other API config "
-        "exposed in static HTML; would need the same network-capture "
-        "discovery pass already done for the 4 non-static Pátria funds.",
+        "BTCI11 is now covered by 'solutions_ir' above; BTLG11 by "
+        "'btg_mziq'. This entry itself still has no validated transport "
+        "adapter of its own -- kept as a placeholder pointing to both.",
     ),
     AdapterDescriptor(
         "static_pdf_listing", ("fund",), AdapterKind.DOCUMENT,

@@ -1578,5 +1578,166 @@ def collect_static_documents_command(
         console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
 
 
+@cli.command("collect-solutions-ir-documents")
+@click.option(
+    "--ticker",
+    required=True,
+    help="Ativo com config Solutions IR registrada: hoje só BTCI11.",
+)
+@click.option(
+    "--categoria",
+    multiple=True,
+    help="Filtra por sigla de categoria (ex.: RM, INFOMEN, ATA). Pode "
+    "repetir. Padrão: todas as categorias.",
+)
+@click.option(
+    "--ano",
+    type=int,
+    default=None,
+    help="Filtra por ano (ex.: 2026). Padrão: todos os anos disponíveis.",
+)
+@click.option(
+    "--limite",
+    type=int,
+    default=None,
+    help="Baixa só os N primeiros documentos encontrados (útil pra "
+    "teste/preview -- BTCI11 sozinho tem ~800 documentos).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault -- só lista/baixa os documentos.",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help="Diretório onde também salvar uma cópia dos arquivos baixados "
+    "(padrão: não salva cópia local além da evidência no vault).",
+)
+def collect_solutions_ir_documents_command(
+    ticker: str,
+    categoria: tuple[str, ...],
+    ano: int | None,
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+    output_dir: str | None,
+) -> None:
+    """Lista e baixa documentos reais via a API da plataforma "Solutions
+    IR" (``iip.sources.solutions_ir``) -- fecha o gap do BTCI11, o
+    único ativo da carteira sem nenhum provider de documentos até
+    agora (ver docstring do módulo para como o endpoint real foi
+    encontrado: a página é um app Astro sem MZIQ e bloqueou o
+    Playwright ativamente; a URL da API veio de leitura estática do
+    bundle JS da própria página, nunca de execução de navegador).
+
+    Diferente do MZIQ, essa API não pagina por ano/categoria -- devolve
+    tudo numa resposta só (confirmado: 803 documentos reais pro
+    BTCI11), então os filtros aqui (--categoria/--ano) são aplicados
+    localmente sobre a resposta completa.
+    """
+    import re
+    from urllib.error import HTTPError
+    from urllib.request import Request, urlopen
+
+    from iip.atlas.knowledge_adapter import AtlasKnowledgeAdapter
+    from iip.atlas.models import AtlasDocument
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.sources.solutions_ir import (
+        SOLUTIONS_IR_COMPANIES,
+        build_documents_target,
+        company_for_ticker,
+    )
+    from iip.sources.solutions_ir_harvester import SolutionsIrHTTPHarvester
+
+    normalized_ticker = ticker.strip().upper()
+    if company_for_ticker(normalized_ticker) is None:
+        console.print(
+            f"[bold red]Sem config Solutions IR registrada para {normalized_ticker}.[/] "
+            f"Ativos disponíveis: {', '.join(sorted(SOLUTIONS_IR_COMPANIES))}"
+        )
+        raise SystemExit(1)
+
+    console.print(f"[dim]Buscando documentos de {normalized_ticker} via Solutions IR...[/]\n")
+
+    result = SolutionsIrHTTPHarvester().fetch(build_documents_target(normalized_ticker))
+    documents = result.documents
+    if categoria:
+        wanted = set(categoria)
+        documents = tuple(d for d in documents if d.category_sigla in wanted)
+    if ano is not None:
+        documents = tuple(d for d in documents if d.year == str(ano))
+    if limite is not None:
+        documents = documents[:limite]
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    bridge = None if sem_evidencia else KnowledgeBridge(vault_path)
+    out_dir = Path(output_dir) / normalized_ticker if output_dir else None
+    if out_dir is not None:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    table = Table(title=f"Documentos Solutions IR — {normalized_ticker}")
+    table.add_column("Categoria")
+    table.add_column("Ano")
+    table.add_column("Título")
+    table.add_column("Status")
+
+    baixados = 0
+    for document in documents:
+        try:
+            request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
+            with urlopen(request, timeout=30.0) as response:  # noqa: S310 — URL vem da própria API Solutions IR, não de entrada externa
+                body = response.read()
+                content_type = response.headers.get("Content-Type", "application/pdf")
+        except HTTPError as exc:
+            table.add_row(document.category_sigla, document.year, document.title, f"[red]HTTP {exc.code}[/]")
+            continue
+        except Exception as exc:  # noqa: BLE001 — hospedagem estática de terceiro (static.btgpactual.com); um documento ruim não deve abortar a coleta inteira
+            table.add_row(document.category_sigla, document.year, document.title, f"[red]{type(exc).__name__}[/]")
+            continue
+
+        if out_dir is not None:
+            suffix = Path(document.url.split("?", 1)[0]).suffix or ".pdf"
+            safe_name = re.sub(r"[^\w.-]", "_", document.title)[:150]
+            (out_dir / f"{safe_name}{suffix}").write_bytes(body)
+
+        if bridge is not None:
+            atlas_document = AtlasDocument.build(
+                ticker=normalized_ticker,
+                provider="solutions_ir",
+                role=document.category_sigla or "investor_relations_document",
+                url=document.url,
+                final_url=document.url,
+                content_type=content_type,
+                status_code=200,
+                body=body,
+                discovered_year=int(document.year) if document.year.isdigit() else None,
+                title=document.title,
+            )
+            evidence = AtlasKnowledgeAdapter.to_evidence(atlas_document)
+            try:
+                bridge.persist_evidence(evidence)
+            except FileExistsError:
+                pass
+
+        baixados += 1
+        table.add_row(document.category_sigla, document.year, document.title, "[green]ok[/]")
+
+    console.print(table)
+    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    if out_dir is not None:
+        console.print(f"[dim]Cópias salvas em {out_dir}[/]")
+    if bridge is not None:
+        console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
+
+
 if __name__ == "__main__":
     cli()
