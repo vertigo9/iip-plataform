@@ -5,8 +5,10 @@ from iip.sources.cvm_renda_fixa import InformeDiario
 
 
 class _FetchedDiario:
-    def __init__(self, informes):
+    def __init__(self, informes, body=b"fake-zip-body"):
         self.informes = informes
+        self.status_code = 200
+        self.body = body
 
 
 class FakeDiarioHarvester:
@@ -79,6 +81,34 @@ def test_collect_cvm_diario_history_skips_months_without_a_match(tmp_path: Path)
 
     assert series.observations == ()
     assert series.source_documents[0]["matched"] is False
+
+
+class FakeBridge:
+    def __init__(self):
+        self.persisted = []
+
+    def persist_evidence(self, evidence):
+        self.persisted.append(evidence)
+        return evidence
+
+
+def test_collect_cvm_diario_history_persists_atlas_evidence_when_bridge_given(tmp_path: Path):
+    cnpj = "45.121.022/0001-48"
+    harvester = FakeDiarioHarvester(
+        {(2026, 8): [_informe("45121022000148", "2026-08-14", 1.85)]}
+    )
+    store = HistoricalSeriesStore(tmp_path)
+    bridge = FakeBridge()
+
+    collect_cvm_diario_history(
+        "AXIA3", cnpj, ((2026, 8),), store=store, harvester=harvester, bridge=bridge
+    )
+
+    assert len(bridge.persisted) == 1
+    evidence = bridge.persisted[0]
+    assert evidence.ticker == "AXIA3"
+    assert evidence.source_type == "atlas"
+    assert evidence.document_hash  # real sha256 of the fake body, not empty/fabricated
 
 
 def test_collect_cvm_diario_history_requires_cnpj_digits(tmp_path: Path):

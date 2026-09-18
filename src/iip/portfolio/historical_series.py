@@ -159,6 +159,29 @@ def _digits(value: str) -> str:
     return "".join(char for char in value if char.isdigit())
 
 
+def _persist_atlas_evidence(bridge: Any, document: AtlasDocument) -> None:
+    """Persist a fetched document as real Atlas evidence.
+
+    Calls ``bridge.persist_evidence`` directly rather than
+    ``AtlasKnowledgeAdapter.persist()`` -- that convenience method also
+    calls ``sync_evidence_projection``, which hardcodes asset_class
+    "FII" for the mirrored note section (a pre-existing bug, confirmed
+    live: it would misfile the sources section of non-FII tickers like
+    an equity or fixed_income position into the FIIs folder). The
+    evidence store write itself (``04_Evidence/<id>.md``) is
+    asset-class-agnostic and unaffected by that bug.
+    """
+    from iip.atlas.knowledge_adapter import AtlasKnowledgeAdapter
+
+    evidence = AtlasKnowledgeAdapter.to_evidence(document)
+    try:
+        bridge.persist_evidence(evidence)
+    except FileExistsError:
+        # Append-only evidence store; an identical document (same
+        # content hash) was already persisted -- not an error.
+        pass
+
+
 def collect_cvm_fii_history(
     ticker: str,
     cnpj: str,
@@ -166,8 +189,17 @@ def collect_cvm_fii_history(
     *,
     store: HistoricalSeriesStore,
     harvester: CvmFiiHTTPHarvester | None = None,
+    bridge: Any = None,
 ) -> HistoricalSeries:
-    """Collect and persist monthly CVM observations filtered by CNPJ."""
+    """Collect and persist monthly CVM observations filtered by CNPJ.
+
+    ``bridge`` (a ``KnowledgeBridge``) is optional: when given, each
+    year's fetched CVM file is also persisted as real Atlas evidence
+    (``04_Evidence/<document_id>.md``) via ``AtlasKnowledgeAdapter`` --
+    previously this function built an ``AtlasDocument`` only to derive
+    an id/hash for ``source_documents``, then discarded it without
+    ever persisting it. When omitted, behavior is unchanged.
+    """
     normalized_cnpj = _digits(cnpj)
     if not normalized_cnpj:
         raise ValueError("cnpj must contain digits")
@@ -191,6 +223,8 @@ def collect_cvm_fii_history(
             discovered_year=year,
             title=f"CVM FII Informe Mensal {year}",
         )
+        if bridge is not None:
+            _persist_atlas_evidence(bridge, document)
         source_documents.append(
             {
                 "year": year,
@@ -240,6 +274,7 @@ def collect_cvm_diario_history(
     *,
     store: HistoricalSeriesStore,
     harvester: Any = None,
+    bridge: Any = None,
 ) -> HistoricalSeries:
     """Collect and persist a NAV-per-quota history from CVM's Informe
     Diario (ICVM 555 general funds dataset), for asset classes not
@@ -250,10 +285,9 @@ def collect_cvm_diario_history(
     and ``rentabilidade_patrimonial_mes`` are not present in this
     dataset and are always None -- never approximated.
 
-    Unlike ``collect_cvm_fii_history``, ``FetchedDiario`` carries no
-    response body, so provenance here is a real request URL/period, not
-    a content-hash-backed AtlasDocument; ``document_hash`` is left
-    empty rather than fabricated.
+    ``bridge`` (a ``KnowledgeBridge``), when given, persists each
+    fetched month's file as real Atlas evidence, same as
+    ``collect_cvm_fii_history``.
     """
     from iip.sources.cvm_renda_fixa import build_diario_target
 
@@ -272,6 +306,20 @@ def collect_cvm_diario_history(
     for ano, mes in year_months:
         target = build_diario_target(ano, mes)
         result = harvester.fetch_diario(target)
+        document = AtlasDocument.build(
+            ticker=ticker,
+            provider="cvm_renda_fixa",
+            role="regulatory",
+            url=target.url,
+            final_url=target.url,
+            content_type="application/zip",
+            status_code=result.status_code,
+            body=result.body,
+            discovered_year=ano,
+            title=f"CVM Informe Diario {ano:04d}-{mes:02d}",
+        )
+        if bridge is not None:
+            _persist_atlas_evidence(bridge, document)
         matches = [
             item
             for item in result.informes
@@ -282,6 +330,8 @@ def collect_cvm_diario_history(
                 "ano": ano,
                 "mes": mes,
                 "source_url": target.url,
+                "document_id": document.document_id,
+                "document_hash": document.content_hash,
                 "matched": bool(matches),
             }
         )
@@ -301,8 +351,8 @@ def collect_cvm_diario_history(
                     if latest.numero_cotistas is not None
                     else None
                 ),
-                document_id=f"cvm_renda_fixa:{ticker.upper()}:{ano:04d}{mes:02d}",
-                document_hash="",
+                document_id=document.document_id,
+                document_hash=document.content_hash,
                 discovered_year=ano,
             )
         )
@@ -325,6 +375,7 @@ def collect_cotahist_history(
     *,
     store: HistoricalSeriesStore,
     harvester: Any = None,
+    bridge: Any = None,
 ) -> HistoricalSeries:
     """Collect and persist a daily closing-price history from B3's own
     COTAHIST file -- for equities and ETFs, which CVM does not publish
@@ -341,6 +392,10 @@ def collect_cotahist_history(
     Not every listed ticker has COTAHIST coverage (confirmed live:
     LFTB11 has none, apparently thin/no secondary-market trading) --
     an empty result for a requested year is a real finding, not a bug.
+
+    ``bridge`` (a ``KnowledgeBridge``), when given, persists each
+    fetched year's whole annual file as real Atlas evidence, same as
+    the CVM-backed collectors.
     """
     from iip.sources.b3_cotahist import build_target
 
@@ -359,11 +414,26 @@ def collect_cotahist_history(
     for year in years:
         target = build_target(year)
         result = harvester.fetch(target, tickers=frozenset({normalized_ticker}))
+        document = AtlasDocument.build(
+            ticker=normalized_ticker,
+            provider="b3_cotahist",
+            role="market_data",
+            url=target.url,
+            final_url=result.final_url or target.url,
+            content_type="application/zip",
+            status_code=result.status_code,
+            body=result.body,
+            discovered_year=year,
+            title=f"B3 COTAHIST {year}",
+        )
+        if bridge is not None:
+            _persist_atlas_evidence(bridge, document)
         source_documents.append(
             {
                 "year": year,
                 "source_url": target.url,
-                "content_hash": result.content_hash,
+                "document_id": document.document_id,
+                "content_hash": document.content_hash,
                 "matched": bool(result.quotes),
             }
         )
@@ -377,8 +447,8 @@ def collect_cotahist_history(
                     rentabilidade_patrimonial_mes=None,
                     valor_ativo=None,
                     total_numero_cotistas=None,
-                    document_id=f"b3_cotahist:{normalized_ticker}:{year}",
-                    document_hash=result.content_hash,
+                    document_id=document.document_id,
+                    document_hash=document.content_hash,
                     discovered_year=year,
                 )
             )

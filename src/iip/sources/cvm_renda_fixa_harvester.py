@@ -27,6 +27,7 @@ class FetchedDiario:
     target: CvmDiarioTarget
     status_code: int
     informes: tuple[InformeDiario, ...]
+    body: bytes = b""
 
 
 @dataclass(frozen=True)
@@ -62,7 +63,10 @@ class CvmRendaFixaHTTPHarvester:
     def fetch_diario(self, target: CvmDiarioTarget) -> FetchedDiario:
         status_code, body = self._get(target.url, "application/zip")
         return FetchedDiario(
-            target=target, status_code=status_code, informes=parse_diario_response(body)
+            target=target,
+            status_code=status_code,
+            informes=parse_diario_response(body),
+            body=body,
         )
 
     def fetch_perfil(self, target: CvmPerfilTarget) -> FetchedPerfil:

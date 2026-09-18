@@ -44,6 +44,35 @@ def test_collect_cvm_history_persists_observations_and_source_link(tmp_path: Pat
     assert store.path_for("BTLG11").exists()
 
 
+class FakeBridge:
+    def __init__(self):
+        self.persisted = []
+
+    def persist_evidence(self, evidence):
+        self.persisted.append(evidence)
+        return evidence
+
+
+def test_collect_cvm_history_persists_atlas_evidence_when_bridge_given(tmp_path: Path):
+    store = HistoricalSeriesStore(tmp_path / "vault")
+    bridge = FakeBridge()
+
+    collect_cvm_fii_history(
+        "BTLG11",
+        "11.839.593/0001-09",
+        range(2026, 2027),
+        store=store,
+        harvester=CvmFiiHTTPHarvester(opener=lambda request, timeout: Response()),
+        bridge=bridge,
+    )
+
+    assert len(bridge.persisted) == 1
+    evidence = bridge.persisted[0]
+    assert evidence.ticker == "BTLG11"
+    assert evidence.source_type == "atlas"
+    assert evidence.document_hash
+
+
 def _observation(period: str, valor_patrimonial_cotas: float) -> HistoricalObservation:
     return HistoricalObservation(
         period=period,

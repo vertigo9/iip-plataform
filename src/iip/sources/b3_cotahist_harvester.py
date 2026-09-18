@@ -21,6 +21,7 @@ class FetchedCotahist:
     quotes: tuple[CotahistQuote, ...]
     content_hash: str
     final_url: str = ""
+    body: bytes = b""
 
 
 class B3CotahistHTTPHarvester:
@@ -63,4 +64,5 @@ class B3CotahistHTTPHarvester:
             quotes=quotes,
             content_hash=hashlib.sha256(body).hexdigest(),
             final_url=final_url,
+            body=body,
         )

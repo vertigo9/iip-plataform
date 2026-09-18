@@ -5,9 +5,12 @@ from iip.sources.b3_cotahist import CotahistQuote
 
 
 class _FetchedCotahist:
-    def __init__(self, quotes, content_hash="deadbeef"):
+    def __init__(self, quotes, body=b"fake-cotahist-body"):
         self.quotes = quotes
-        self.content_hash = content_hash
+        self.status_code = 200
+        self.body = body
+        self.final_url = ""
+        self.content_hash = "unused-superseded-by-AtlasDocument.build"
 
 
 class FakeCotahistHarvester:
@@ -19,7 +22,7 @@ class FakeCotahistHarvester:
         self.calls.append((target.year, tickers))
         all_quotes = self._quotes_by_year.get(target.year, [])
         matched = tuple(q for q in all_quotes if tickers is None or q.ticker in tickers)
-        return _FetchedCotahist(matched, content_hash=f"hash-{target.year}")
+        return _FetchedCotahist(matched, body=f"fake-body-{target.year}".encode())
 
 
 def _quote(ticker: str, date: str, close: float) -> CotahistQuote:
@@ -61,6 +64,29 @@ def test_collect_cotahist_history_handles_ticker_with_no_coverage(tmp_path: Path
 
     assert series.observations == ()
     assert series.source_documents[0]["matched"] is False
+
+
+class FakeBridge:
+    def __init__(self):
+        self.persisted = []
+
+    def persist_evidence(self, evidence):
+        self.persisted.append(evidence)
+        return evidence
+
+
+def test_collect_cotahist_history_persists_atlas_evidence_when_bridge_given(tmp_path: Path):
+    harvester = FakeCotahistHarvester({2026: [_quote("BBSE3", "2026-09-17", 40.41)]})
+    store = HistoricalSeriesStore(tmp_path)
+    bridge = FakeBridge()
+
+    collect_cotahist_history("BBSE3", (2026,), store=store, harvester=harvester, bridge=bridge)
+
+    assert len(bridge.persisted) == 1
+    evidence = bridge.persisted[0]
+    assert evidence.ticker == "BBSE3"
+    assert evidence.source_type == "atlas"
+    assert evidence.document_hash
 
 
 def test_collect_cotahist_history_requires_ticker():
