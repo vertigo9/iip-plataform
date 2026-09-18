@@ -525,7 +525,7 @@ def fetch_fixed_income_template_live(
         _build_cvm_diario_target(ano, mes)
     )
 
-    default_financials = _etf_defaults()
+    default_financials = _fixed_income_defaults()
     template, resultado = build_etf_template(
         symbol=symbol,
         cnpj=cnpj,
@@ -612,6 +612,13 @@ def _etf_defaults() -> dict[str, Any]:
     from iip.cli.main import _template_financials
 
     return _template_financials(ETFAnalyzer)
+
+
+def _fixed_income_defaults() -> dict[str, Any]:
+    from iip.analysis import FixedIncomeAnalyzer
+    from iip.cli.main import _template_financials
+
+    return _template_financials(FixedIncomeAnalyzer)
 
 
 def latest_informe_for_cnpj(
