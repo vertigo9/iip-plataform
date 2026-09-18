@@ -14,6 +14,7 @@ from .historical_series import (
     HistoricalObservation,
     HistoricalSeries,
     HistoricalSeriesStore,
+    collect_cvm_diario_history,
     collect_cvm_fii_history,
     normalize_quota_splits,
 )
@@ -63,6 +64,7 @@ __all__ = [
     "HistoricalObservation",
     "HistoricalSeries",
     "HistoricalSeriesStore",
+    "collect_cvm_diario_history",
     "collect_cvm_fii_history",
     "normalize_quota_splits",
     "IntegratedPortfolioPipeline",

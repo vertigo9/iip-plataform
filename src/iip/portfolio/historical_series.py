@@ -231,3 +231,89 @@ def collect_cvm_fii_history(
     )
     store.save(series)
     return series
+
+
+def collect_cvm_diario_history(
+    ticker: str,
+    cnpj: str,
+    year_months: tuple[tuple[int, int], ...],
+    *,
+    store: HistoricalSeriesStore,
+    harvester: Any = None,
+) -> HistoricalSeries:
+    """Collect and persist a NAV-per-quota history from CVM's Informe
+    Diario (ICVM 555 general funds dataset), for asset classes not
+    covered by the FII-specific dataset (etf, fixed_income).
+
+    One observation per requested competencia month (its latest day),
+    same cadence as ``collect_cvm_fii_history``. ``dividend_yield_mes``
+    and ``rentabilidade_patrimonial_mes`` are not present in this
+    dataset and are always None -- never approximated.
+
+    Unlike ``collect_cvm_fii_history``, ``FetchedDiario`` carries no
+    response body, so provenance here is a real request URL/period, not
+    a content-hash-backed AtlasDocument; ``document_hash`` is left
+    empty rather than fabricated.
+    """
+    from iip.sources.cvm_renda_fixa import build_diario_target
+
+    normalized_cnpj = _digits(cnpj)
+    if not normalized_cnpj:
+        raise ValueError("cnpj must contain digits")
+
+    if harvester is None:
+        from iip.sources.cvm_renda_fixa_harvester import CvmRendaFixaHTTPHarvester
+
+        harvester = CvmRendaFixaHTTPHarvester()
+
+    observations: list[HistoricalObservation] = []
+    source_documents: list[dict[str, Any]] = []
+
+    for ano, mes in year_months:
+        target = build_diario_target(ano, mes)
+        result = harvester.fetch_diario(target)
+        matches = [
+            item
+            for item in result.informes
+            if _digits(item.cnpj_fundo_classe) == normalized_cnpj
+        ]
+        source_documents.append(
+            {
+                "ano": ano,
+                "mes": mes,
+                "source_url": target.url,
+                "matched": bool(matches),
+            }
+        )
+        if not matches:
+            continue
+        latest = max(matches, key=lambda item: item.data_competencia)
+        observations.append(
+            HistoricalObservation(
+                period=latest.data_competencia,
+                patrimonio_liquido=latest.patrimonio_liquido,
+                valor_patrimonial_cotas=latest.valor_cota,
+                dividend_yield_mes=None,
+                rentabilidade_patrimonial_mes=None,
+                valor_ativo=latest.valor_total,
+                total_numero_cotistas=(
+                    float(latest.numero_cotistas)
+                    if latest.numero_cotistas is not None
+                    else None
+                ),
+                document_id=f"cvm_renda_fixa:{ticker.upper()}:{ano:04d}{mes:02d}",
+                document_hash="",
+                discovered_year=ano,
+            )
+        )
+
+    observations.sort(key=lambda item: item.period)
+    series = HistoricalSeries(
+        ticker=ticker.upper(),
+        cnpj=normalized_cnpj,
+        provider="cvm_renda_fixa",
+        observations=tuple(observations),
+        source_documents=tuple(source_documents),
+    )
+    store.save(series)
+    return series
