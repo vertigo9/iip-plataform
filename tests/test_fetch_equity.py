@@ -409,3 +409,63 @@ def test_bolsai_parser_reads_shares_outstanding():
 
     assert parse_fundamentals_response(body).shares_outstanding == 3_000_000_000.0
     assert parse_fundamentals_response(b'{"ticker": "X"}').shares_outstanding is None
+
+
+def _bolsai_no_dy(monkeypatch, *, shares=1_000_000_000.0, price=10.0, dividend_yield=None):
+    monkeypatch.setattr(
+        BolsaiHTTPHarvester,
+        "fetch",
+        lambda self, target: FetchedFundamentals(
+            target=target,
+            status_code=200,
+            fundamentals=make_bolsai_fundamentals(
+                shares_outstanding=shares, close_price=price, dividend_yield=dividend_yield
+            ),
+        ),
+    )
+
+
+def test_fetch_equity_derives_dividend_yield_percent_from_dps_and_price(monkeypatch):
+    _bolsai_no_dy(monkeypatch, shares=1_000_000_000.0, price=10.0)
+    _mock_dfp_with_dividends(monkeypatch, [_dividend_row(-800000.0)])  # R$ 800 mi -> DPS 0.80
+
+    template, resultado = fetch_equity_template_live(
+        "KLBN4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+
+    # a PERCENT number (EquityAnalyzer scores dy * 15), not a fraction
+    assert template["financials"]["dividend_yield"] == pytest.approx(8.0)
+    assert "dividend_yield" in resultado.fetched_fields
+    assert resultado.fetched_fields.count("dividend_yield") == 1
+
+
+def test_fetch_equity_keeps_the_provider_dividend_yield_when_present(monkeypatch):
+    _bolsai_no_dy(monkeypatch, dividend_yield=5.5)
+    _mock_dfp_with_dividends(monkeypatch, [_dividend_row(-800000.0)])
+
+    template, resultado = fetch_equity_template_live(
+        "KLBN4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+
+    assert template["financials"]["dividend_yield"] == 5.5
+    assert resultado.fetched_fields.count("dividend_yield") == 1
+
+
+def test_fetch_equity_zero_dividends_gives_a_real_zero_yield(monkeypatch):
+    _bolsai_no_dy(monkeypatch)
+    _mock_dfp_with_dividends(monkeypatch, [_dividend_row(0.0, "6.03.05", "Dividendos pagos")])
+
+    template, _ = fetch_equity_template_live("SAUD3", NON_FINANCIAL_CNPJ, 2025, "fake-key", None)
+
+    assert template["financials"]["dividend_yield"] == 0.0
+
+
+def test_fetch_equity_no_dividend_line_leaves_dividend_yield_at_default(monkeypatch):
+    _bolsai_no_dy(monkeypatch)
+    _mock_dfp_with_dividends(monkeypatch, [])
+
+    _template, resultado = fetch_equity_template_live(
+        "ABCB4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+
+    assert "dividend_yield" not in resultado.fetched_fields

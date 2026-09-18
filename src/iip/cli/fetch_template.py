@@ -548,6 +548,16 @@ def fetch_equity_template_live(
                     current.dividendos_pagos / shares_outstanding, 4
                 )
                 fetched.append("dividend_per_share")
+                # bolsai's stock endpoint carries no dividend_yield (always
+                # None, confirmed live), so the analyzer's dividends pillar had
+                # only its default. Derive it here -- as a PERCENT number, the
+                # unit EquityAnalyzer scores (dy * 15) -- unless bolsai did
+                # provide one.
+                if "dividend_yield" not in fetched and price:
+                    financials["dividend_yield"] = round(
+                        financials["dividend_per_share"] / price * 100, 4
+                    )
+                    fetched.append("dividend_yield")
                 warnings.append(
                     "dividend_per_share = dividendos e JCP PAGOS no ano fiscal "
                     f"{ano} (DFC da CVM) ÷ total de ações de todas as classes "
