@@ -160,6 +160,28 @@ def test_sync_events_projection_lists_real_adjustments(tmp_path):
     assert "8.997170" in content
 
 
+def test_sync_events_projection_includes_user_confirmed_manual_events(tmp_path):
+    bridge = KnowledgeBridge(str(tmp_path))
+    series = HistoricalSeries(
+        ticker="PCIP11", cnpj="28729197000113", provider="cvm",
+        observations=(_observation("2026-01-01"),), source_documents=(),
+    )
+
+    result = bridge.sync_events_projection(
+        series,
+        "PCIP11",
+        "fii",
+        manual_events=(
+            "24/09/2025: fundo passou a negociar sob o ticker PCIP11 "
+            "(anteriormente CVBI11), confirmado pelo usuário",
+        ),
+    )
+    content = result.path.read_text(encoding="utf-8")
+
+    assert "CVBI11" in content
+    assert "24/09/2025" in content
+
+
 def test_sync_events_projection_reports_no_events_honestly(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(

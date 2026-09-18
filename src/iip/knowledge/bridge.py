@@ -327,18 +327,30 @@ class KnowledgeBridge:
             ticker, asset_class, "distributions", "IIP:distributions", "\n".join(lines)
         )
 
-    def sync_events_projection(self, series, ticker: str, asset_class: str) -> ProjectionSyncResult:
-        """Project detected quota splits/groupings (HistoricalSeries.
-        adjustments, from normalize_quota_splits) -- the only kind of
-        corporate event this session has a real, computed source for.
-        Other events (mergers, incorporations) have no structured
-        source and are never guessed at here."""
+    def sync_events_projection(
+        self,
+        series,
+        ticker: str,
+        asset_class: str,
+        *,
+        manual_events: tuple[str, ...] = (),
+    ) -> ProjectionSyncResult:
+        """Project corporate events -- detected quota splits/groupings
+        (HistoricalSeries.adjustments, from normalize_quota_splits,
+        the only kind this session computes automatically) plus
+        ``manual_events``: facts the user confirmed directly (e.g. a
+        ticker rename), never invented here. Manual events are listed
+        first since they're the reason a series' pre-event history
+        might not be directly comparable, even without a detected
+        price-scale break."""
+        lines = [f"- {event}" for event in manual_events]
         if series.adjustments:
-            lines = [
+            lines.extend(
                 f"- {adj['period']}: {adj['field']} ajustado por fator {adj['factor']:.6f} "
                 f"({adj['reason']})"
                 for adj in series.adjustments
-            ]
+            )
+        if lines:
             content = "\n".join(lines)
         else:
             content = "Nenhum desdobramento/grupamento de cotas detectado na série histórica persistida."
