@@ -943,5 +943,133 @@ def persist_evidence(
     )
 
 
+@cli.command("collect-sparta-history")
+@click.option(
+    "--ticker",
+    default="CRAA11",
+    help="Ticker de um fundo Sparta (ex.: CRAA11, JURO11, CDII11).",
+)
+@click.option(
+    "--desde",
+    default="2025-01",
+    help="Mês inicial YYYY-MM (padrão: 2025-01, primeiro mês confirmado "
+    "disponível no site da Sparta -- ver iip.sources.sparta_reports).",
+)
+@click.option(
+    "--ate",
+    default=None,
+    help="Mês final YYYY-MM (padrão: mês atual).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault, só a série histórica em "
+    "02_Portfolio/Historical.",
+)
+def collect_sparta_history_command(
+    ticker: str, desde: str, ate: str | None, vault: str | None, sem_evidencia: bool
+) -> None:
+    """Coleta e persiste o histórico de cota patrimonial de um fundo
+    Sparta a partir dos relatórios mensais em PDF do próprio site
+    (``iip.sources.sparta_reports``).
+
+    Motivado pelo CRAA11 (Sparta Fiagro): confirmado que seu CNPJ não
+    aparece no dataset FIAGRO aberto da CVM (ver o aviso de
+    ``iip analyze-portfolio``/``fetch-template --type fiagro`` para
+    esse ticker), então esse fundo fica sem patrimônio/cota via CVM.
+    Este comando busca a mesma informação direto do relatório gerencial
+    da própria gestora -- a única fonte real encontrada para esse gap.
+
+    Um mês cujo relatório ainda não foi publicado (404) ou cujo layout
+    de PDF não bate com o esperado é registrado como não-casado e
+    pulado, nunca inventado -- ver a tabela de saída.
+    """
+    import datetime as _dt
+
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.portfolio.historical_series import (
+        HistoricalSeriesStore,
+        collect_sparta_report_history,
+    )
+
+    def _parse_year_month(value: str, label: str) -> tuple[int, int]:
+        try:
+            ano_str, mes_str = value.split("-", 1)
+            ano, mes = int(ano_str), int(mes_str)
+            if not (1 <= mes <= 12):
+                raise ValueError
+            return ano, mes
+        except ValueError as exc:
+            console.print(f"[bold red]{label} precisa ser YYYY-MM, recebi: {value}[/]")
+            raise SystemExit(1) from exc
+
+    ano_inicio, mes_inicio = _parse_year_month(desde, "--desde")
+    if ate:
+        ano_fim, mes_fim = _parse_year_month(ate, "--ate")
+    else:
+        hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (mês de referência padrão), não timestamp
+        ano_fim, mes_fim = hoje.year, hoje.month
+
+    if (ano_inicio, mes_inicio) > (ano_fim, mes_fim):
+        console.print("[bold red]--desde não pode ser depois de --ate.[/]")
+        raise SystemExit(1)
+
+    year_months: list[tuple[int, int]] = []
+    ano, mes = ano_inicio, mes_inicio
+    while (ano, mes) <= (ano_fim, mes_fim):
+        year_months.append((ano, mes))
+        mes += 1
+        if mes > 12:
+            mes = 1
+            ano += 1
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    store = HistoricalSeriesStore(vault_path)
+    bridge = None if sem_evidencia else KnowledgeBridge(vault_path)
+
+    console.print(
+        f"[dim]Coletando histórico Sparta para {ticker.upper()} "
+        f"({year_months[0][0]:04d}-{year_months[0][1]:02d} a "
+        f"{year_months[-1][0]:04d}-{year_months[-1][1]:02d})...[/]\n"
+    )
+
+    series = collect_sparta_report_history(
+        ticker, tuple(year_months), store=store, bridge=bridge
+    )
+
+    observations_by_period = {o.period: o for o in series.observations}
+
+    table = Table(title=f"Histórico Sparta — {series.ticker}")
+    table.add_column("Período")
+    table.add_column("Cota patrimonial")
+    table.add_column("Status")
+
+    for doc in series.source_documents:
+        periodo = f"{doc['ano']:04d}-{doc['mes']:02d}"
+        observation = observations_by_period.get(f"{periodo}-01")
+        if observation is not None:
+            table.add_row(
+                periodo, f"R$ {observation.valor_patrimonial_cotas:.2f}", "[green]ok[/]"
+            )
+        else:
+            motivo = doc.get("error", "layout do PDF não reconhecido")
+            table.add_row(periodo, "-", f"[yellow]{motivo}[/]")
+
+    console.print(table)
+    console.print(
+        f"\n[green]{len(series.observations)} observação(ões)[/] salva(s) em "
+        f"{store.path_for(series.ticker)}"
+    )
+    if bridge is not None:
+        console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
+
+
 if __name__ == "__main__":
     cli()
