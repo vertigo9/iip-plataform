@@ -32,6 +32,23 @@ grid shape. If Sparta redesigns the report, this will start returning
 None (silently missing, never a wrong number) rather than raise --
 callers should treat that as "recheck the layout", not "no data this
 month".
+
+KNOWN GAP, confirmed live (18/09/2026): this "Destaques do Mes" grid
+format is CRAA11 (Sparta Fiagro)-specific, not universal across
+Sparta's funds. Ran ``iip collect-sparta-history`` for JURO11 and
+CDII11 (Sparta's other 2 registry positions, both FI-Infra) across
+2025-01..2026-08 -- real PDFs downloaded fine (HTTP 200, ~2.5MB,
+20 pages each), but NONE matched this layout: no "DESTAQUES DO MES"
+heading appears anywhere in either report at all. The only
+"Cota patrimonial" occurrence found is inside the report's own
+GLOSSARIO (a definition, not a data value), which is exactly why the
+extractor correctly returned None for every month rather than reading
+a number from the wrong context. The real NAV grid for these two
+funds' longer, more detailed FI-Infra report template lives somewhere
+else in the document -- not investigated further, since both JURO11
+and CDII11 already have real NAV via CVM's Informe Diario (confirmed
+in ``iip.portfolio.refresh``'s docstring), so this is a nice-to-have
+cross-check gap, not a blocking one like CRAA11 was.
 """
 
 from __future__ import annotations

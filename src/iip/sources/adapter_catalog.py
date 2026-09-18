@@ -80,9 +80,12 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "collect-sparta-history` (see "
         "iip.portfolio.historical_series.collect_sparta_report_history). "
         "Built for CRAA11, whose CNPJ is confirmed absent from CVM's own "
-        "FIAGRO dataset; also usable for JURO11/CDII11 (Sparta's other 2 "
-        "funds), though CVM's Informe Diário already covers those -- "
-        "cross-check only there, not a hard requirement.",
+        "FIAGRO dataset. Confirmed READY for CRAA11 only -- ran live "
+        "(18/09/2026) against JURO11/CDII11 (Sparta's other 2 funds) and "
+        "their PDF report uses a different layout with no matching NAV "
+        "grid at all (see iip.sources.sparta_reports module docstring); "
+        "pending, not a blocker since CVM's Informe Diário already covers "
+        "those two.",
     ),
     AdapterDescriptor(
         "btg", ("fund",), AdapterKind.MAPPED,
