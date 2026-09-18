@@ -317,3 +317,79 @@ def collect_cvm_diario_history(
     )
     store.save(series)
     return series
+
+
+def collect_cotahist_history(
+    ticker: str,
+    years: tuple[int, ...],
+    *,
+    store: HistoricalSeriesStore,
+    harvester: Any = None,
+) -> HistoricalSeries:
+    """Collect and persist a daily closing-price history from B3's own
+    COTAHIST file -- for equities and ETFs, which CVM does not publish
+    market price data for at all (see ``iip.sources.b3_cotahist``).
+
+    Daily granularity (unlike the monthly cadence of the CVM-backed
+    collectors), one HTTP fetch per requested year, tens of MB each --
+    pass only the years actually needed. ``valor_patrimonial_cotas``
+    holds the closing price (not a book/NAV value here); the fields
+    with no COTAHIST equivalent (patrimonio_liquido, dividend_yield_mes,
+    etc.) are left None, never approximated. ``cnpj`` is left empty --
+    COTAHIST identifies instruments by ticker, not CNPJ.
+
+    Not every listed ticker has COTAHIST coverage (confirmed live:
+    LFTB11 has none, apparently thin/no secondary-market trading) --
+    an empty result for a requested year is a real finding, not a bug.
+    """
+    from iip.sources.b3_cotahist import build_target
+
+    normalized_ticker = ticker.strip().upper()
+    if not normalized_ticker:
+        raise ValueError("ticker must not be empty")
+
+    if harvester is None:
+        from iip.sources.b3_cotahist_harvester import B3CotahistHTTPHarvester
+
+        harvester = B3CotahistHTTPHarvester()
+
+    observations: list[HistoricalObservation] = []
+    source_documents: list[dict[str, Any]] = []
+
+    for year in years:
+        target = build_target(year)
+        result = harvester.fetch(target, tickers=frozenset({normalized_ticker}))
+        source_documents.append(
+            {
+                "year": year,
+                "source_url": target.url,
+                "content_hash": result.content_hash,
+                "matched": bool(result.quotes),
+            }
+        )
+        for quote in result.quotes:
+            observations.append(
+                HistoricalObservation(
+                    period=quote.date,
+                    patrimonio_liquido=None,
+                    valor_patrimonial_cotas=quote.close,
+                    dividend_yield_mes=None,
+                    rentabilidade_patrimonial_mes=None,
+                    valor_ativo=None,
+                    total_numero_cotistas=None,
+                    document_id=f"b3_cotahist:{normalized_ticker}:{year}",
+                    document_hash=result.content_hash,
+                    discovered_year=year,
+                )
+            )
+
+    observations.sort(key=lambda item: item.period)
+    series = HistoricalSeries(
+        ticker=normalized_ticker,
+        cnpj="",
+        provider="b3_cotahist",
+        observations=tuple(observations),
+        source_documents=tuple(source_documents),
+    )
+    store.save(series)
+    return series
