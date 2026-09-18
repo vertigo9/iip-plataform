@@ -3,6 +3,7 @@ import csv
 import pytest
 
 from iip.intelligence.metric_identity import MetricObservationIdentity
+from iip.intelligence.metric_persistence import PersistenceBatch
 from iip.intelligence.metric_persistence_adapter import (
     AdapterResult,
     DryRunPersistenceAdapter,
@@ -16,6 +17,8 @@ from iip.intelligence.metric_persistence_adapter import (
     _ticker_from_identity,
     _tickers_from_lineage,
     inspect_final_gate,
+    persist_ready_batch,
+    to_knowledge_evidence,
 )
 
 # ---------------------------------------------------------------------------
@@ -410,3 +413,100 @@ def test_simulated_bridge_sync_projection_ignores_missing_evidence_id():
     bridge.sync_evidence_projection(_NoIdEvidence())
 
     assert len(bridge.projections) == 0
+
+
+# ---------------------------------------------------------------------------
+# to_knowledge_evidence / persist_ready_batch — the real-persistence step
+# the 0695.7 initiative built everything up to but never wired
+# ---------------------------------------------------------------------------
+
+
+def test_to_knowledge_evidence_converts_dict_facts_to_key_value_tuple(tmp_path):
+    path = write_csv(tmp_path, [make_row()])
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+    candidate = batch.ready[0]
+
+    evidence = to_knowledge_evidence(candidate.knowledge_evidence)
+
+    assert evidence.evidence_id == candidate.knowledge_evidence.evidence_id
+    assert evidence.ticker == "PCIP11"
+    assert all("=" in fact for fact in evidence.relevant_facts)
+    assert any(fact.startswith("metric=Distribuicao_Mensal") for fact in evidence.relevant_facts)
+
+
+def test_to_knowledge_evidence_drops_blank_facts(tmp_path):
+    path = write_csv(tmp_path, [make_row(Legacy_Period="")])
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+    evidence = to_knowledge_evidence(batch.ready[0].knowledge_evidence)
+
+    assert not any(fact.startswith("legacy_period=") for fact in evidence.relevant_facts)
+
+
+def test_persist_ready_batch_persists_only_ready_candidates(tmp_path):
+    path = write_csv(
+        tmp_path,
+        [make_row(), make_row(Metric="Cota_Patrimonial", Final_Promotion_Gate="BLOCKED")],
+    )
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+    bridge = SimulatedKnowledgeBridgeAdapter()
+
+    persisted_ids = persist_ready_batch(batch, bridge)
+
+    assert len(persisted_ids) == 1
+    assert bridge.size == 1
+
+
+def test_persist_ready_batch_is_idempotent_on_rerun(tmp_path):
+    path = write_csv(tmp_path, [make_row()])
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+    bridge = SimulatedKnowledgeBridgeAdapter()
+
+    first = persist_ready_batch(batch, bridge)
+    second = persist_ready_batch(batch, bridge)
+
+    assert first == second
+    assert bridge.size == 1
+
+
+def test_persist_ready_batch_syncs_projection_when_requested(tmp_path):
+    path = write_csv(tmp_path, [make_row()])
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+    bridge = SimulatedKnowledgeBridgeAdapter()
+
+    persist_ready_batch(batch, bridge, sync_projection=True)
+
+    assert len(bridge.projections) == 1
+
+
+def test_persist_ready_batch_skips_projection_by_default(tmp_path):
+    path = write_csv(tmp_path, [make_row()])
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+    bridge = SimulatedKnowledgeBridgeAdapter()
+
+    persist_ready_batch(batch, bridge)
+
+    assert len(bridge.projections) == 0
+
+
+def test_persist_ready_batch_ignores_sink_without_projection_method(tmp_path):
+    path = write_csv(tmp_path, [make_row()])
+    result = inspect_final_gate(path)
+    batch = PersistenceBatch(result.candidates)
+
+    class _PersistOnlySink:
+        def __init__(self):
+            self.persisted = []
+
+        def persist_evidence(self, evidence):
+            self.persisted.append(evidence.evidence_id)
+
+    sink = _PersistOnlySink()
+    persisted_ids = persist_ready_batch(batch, sink, sync_projection=True)
+
+    assert persisted_ids == tuple(sink.persisted)

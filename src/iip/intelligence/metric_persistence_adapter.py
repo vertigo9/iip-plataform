@@ -429,3 +429,70 @@ class SimulatedKnowledgeBridgeAdapter:
     @property
     def size(self) -> int:
         return len(self.persisted_ids)
+
+
+def to_knowledge_evidence(metric_evidence: KnowledgeMetricEvidence):
+    """Convert a ``KnowledgeMetricEvidence`` (this module's own
+    persistence-candidate shape) into a real ``iip.knowledge.models.Evidence``
+    -- the type ``KnowledgeBridge.persist_evidence``/``sync_evidence_projection``
+    actually accept. The two shapes differ only in ``relevant_facts``:
+    a ``dict[str, str]`` here vs. the tuple-of-strings ``Evidence`` expects
+    (same ``key=value`` convention already used by
+    ``AtlasKnowledgeAdapter.to_evidence``); blank values are dropped rather
+    than persisted as noise.
+    """
+    from iip.knowledge.models import Evidence
+
+    return Evidence(
+        evidence_id=metric_evidence.evidence_id,
+        ticker=metric_evidence.ticker,
+        date=metric_evidence.date,
+        source_type=metric_evidence.source_type,
+        source_url=metric_evidence.source_url,
+        title=metric_evidence.title,
+        document_hash=metric_evidence.document_hash,
+        relevant_facts=tuple(
+            f"{key}={value}" for key, value in metric_evidence.relevant_facts.items() if value
+        ),
+    )
+
+
+def persist_ready_batch(
+    batch: PersistenceBatch,
+    sink: EvidenceSink,
+    *,
+    sync_projection: bool = False,
+) -> tuple[str, ...]:
+    """Persist every ready (READY/READY_WITH_DIMENSION/DEDUPLICABLE)
+    candidate in ``batch`` as real Evidence via ``sink`` -- the real
+    ``KnowledgeBridge.persist_evidence`` (or any object satisfying the
+    ``EvidenceSink`` protocol; ``SimulatedKnowledgeBridgeAdapter`` for
+    tests that must never touch the Vault).
+
+    This is the step the 0695.7 initiative built every other piece of
+    this module up to but never wired -- its own release-readiness
+    script (``archive/dev-history/RELEASE_0695_7_READINESS_R1.py``)
+    required ``Metric_Persistence_Authorization``/
+    ``KnowledgeBridge_Write_Authorization``/``Vault_Write_Authorization``
+    to all read ``NOT_GRANTED`` to pass, as a deliberate pre-persistence
+    safety gate. Only call this once that authorization has genuinely
+    been given for the batch being persisted.
+
+    ``persist_evidence`` is append-only per ``evidence_id`` (same content
+    hash already persisted raises ``FileExistsError``) -- caught here and
+    treated as already-done, not a failure, same convention as every
+    other ``persist_evidence`` caller in this project.
+    """
+    persisted: list[str] = []
+    for candidate in batch.ready:
+        evidence = to_knowledge_evidence(candidate.knowledge_evidence)
+        try:
+            sink.persist_evidence(evidence)
+        except FileExistsError:
+            continue
+        persisted.append(evidence.evidence_id)
+        if sync_projection:
+            projector = getattr(sink, "sync_evidence_projection", None)
+            if projector is not None:
+                projector(evidence)
+    return tuple(persisted)
