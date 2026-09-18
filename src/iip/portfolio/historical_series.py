@@ -463,3 +463,115 @@ def collect_cotahist_history(
     )
     store.save(series)
     return series
+
+
+def collect_sparta_report_history(
+    ticker: str,
+    year_months: tuple[tuple[int, int], ...],
+    *,
+    store: HistoricalSeriesStore,
+    harvester: Any = None,
+    bridge: Any = None,
+) -> HistoricalSeries:
+    """Collect and persist a NAV-per-quota history from Sparta's own
+    monthly management report PDFs (see ``iip.sources.sparta_reports``)
+    -- for funds like CRAA11, whose CNPJ is confirmed absent from CVM's
+    own FIAGRO open dataset.
+
+    Genuinely more fragile than every CVM/B3-backed collector in this
+    module: extraction depends on Sparta's PDF layout, not a
+    structured CSV. A month whose report isn't published yet (404) or
+    whose layout doesn't match is recorded in ``source_documents`` with
+    ``matched: False`` and simply skipped -- never raises, never
+    fabricates a value.
+
+    ``cnpj`` is left empty on the returned series, same convention as
+    ``collect_cotahist_history`` (this source identifies by ticker via
+    the report URL, not CNPJ).
+    """
+    from urllib.error import HTTPError
+
+    from iip.sources.sparta_reports import build_target
+
+    normalized_ticker = ticker.strip().upper()
+    if not normalized_ticker:
+        raise ValueError("ticker must not be empty")
+
+    if harvester is None:
+        from iip.sources.sparta_reports_harvester import SpartaReportsHTTPHarvester
+
+        harvester = SpartaReportsHTTPHarvester()
+
+    observations: list[HistoricalObservation] = []
+    source_documents: list[dict[str, Any]] = []
+
+    for ano, mes in year_months:
+        target = build_target(normalized_ticker, ano, mes)
+        try:
+            result = harvester.fetch(target)
+        except HTTPError as exc:
+            source_documents.append(
+                {
+                    "ano": ano,
+                    "mes": mes,
+                    "source_url": target.url,
+                    "matched": False,
+                    "error": f"HTTP {exc.code}",
+                }
+            )
+            continue
+
+        document = AtlasDocument.build(
+            ticker=normalized_ticker,
+            provider="sparta_reports",
+            role="manager_report",
+            url=target.url,
+            final_url=result.final_url or target.url,
+            content_type="application/pdf",
+            status_code=result.status_code,
+            body=result.body,
+            discovered_year=ano,
+            title=f"Sparta Relatorio Mensal {normalized_ticker} {ano:04d}-{mes:02d}",
+        )
+        if bridge is not None:
+            _persist_atlas_evidence(bridge, document)
+
+        matched = result.cota_patrimonial is not None
+        source_documents.append(
+            {
+                "ano": ano,
+                "mes": mes,
+                "source_url": target.url,
+                "document_id": document.document_id,
+                "document_hash": document.content_hash,
+                "matched": matched,
+            }
+        )
+        if not matched:
+            continue
+
+        observations.append(
+            HistoricalObservation(
+                period=f"{ano:04d}-{mes:02d}-01",
+                patrimonio_liquido=None,
+                valor_patrimonial_cotas=result.cota_patrimonial,
+                dividend_yield_mes=None,
+                rentabilidade_patrimonial_mes=None,
+                valor_ativo=None,
+                total_numero_cotistas=None,
+                document_id=document.document_id,
+                document_hash=document.content_hash,
+                discovered_year=ano,
+            )
+        )
+
+    observations.sort(key=lambda item: item.period)
+    series = HistoricalSeries(
+        ticker=normalized_ticker,
+        cnpj="",
+        provider="sparta_reports",
+        observations=tuple(observations),
+        source_documents=tuple(source_documents),
+    )
+    store.save(series)
+    return series

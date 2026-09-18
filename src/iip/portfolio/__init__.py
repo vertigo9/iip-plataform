@@ -17,6 +17,7 @@ from .historical_series import (
     collect_cotahist_history,
     collect_cvm_diario_history,
     collect_cvm_fii_history,
+    collect_sparta_report_history,
     normalize_quota_splits,
 )
 
@@ -68,6 +69,7 @@ __all__ = [
     "collect_cotahist_history",
     "collect_cvm_diario_history",
     "collect_cvm_fii_history",
+    "collect_sparta_report_history",
     "normalize_quota_splits",
     "IntegratedPortfolioPipeline",
     "PortfolioEvidenceBatchResult",
