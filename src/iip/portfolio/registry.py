@@ -75,6 +75,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Logístico",
         manager="BTG Pactual",
         source_url="https://btlg.btgpactual.com",
+        indexation=("IPCA",),  # confirmado via busca (site oficial + agregador concordam; parte dos contratos)
+        strategy="Logística",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="11.839.593/0001-09",  # verificado ao vivo nesta sessão
     ),
@@ -86,6 +88,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Híbrido (Renda Urbana/Logística)",
         manager="TRX",
         source_url="https://trxf11.com.br/relatorios-gerenciais-2",
+        indexation=("IPCA", "IGP-M"),  # confirmado via busca (agregador; site oficial confirma mandato híbrido)
+        strategy="Tijolo/Híbrido",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.548.288/0001-52",  # verificado via busca (multiplas fontes concordam)
     ),
@@ -97,6 +101,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Renda Urbana",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/hgru",
+        indexation=("IPCA",),  # confirmado via busca (2 fontes independentes, uma com percentual preciso: 99,36% dos contratos)
+        strategy="Renda Urbana",
         classification_provenance=ClassificationProvenance.USER,
         cnpj="29.641.226/0001-53",  # verificado via busca
     ),
@@ -122,6 +128,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Infraestrutura (Debêntures Incentivadas)",
         manager="Sparta",
         source_url="https://sparta.com.br/juro11",
+        indexation=("IPCA", "CDI"),  # confirmado via busca (agregador; site oficial confirma referência ao IMA-B 5)
+        strategy="FI-Infra",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="42.730.834/0001-00",  # verificado via busca (multiplas fontes concordam)
     ),
@@ -147,6 +155,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Crédito Imobiliário",
         manager="BTG Pactual",
         source_url="https://btgpactual.com/asset-management/.../BTCI11",
+        indexation=("IPCA", "CDI"),  # confirmado via busca (2 fontes agregadoras concordam: IPCA predominante, CDI secundário)
+        strategy="Papel/Crédito Imobiliário",
         classification_provenance=ClassificationProvenance.USER,
         cnpj="09.552.812/0001-14",  # confirmado pelo usuario via extrato real da corretora
     ),
@@ -158,6 +168,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Títulos e Valores Mobiliários (CRI - IPCA)",
         manager="Valora Invest (fonte agregadora)",
         source_url="https://valorainvest.com.br/fundo/vgip11",
+        indexation=("IPCA",),  # confirmado via busca (site oficial: benchmark ligado a índices de inflação)
+        strategy="CRI",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="34.197.811/0001-46",  # verificado via busca (5 fontes concordam)
     ),
@@ -174,6 +186,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Títulos e Valores Mobiliários (CRI - Middle Risk)",
         manager="Pátria",
         source_url="https://realestate.patria.com/papel/pcip11/",
+        indexation=("IPCA",),  # confirmado via busca (fonte oficial: "CRI indexado a IPCA")
+        strategy="CRI",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.729.197/0001-13",  # verificado via busca (2 fontes concordam)
     ),
@@ -185,6 +199,11 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Logístico",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/lvbi11",
+        # indexation deliberadamente vazio: pesquisado, mas fundo de tijolo com
+        # mistura de IPCA/IGP-M que varia por contrato/período (ex.: 62% IGP-M
+        # em 2021 vs. 53% IPCA em relatório mais recente) -- sem indexador único
+        # declarado a nível de fundo, diferente dos fundos de papel/crédito.
+        strategy="Tijolo/Renda (Logística)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="30.629.603/0001-18",  # verificado via busca (3 fontes concordam)
     ),
@@ -209,6 +228,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Infraestrutura (Debêntures Incentivadas)",
         manager="Capitânia",
         source_url="https://capitaniainfra.com.br/cpti11",
+        indexation=("IPCA",),  # confirmado via busca (site oficial + relatório mensal: "carrego bruto de IPCA + 8,56%")
+        strategy="Debêntures Incentivadas",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="38.065.012/0001-77",  # verificado via busca (docs oficiais CVM/B3)
     ),
@@ -234,6 +255,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Shopping",
         manager="HSI",
         source_url="https://hsml.hsifii.com",
+        # indexation deliberadamente vazio: pesquisado (relatórios gerenciais
+        # FNET/CVM + agregadores), sem indexador único declarado a nível de
+        # fundo -- típico de tijolo, contratos variam por locatário/período.
+        strategy="Tijolo/Renda (Shopping)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="32.892.018/0001-31",  # verificado via busca (muitas fontes concordam)
     ),
@@ -245,6 +270,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Shopping",
         manager="XP Asset",
         source_url="https://xpasset.com.br/fundos/xp-malls",
+        strategy="Shopping Centers (aluguel mínimo + percentual sobre vendas)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.757.546/0001-00",  # verificado via busca (muitas fontes concordam)
     ),
@@ -256,6 +282,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Crédito Imobiliário",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/hgcr11",
+        indexation=("CDI", "IPCA"),  # confirmado via busca (relatório XP: carteira 53% IPCA / 46% CDI)
+        risk_profile="Médio",  # relatório institucional XP: "perfil de risco moderado" (confiança média, não é doc formal da gestora)
+        strategy="CRI (Recebíveis Imobiliários) — mandato flexível entre indexadores",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="11.160.521/0001-22",  # verificado via busca
     ),
@@ -267,6 +296,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Varejo / Renda Urbana",
         manager="Rio Bravo",
         source_url="https://riobravo.com.br/rbva11",
+        strategy="Varejo de rua / Agências bancárias (Buy-to-Lease e Built-to-Suit)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="15.576.907/0001-70",  # verificado via busca (site oficial)
     ),
@@ -278,6 +308,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Lajes",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/pvbi11",
+        indexation=("IPCA", "IGP-M"),  # confirmado via busca (2 fontes concordam: 84% IPCA / 16% IGP-M)
+        strategy="Lajes Corporativas AAA (contratos típicos, Faria Lima/Itaim/Vila Olímpia)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="35.652.102/0001-76",  # verificado via busca (doc oficial B3/FNET)
     ),
@@ -289,6 +321,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Híbrido / Multicategoria (Renda Urbana/Logística)",
         manager="Alianza",
         source_url="https://alzr11.alianza.com.br",
+        indexation=("IPCA",),  # confirmado via busca (relatórios gerenciais oficiais, IPCA em múltiplos imóveis; % do total não confirmado)
+        strategy="Renda Urbana — contratos atípicos de longo prazo",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.737.771/0001-85",  # verificado via busca (site oficial)
     ),
@@ -300,6 +334,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Misto / Híbrido (Escritórios e Logística)",
         manager="Kinea",
         source_url="https://kinea.com.br/fundos/.../knri11",
+        indexation=("IPCA", "IGP-M"),  # confirmado via busca (site oficial Kinea: "reajuste anual pela inflação, IGPM ou IPCA")
+        strategy="Renda",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="12.005.956/0001-65",  # verificado via busca
     ),
@@ -311,6 +347,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Shopping",
         manager="Hedge Investments",
         source_url="https://hedgeinvest.com.br/fundos/hgbs",
+        strategy="Renda",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="08.431.747/0001-06",  # verificado via busca (muitas fontes concordam)
     ),
@@ -322,6 +359,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Pós-fixado (Selic com Duration Alvo / IPCA)",
         manager="Investo",
         source_url="https://www.investoetf.com/etf/lftb11/",
+        indexation=("Selic", "IPCA"),  # confirmado via busca (site oficial: cesta Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)
+        strategy="Gestão passiva — réplica de cesta de títulos públicos (Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="56.176.507/0001-55",  # verificado ao vivo nesta sessão
     ),
@@ -329,6 +368,12 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         "AXIA3",
         "fixed_income",
         subtype="Daycoval FMP FGTS / subjacente AXIA3",
+        # structure/segment/strategy confirmados via busca (blog oficial
+        # Daycoval + 2 agregadores concordantes: faixa 90%-100% do PL em
+        # ações ON Eletrobras, 0%-10% em titulos publicos federais).
+        structure="Fundo Mútuo de Privatização (FMP-FGTS), condomínio aberto",
+        segment="Ações — Privatização (Eletrobras ON), mín. 90% a máx. 100% do PL em ELET3 + até 10% em títulos públicos federais",
+        strategy="Privatização (FGTS) — concentração mínima de 90% do patrimônio em ações ordinárias da Eletrobras (ELET3)",
         sector="Utilities",
         industry="Electric Utilities / Renewable",
         manager="Daycoval",

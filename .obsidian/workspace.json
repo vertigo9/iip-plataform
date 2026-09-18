@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "vault/04_Evidence/EV-PCPI11-ROUNDTRIP-TEST.md",
-                "mode": "source",
+                "file": "vault/01_Assets/FIIs/AFHI11/AFHI11 - Score e Ranking.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "EV-PCPI11-ROUNDTRIP-TEST"
+              "title": "AFHI11 - Score e Ranking"
             }
           }
         ]
@@ -187,6 +187,7 @@
   },
   "active": "7f06eb540fa69d62",
   "lastOpenFiles": [
+    "vault/02_Portfolio/Dashboard.md",
     "vault/03_Decisions/DEC-PCPI11-20260827-BRIDGE-ROUNDTRIP.md",
     "vault/03_Decisions/DECISION-TEMPLATE.md",
     "vault/03_Decisions/DEC-PCPI11-20260827-TEST.md",
@@ -223,7 +224,6 @@
     "docs/adr/0003-event-bus-choice.md",
     "docs/adr/0005-health-check-protocol.md",
     "docs/KNOWLEDGE_LAYER.md",
-    "docs/OBSIDIAN_SETUP.md",
-    "docs/user-guide.md"
+    "docs/OBSIDIAN_SETUP.md"
   ]
 }
