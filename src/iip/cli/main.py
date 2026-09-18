@@ -1392,6 +1392,9 @@ def _collect_mziq_manager_documents(
         except HTTPError as exc:
             table.add_row(document.category or "-", document.file_title or "-", f"[red]HTTP {exc.code}[/]")
             continue
+        except Exception as exc:  # noqa: BLE001 — hospedagens variadas (arquivo truncado, timeout, SSL); um documento ruim não deve abortar a coleta inteira
+            table.add_row(document.category or "-", document.file_title or "-", f"[red]{type(exc).__name__}[/]")
+            continue
 
         if out_dir is not None:
             suffix = Path(document.url.split("?", 1)[0]).suffix or ".bin"

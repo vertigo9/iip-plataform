@@ -82,6 +82,53 @@ def test_collect_equity_documents_downloads_and_persists_evidence(monkeypatch, t
     assert any(evidence_dir.iterdir())
 
 
+def test_collect_equity_documents_survives_incomplete_read(monkeypatch, tmp_path):
+    # Real bug found live (18/09/2026): VBBR3's document catalog included
+    # one file whose transfer got cut off partway through a ~2.3GB
+    # download, raising http.client.IncompleteRead -- a plain HTTPError
+    # catch let that crash the whole command instead of just marking
+    # that one document as failed and moving on.
+    from http.client import IncompleteRead
+
+    monkeypatch.setattr(MziqHTTPHarvester, "fetch_years", lambda self, target: (2026,))
+    monkeypatch.setattr(
+        MziqHTTPHarvester,
+        "fetch_documents",
+        lambda self, target: (
+            _fake_document(doc_id="huge", url="https://filemanager-cdn.mziq.com/published/x/huge.pdf"),
+            _fake_document(doc_id="ok", url="https://filemanager-cdn.mziq.com/published/x/ok.pdf"),
+        ),
+    )
+
+    class _FlakyResponse(_FakeResponse):
+        def read(self):
+            raise IncompleteRead(b"", 12345)
+
+    def flaky_urlopen(request, timeout=30.0):
+        if "huge" in request.full_url:
+            return _FlakyResponse(b"")
+        return _FakeResponse(b"%PDF-fake")
+
+    monkeypatch.setattr("urllib.request.urlopen", flaky_urlopen)
+
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "collect-equity-documents",
+            "--ticker",
+            "ABCB4",
+            "--vault",
+            str(tmp_path / "vault"),
+            "--sem-evidencia",
+        ],
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "1/2 documento(s)" in result.output
+    assert "IncompleteRead" in result.output
+
+
 def test_collect_equity_documents_rejects_unknown_ticker(tmp_path):
     runner = CliRunner()
     result = runner.invoke(
