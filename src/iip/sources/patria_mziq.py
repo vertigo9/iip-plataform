@@ -21,9 +21,20 @@ of its categories in one request); a couple of blank ``""`` entries in
 the real captured arrays were UI placeholders, dropped here since they
 never match a real category. Two entries (HGRU11's and HGCR11's
 "Planilha de Fundamentos") were captured as a human-readable label
-instead of a slug -- likely a bug on Pátria's own site, not something
-to guess a fix for -- kept verbatim; calls using them will just
-resolve to no documents.
+instead of a slug -- looked like a bug on Pátria's own site at first,
+but CORRECTED after live-testing (18/09/2026, while building
+``iip.sources.patria_planilha_fundamentos``): HGRU11's
+``"HGRU - Planilha de Fundamentos"`` label DOES resolve against the
+real API exactly as captured (confirmed: ``build_years_target`` +
+``build_documents_target`` against it return the real, current
+"Planilha de Fundamentos - Agosto 2026" document) -- MZIQ's API
+apparently accepts the human-readable label as a valid
+categoryInternalName for this specific category, unlike every other
+slug-style one. Kept verbatim rather than "fixed" to a slug, since the
+verbatim string is what's confirmed to work live. HGCR11's equivalent
+entry was not re-tested (out of scope for that module, which only
+needed HGRU11) -- treat it as unverified, not as confirmed-working by
+association.
 
 PCIP11's categories still use its OLD ticker "cvbi11" as their prefix
 (the fund renamed from CVBI11 in 09/2025, see

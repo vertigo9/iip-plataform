@@ -198,6 +198,65 @@ def build_fii_template(
     )
 
 
+def _enrich_fii_with_patria_fundamentos(
+    financials: dict[str, Any], symbol: str
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Best-effort enrichment from Pátria's real "Planilha de
+    Fundamentos" spreadsheet (see
+    ``iip.sources.patria_planilha_fundamentos``, added 18/09/2026) --
+    fills ``occupancy_rate``/``avg_lease_term_years`` with real data
+    for Pátria's "tijolo" (physical real-estate) funds. Confirmed live
+    for HGRU11/LVBI11/PVBI11; HGCR11/PCIP11 are credit funds and don't
+    have this sheet layout at all (no vacância/WALE/locatários
+    concept for a receivables fund), so this silently contributes
+    nothing for them via the ``fundamentos is None`` branch below --
+    not an error, not a gap unique to this function.
+
+    No-ops entirely (returns ``financials`` unchanged, no warning) for
+    any ticker without a Pátria MZIQ config at all -- this is called
+    for EVERY FII, not just Pátria's, so staying silent for the other
+    ~20 is deliberate (a warning here would be noise, not signal, for
+    a fund this enrichment was never going to apply to).
+    """
+    from iip.sources.patria_mziq import fund_for_ticker as _patria_fund_for_ticker
+    from iip.sources.patria_planilha_fundamentos_harvester import (
+        PatriaPlanilhaFundamentosHTTPHarvester as _PatriaPlanilhaHarvester,
+    )
+
+    fetched: list[str] = []
+    warnings: list[str] = []
+
+    if _patria_fund_for_ticker(symbol) is None:
+        return financials, fetched, warnings
+
+    try:
+        result = _PatriaPlanilhaHarvester().fetch(symbol)
+    except Exception as exc:  # noqa: BLE001 — enriquecimento é best-effort, nunca deve derrubar o template CVM já montado
+        warnings.append(
+            f"não consegui buscar a Planilha de Fundamentos da Pátria: {exc}"
+        )
+        return financials, fetched, warnings
+
+    if result.fundamentos is None:
+        warnings.append(
+            "Planilha de Fundamentos da Pátria não tem o layout 'tijolo' "
+            "esperado (ou não há documento publicado ainda) — "
+            "occupancy_rate/avg_lease_term_years continuam no valor-padrão."
+        )
+        return financials, fetched, warnings
+
+    financials = dict(financials)
+    fund = result.fundamentos
+    if fund.occupancy_rate is not None:
+        financials["occupancy_rate"] = fund.occupancy_rate
+        fetched.append("occupancy_rate")
+    if fund.wale_anos is not None:
+        financials["avg_lease_term_years"] = round(fund.wale_anos, 2)
+        fetched.append("avg_lease_term_years")
+
+    return financials, fetched, warnings
+
+
 def fetch_fii_template_live(
     symbol: str,
     cnpj: str,
@@ -210,6 +269,11 @@ def fetch_fii_template_live(
     template from without it. A bolsai failure is NOT raised — it's
     folded into the returned FetchResult.warnings, since price is
     optional (the CVM-only fields still get filled).
+
+    Also tries a Pátria-specific enrichment (real occupancy_rate/
+    avg_lease_term_years for HGRU11/LVBI11/PVBI11 — see
+    ``_enrich_fii_with_patria_fundamentos``) — best-effort, same
+    never-raises-on-failure treatment as the bolsai price lookup.
     """
     from iip.sources.b3_bolsai import build_fii_target as _build_bolsai_fii_target
     from iip.sources.b3_bolsai_harvester import (
@@ -242,11 +306,20 @@ def fetch_fii_template_live(
         price=price,
         geral=list(cvm_result.geral),
     )
-    if bolsai_warning:
+    enriched_financials, patria_fetched, patria_warnings = (
+        _enrich_fii_with_patria_fundamentos(template["financials"], symbol)
+    )
+    template["financials"] = enriched_financials
+
+    extra_warnings = (
+        *([bolsai_warning] if bolsai_warning else []),
+        *patria_warnings,
+    )
+    if patria_fetched or extra_warnings:
         resultado = FetchResult(
-            fetched_fields=resultado.fetched_fields,
+            fetched_fields=(*resultado.fetched_fields, *patria_fetched),
             dividend_yield_months_used=resultado.dividend_yield_months_used,
-            warnings=(*resultado.warnings, bolsai_warning),
+            warnings=(*resultado.warnings, *extra_warnings),
         )
     return template, resultado
 
