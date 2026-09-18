@@ -33,7 +33,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from urllib.parse import urljoin
+from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 _PDF_HREF_RE = re.compile(r'href="([^"]+\.pdf)"', re.IGNORECASE)
 
@@ -114,6 +114,28 @@ def build_target(ticker: str) -> StaticListingTarget:
     return StaticListingTarget(ticker=fund.ticker, url=fund.page_url)
 
 
+def _percent_encode(url: str) -> str:
+    """Percent-encode a URL's path/query so it's safe to put on an HTTP
+    request line. Confirmed live (18/09/2026): a handful of hrefs on
+    HGBS11's own listing page contain raw, un-escaped non-ASCII
+    characters (e.g. "...Praça_da_Moça...pdf") -- urllib can't put
+    those on the request line as-is (UnicodeEncodeError), even though
+    the underlying text decoded correctly from the page's own UTF-8.
+    ``safe="/%"``/``safe="=&%"`` leaves already-percent-encoded
+    sequences (and separators) alone rather than double-encoding them.
+    """
+    parts = urlsplit(url)
+    return urlunsplit(
+        (
+            parts.scheme,
+            parts.netloc,
+            quote(parts.path, safe="/%"),
+            quote(parts.query, safe="=&%"),
+            parts.fragment,
+        )
+    )
+
+
 def _title_from_url(url: str) -> str:
     name = url.split("?", 1)[0].rsplit("/", 1)[-1]
     if name.lower().endswith(".pdf"):
@@ -129,9 +151,12 @@ def parse_pdf_links(html: str, base_url: str, ticker: str) -> tuple[StaticDocume
     seen: set[str] = set()
     documents: list[StaticDocument] = []
     for match in _PDF_HREF_RE.finditer(html):
-        url = urljoin(base_url, match.group(1))
-        if url in seen:
+        resolved = urljoin(base_url, match.group(1))
+        if resolved in seen:
             continue
-        seen.add(url)
-        documents.append(StaticDocument(ticker=ticker, url=url, title=_title_from_url(url)))
+        seen.add(resolved)
+        title = _title_from_url(resolved)
+        documents.append(
+            StaticDocument(ticker=ticker, url=_percent_encode(resolved), title=title)
+        )
     return tuple(documents)
