@@ -1,6 +1,6 @@
 # IIP — Reconciliação: Blueprint vs. Código Real
 
-Verificado diretamente no repositório (`iip_obsidian_integration_v1`, branch `fix/ruff-manual-safe` → `main`), lendo os arquivos-fonte, não a partir de descrições de sessões anteriores. Data: 10/09/2026.
+Verificado diretamente no repositório (`iip_obsidian_integration_v1`, branch `fix/ruff-manual-safe` → `main`), lendo os arquivos-fonte, não a partir de descrições de sessões anteriores. Data original: 10/09/2026. **Atualizado em 18/09/2026** (seção "Fontes de Dados" e nova seção "Camadas superiores" abaixo — o resto do documento original permanece válido).
 
 Legenda: 🟢 Real e funcional | 🟡 Existe parcialmente / difere do diagrama | 🔴 Não implementado (só no diagrama)
 
@@ -52,27 +52,44 @@ Legenda: 🟢 Real e funcional | 🟡 Existe parcialmente / difere do diagrama |
 | Export (relatórios, MD/JSON/CSV) | 🟢 | `export.py` (79 linhas) real, testado. |
 | Metrics & Health | 🟡 | Ambos existem (`metrics/__init__.py`, `health/__init__.py`), mas **atenção**: `metrics/` é telemetria operacional (counters/gauges), não estatística financeira — não confundir os dois ao planejar a próxima etapa. |
 
-## Fontes de Dados (Externas)
+## Fontes de Dados (Externas) — atualizado 18/09/2026
 
 | Caixa do diagrama | Status | Evidência |
 |---|---|---|
-| XP Asset | 🟢 | `sources/xp_asset.py` — o provider mais maduro do projeto. |
-| B3 | 🔴 | Não encontrado em nenhum lugar do código. |
-| IBGE | 🔴 | Não encontrado. |
-| BACEN | 🔴 | Não encontrado. |
-| Receita Federal | 🔴 | Não encontrado. |
-| Outras Fontes | 🟡 | Existem sim, mas são outras: `cvm`, `fnet`, `sec`, e as gestoras (`patria`, `sparta`, `btg`, `capitania`, `rio_bravo`, `kinea`, `manati`, `hedge`, `araujo_fontes`) — confirmadas em `sources/policy.py`. |
+| XP Asset | 🟢 | `sources/xp_asset.py` — discovery real, sem parsing de conteúdo. |
+| B3 | 🟢 | `sources/b3_bolsai.py`, `b3_brapi.py`, `b3_cotahist.py` (+ harvesters) — preço/fundamentos e histórico de cota real. |
+| IBGE | 🟢 | `sources/ibge.py` (SIDRA) — real, sem tabela pré-fixada (API multidimensional, exige que o chamador informe agregado/variável). |
+| BACEN | 🟢 | `sources/bacen.py` (SGS) — real, séries SELIC/CDI/IPCA verificadas ao vivo contra dadosabertos.bcb.gov.br. |
+| Receita Federal | 🟢 | `sources/receita_federal.py` — via BrasilAPI (auditoria confirmou que a própria Receita não expõe API pública de CNPJ individual). |
+| CVM | 🟢 | `cvm_fii.py`, `cvm_fiagro.py`, `cvm_renda_fixa.py` — Informe Mensal/FIAGRO/Diário, dataset aberto oficial. |
+| Sparta (gestora) | 🟢 | `sparta_reports.py` — PDF parseado pra cota patrimonial real, único caso de extração estruturada de conteúdo desta sessão. Cobre CRAA11; JURO11/CDII11 usam layout de PDF diferente, não reconhecido (gap documentado, não bloqueante — CVM já cobre esses dois). |
+| Pátria (gestora) | 🟢 | `patria_mziq.py` — 5 fundos (HGRU11, LVBI11, HGCR11, PVBI11, PCIP11) via API MZIQ real, sem Playwright em runtime. |
+| BTG Pactual (gestora) | 🟢 | `btg_mziq.py` (BTLG11, via MZIQ) + `solutions_ir.py` (BTCI11, plataforma "Solutions IR" — API descoberta por leitura estática de bundle JS, sem executar navegador). |
+| 7 gestoras FII restantes | 🟢 | `static_pdf_listing.py` — TRX, Valora, Capitânia, Manati, Rio Bravo, Hedge, Kinea, todas com listagem de PDF direto em HTML estático. |
+| Ações (equity RI) | 🟡 | `equity_mziq.py` — 10 das 14 ações da carteira confirmadas na MZIQ (ABCB4, BBSE3, CXSE3, SAUD3, ALOS3, VBBR3, KLBN4, FESA4, LEVE3, PASS3); as outras 4 (ISAE4, CPFE3, CMIG4, CSUD3) usam plataformas próprias, confirmadas mas não implementadas. |
+
+O gap "B3 / IBGE / BACEN / Receita Federal" listado como maior prioridade no resumo executivo abaixo **já foi fechado** — o texto do resumo/roadmap originais (10/09) ficou obsoleto nesse ponto específico.
+
+## Camadas superiores do diagrama (Intelligence → Decision → Validation → Audit) — nota de 18/09/2026
+
+Investigação adicional (não fazia parte do escopo original desta reconciliação, mas foi pedida numa sessão posterior): o repositório tem ~50 pacotes sob `src/iip/`, muito além dos ~15 cobertos acima. Pacotes como `intelligence/`, `decision/`, `portfolio_intelligence/`, `validation_engine/`, `scenario_engine/`, `enterprise_consolidation/` (com `audit_trail.py`) existem com código real — dataclasses e funções puras bem desenhadas, seguindo a mesma disciplina anti-invenção do resto do projeto (ex.: `intelligence/credit_intelligence.py::credit_risk_flags`, `intelligence/decision_eligibility.py::check_ticker_eligibility`).
+
+**Achado central**: essa camada superior é uma **camada de contratos/lógica pura, não um pipeline conectado à evidência real**. O próprio código já documenta isso — `decision/analysis_bridge.py` registra um achado de auditoria (12/09/2026): busca por `analysis.*decision`/`valuation.*decision` no repositório retornou zero resultados; "os dois sistemas são compatíveis em formato, mas nunca foram conectados". Não há também um pacote único correspondente a "Audit/Journal/Alerts" do diagrama — a lógica de auditoria está espalhada (`production/audit.py`, `product/audit.py`, `enterprise_consolidation/audit_trail.py`), e não há "Dashboard/API" — só o CLI.
+
+**Implicação pra priorização**: a base da pirâmide (Data Sources → Atlas/discovery → Knowledge Base) está hoje mais madura e mais recentemente verificada do que o topo (Intelligence → Opportunity Intelligence → Capital/Decision → Validation → Audit). O maior gap real não é mais "faltam fontes de dados" — é a desconexão entre a evidência real já coletada (3467+ arquivos no vault) e as camadas de inteligência/decisão que deveriam consumi-la.
 
 ## Resumo executivo
 
-- **Muito mais maduro do que o diagrama sugere**: Knowledge, Replication, Versioning, Registry, Events, Config — todos reais e testados, alguns até mais ricos que a descrição do próprio diagrama.
+- **Muito mais maduro do que o diagrama sugere**: Knowledge, Replication, Versioning, Registry, Events, Config, e (desde 18/09) toda a camada de Fontes de Dados — todos reais e testados, alguns até mais ricos que a descrição do próprio diagrama.
 - **Nomeado diferente do real**: CLI é `click`, não `Typer`.
-- **Existe mas é menor que o desenhado**: Harvesters (só `patria.py`), Framework de orquestração (só dentro de `enterprise/`, não central).
-- **Não existe, é 100% aspiracional**: Plugins, Grafos/backlinks (nativo do Obsidian, não do IIP), B3, IBGE, BACEN, Receita Federal.
+- **Existe mas é menor que o desenhado**: Framework de orquestração (só dentro de `enterprise/`, não central).
+- **Não existe, é 100% aspiracional**: Plugins, Grafos/backlinks (nativo do Obsidian, não do IIP), Dashboard/API HTTP dedicado.
+- **Existe como esqueleto, não como pipeline (achado de 18/09)**: Intelligence, Opportunity Intelligence, Decision Engine, Validation, Audit/Journal/Alerts — código real e bem desenhado, mas desconectado da evidência real que Atlas/Knowledge já produzem (ver seção "Camadas superiores" acima).
 
-## O que falta implementar, por ordem sugerida de impacto
+## O que falta implementar, por ordem sugerida de impacto (revisado 18/09/2026)
 
-1. **Fontes externas B3 / IBGE / BACEN / Receita Federal** — maior gap declarado no diagrama; cada uma é um provider novo seguindo o padrão já validado em `xp_asset.py`.
-2. **Sistema de Plugins** — hoje é um pacote vazio; definir o contrato (o que um plugin registra, como é descoberto) antes de qualquer código.
-3. **Framework de orquestração central no Core** — hoje cada pacote (`enterprise/`, `operational/`, etc.) tem sua própria mini-orquestração; consolidar seria uma extensão, não uma criação do zero.
-4. **Harvesters adicionais** — replicar o padrão de `patria.py` para as gestoras que já têm `Provider` registrado mas não têm harvester dedicado.
+1. ~~**Fontes externas B3 / IBGE / BACEN / Receita Federal**~~ — ✅ concluído (18/09/2026): todas as 4 existem como módulos reais, mais CVM, Sparta, Pátria, BTG/Solutions IR, 7 gestoras FII via listagem estática e 10 ações via MZIQ.
+2. **Conectar Intelligence/Decision à evidência real** — hoje é o maior gap real do sistema: os pacotes `intelligence/`, `decision/`, `portfolio_intelligence/`, `validation_engine/` têm contratos e lógica prontos, mas nada os alimenta com a evidência (3467+ documentos, séries históricas de NAV) que a base do sistema já coleta. `decision/analysis_bridge.py` já documenta essa desconexão explicitamente.
+3. **Sistema de Plugins** — hoje é um pacote vazio; definir o contrato (o que um plugin registra, como é descoberto) antes de qualquer código.
+4. **Framework de orquestração central no Core** — hoje cada pacote (`enterprise/`, `operational/`, etc.) tem sua própria mini-orquestração; consolidar seria uma extensão, não uma criação do zero.
+5. **Extração de conteúdo estruturado dos documentos coletados** — hoje quase todos os ~2000+ documentos reais no vault (relatórios gerenciais, fatos relevantes etc.) são evidência bruta (PDF), não dado estruturado; só `sparta_reports.py` extrai um valor real (cota patrimonial) de dentro de um PDF. Isso é pré-requisito prático pro item 2.
