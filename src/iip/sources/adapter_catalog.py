@@ -62,6 +62,17 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "Legacy browser harvester writes files and needs an Atlas file adapter.",
     ),
     AdapterDescriptor(
+        "patria_mziq", ("fund",), AdapterKind.DOCUMENT,
+        AdapterReadiness.READY,
+        "iip.sources.patria_mziq + iip.sources.mziq_harvester.MziqHTTPHarvester",
+        "Lightweight HTTP-only alternative to 'patria' (no Playwright) -- "
+        "confirmed live for all 5 Pátria funds (HGRU11, LVBI11, HGCR11, "
+        "PVBI11, PCIP11) on 18/09/2026. Documents only (relatório de "
+        "gestão, fatos relevantes, etc.), never NAV -- the monthly "
+        "'informe_contabil_mensal' PDF was confirmed to be the same CVM "
+        "Anexo 39-I filing 'cvm' already covers from structured CSV.",
+    ),
+    AdapterDescriptor(
         "sparta", ("fund",), AdapterKind.MAPPED,
         AdapterReadiness.MAPPED, None, "No validated transport adapter is registered.",
     ),

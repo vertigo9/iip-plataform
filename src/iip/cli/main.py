@@ -1071,5 +1071,172 @@ def collect_sparta_history_command(
         console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
 
 
+@cli.command("collect-patria-documents")
+@click.option(
+    "--ticker",
+    required=True,
+    help="Fundo Pátria com config MZIQ registrada: HGRU11, LVBI11, HGCR11, "
+    "PVBI11 ou PCIP11.",
+)
+@click.option(
+    "--ano",
+    type=int,
+    default=None,
+    help="Ano dos documentos (padrão: ano mais recente disponível).",
+)
+@click.option(
+    "--categoria",
+    multiple=True,
+    help="Filtra por categoria(s) MZIQ (ex.: lvbi11_relatorio_de_gestao). "
+    "Pode repetir. Padrão: todas as categorias do fundo.",
+)
+@click.option(
+    "--limite",
+    type=int,
+    default=None,
+    help="Baixa só os N primeiros documentos encontrados (útil pra "
+    "teste/preview antes de rodar sem limite).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault -- só lista/baixa os documentos.",
+)
+@click.option(
+    "--output-dir",
+    type=click.Path(),
+    default=None,
+    help="Diretório onde também salvar uma cópia dos arquivos baixados "
+    "(padrão: não salva cópia local além da evidência no vault).",
+)
+def collect_patria_documents_command(
+    ticker: str,
+    ano: int | None,
+    categoria: tuple[str, ...],
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+    output_dir: str | None,
+) -> None:
+    """Lista e baixa documentos reais de um fundo da Pátria via MZIQ
+    (``iip.sources.patria_mziq``) -- alternativa leve (HTTP puro, sem
+    Playwright) ao scraper de navegador ``iip.harvest.patria``.
+
+    Não busca NAV/cota patrimonial de propósito: o PDF "Informe Mensal
+    Estruturado" de cada fundo é a mesma informação regulatória que
+    ``iip refresh-portfolio``/CVM já cobrem -- ver o docstring de
+    ``iip.sources.patria_mziq`` para a confirmação. Isso aqui é pra
+    documentos que a CVM não replica (relatório de gestão, fatos
+    relevantes, apresentações etc.).
+    """
+    from urllib.error import HTTPError
+    from urllib.request import Request, urlopen
+
+    from iip.atlas.knowledge_adapter import AtlasKnowledgeAdapter
+    from iip.atlas.models import AtlasDocument
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.sources.mziq_harvester import MziqHTTPHarvester
+    from iip.sources.patria_mziq import (
+        build_documents_target,
+        build_years_target,
+        fund_for_ticker,
+    )
+
+    normalized_ticker = ticker.strip().upper()
+    if fund_for_ticker(normalized_ticker) is None:
+        from iip.sources.patria_mziq import PATRIA_MZIQ_FUNDS
+
+        console.print(
+            f"[bold red]Sem config MZIQ registrada para {normalized_ticker}.[/] "
+            f"Fundos disponíveis: {', '.join(sorted(PATRIA_MZIQ_FUNDS))}"
+        )
+        raise SystemExit(1)
+
+    harvester = MziqHTTPHarvester()
+
+    ano_efetivo = ano
+    if ano_efetivo is None:
+        anos = harvester.fetch_years(build_years_target(normalized_ticker))
+        if not anos:
+            console.print(f"[bold red]Nenhum ano disponível via MZIQ para {normalized_ticker}.[/]")
+            raise SystemExit(1)
+        ano_efetivo = max(anos)
+
+    console.print(f"[dim]Buscando documentos de {normalized_ticker} ({ano_efetivo})...[/]\n")
+
+    documents = harvester.fetch_documents(build_documents_target(normalized_ticker, ano_efetivo))
+    if categoria:
+        wanted = set(categoria)
+        documents = tuple(d for d in documents if d.category in wanted)
+    if limite is not None:
+        documents = documents[:limite]
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    bridge = None if sem_evidencia else KnowledgeBridge(vault_path)
+    out_dir = Path(output_dir) / normalized_ticker / str(ano_efetivo) if output_dir else None
+    if out_dir is not None:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+    table = Table(title=f"Documentos Pátria/MZIQ — {normalized_ticker} ({ano_efetivo})")
+    table.add_column("Categoria")
+    table.add_column("Título")
+    table.add_column("Status")
+
+    baixados = 0
+    for document in documents:
+        if not document.url:
+            table.add_row(document.category or "-", document.file_title or "-", "[yellow]sem URL[/]")
+            continue
+        try:
+            request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
+            with urlopen(request, timeout=30.0) as response:  # noqa: S310 — URL vem da própria API MZIQ, não de entrada externa
+                body = response.read()
+                content_type = response.headers.get("Content-Type", "application/octet-stream")
+        except HTTPError as exc:
+            table.add_row(document.category or "-", document.file_title or "-", f"[red]HTTP {exc.code}[/]")
+            continue
+
+        if out_dir is not None:
+            suffix = Path(document.url.split("?", 1)[0]).suffix or ".bin"
+            filename = f"{document.id}{suffix}" if document.id else f"{baixados}{suffix}"
+            (out_dir / filename).write_bytes(body)
+
+        if bridge is not None:
+            atlas_document = AtlasDocument.build(
+                ticker=normalized_ticker,
+                provider="patria_mziq",
+                role=document.category or "investor_relations_document",
+                url=document.url,
+                final_url=document.url,
+                content_type=content_type,
+                status_code=200,
+                body=body,
+                discovered_year=document.file_year or ano_efetivo,
+                title=document.file_title or document.file_name_original,
+            )
+            evidence = AtlasKnowledgeAdapter.to_evidence(atlas_document)
+            try:
+                bridge.persist_evidence(evidence)
+            except FileExistsError:
+                pass
+
+        baixados += 1
+        table.add_row(document.category or "-", document.file_title or "-", "[green]ok[/]")
+
+    console.print(table)
+    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    if out_dir is not None:
+        console.print(f"[dim]Cópias salvas em {out_dir}[/]")
+    if bridge is not None:
+        console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
+
+
 if __name__ == "__main__":
     cli()
