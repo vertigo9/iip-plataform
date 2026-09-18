@@ -496,3 +496,72 @@ def persist_ready_batch(
             if projector is not None:
                 projector(evidence)
     return tuple(persisted)
+
+
+def persist_historical_series_metrics(
+    series,
+    sink: EvidenceSink,
+    *,
+    metric_name: str = "Cota_Patrimonial",
+    sync_projection: bool = False,
+) -> tuple[str, ...]:
+    """Promote every ``valor_patrimonial_cotas`` observation in a real,
+    already-collected ``iip.portfolio.historical_series.HistoricalSeries``
+    straight to Evidence -- no FINAL_PROMOTION_GATE CSV round-trip
+    needed, since each observation's own ``document_hash``/``document_id``
+    already carries exactly the provenance a CSV row would (the series
+    was built by a real provider -- Sparta, CVM -- from a real fetched
+    document, never guessed).
+
+    This is the scalable promotion path for tickers whose NAV history a
+    provider has already collected: no PDF has to be re-read or
+    hand-verified, unlike the PCIP11 pilot's CSV path (see
+    ``persist_ready_batch``), which exists for cases with no structured
+    series yet. Confirmed live (18/09/2026) against CRAA11's real
+    19-observation Sparta series as a second, independent validation of
+    the same underlying persist step.
+
+    Observations with no ``valor_patrimonial_cotas`` (a month Sparta's
+    report layout didn't match, see ``sparta_reports`` module docstring)
+    are skipped, never guessed. ``period`` is truncated from the
+    series' ``YYYY-MM-DD`` to ``YYYY-MM`` (``month_date`` only needs the
+    month); semantic dimension is always ``NAV`` since
+    ``valor_patrimonial_cotas`` is unambiguously cota patrimonial, no
+    market-value/LTM confusion possible for this field.
+    """
+    persisted: list[str] = []
+    for obs in series.observations:
+        if obs.valor_patrimonial_cotas is None:
+            continue
+        identity = MetricObservationIdentity(
+            canonical_ticker=series.ticker,
+            original_ticker=series.ticker,
+            metric_name=metric_name,
+            value=str(obs.valor_patrimonial_cotas),
+            unit="BRL_per_quota",
+            scale="unit",
+            period=obs.period[:7],
+            semantic_dimension="NAV",
+            document_hash=obs.document_hash,
+            document_id=obs.document_id,
+        )
+        knowledge = build_knowledge_evidence(
+            identity,
+            title=obs.document_id,
+            source_type="historical_metric",
+            relevant_facts={
+                "provider": series.provider,
+                "discovered_year": str(obs.discovered_year),
+            },
+        )
+        evidence = to_knowledge_evidence(knowledge)
+        try:
+            sink.persist_evidence(evidence)
+        except FileExistsError:
+            continue
+        persisted.append(evidence.evidence_id)
+        if sync_projection:
+            projector = getattr(sink, "sync_evidence_projection", None)
+            if projector is not None:
+                projector(evidence)
+    return tuple(persisted)

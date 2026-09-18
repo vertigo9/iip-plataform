@@ -510,3 +510,114 @@ def test_persist_ready_batch_ignores_sink_without_projection_method(tmp_path):
     persisted_ids = persist_ready_batch(batch, sink, sync_projection=True)
 
     assert persisted_ids == tuple(sink.persisted)
+
+
+# ---------------------------------------------------------------------------
+# persist_historical_series_metrics — promotion straight from an
+# already-collected HistoricalSeries, no CSV round-trip
+# ---------------------------------------------------------------------------
+
+
+def _make_series(observations):
+    from iip.portfolio.historical_series import HistoricalObservation, HistoricalSeries
+
+    return HistoricalSeries(
+        ticker="CRAA11",
+        cnpj="",
+        provider="sparta_reports",
+        observations=tuple(
+            HistoricalObservation(
+                period=period,
+                patrimonio_liquido=None,
+                valor_patrimonial_cotas=value,
+                dividend_yield_mes=None,
+                rentabilidade_patrimonial_mes=None,
+                valor_ativo=None,
+                total_numero_cotistas=None,
+                document_id=f"sparta_reports:CRAA11:{period[:4]}:{doc_hash}",
+                document_hash=doc_hash,
+                discovered_year=int(period[:4]),
+            )
+            for period, value, doc_hash in observations
+        ),
+        source_documents=(),
+    )
+
+
+def test_persist_historical_series_metrics_promotes_real_observations():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series(
+        [
+            ("2025-01-01", 101.67, "hash1"),
+            ("2025-02-01", 101.71, "hash2"),
+        ]
+    )
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    persisted_ids = persist_historical_series_metrics(series, sink)
+
+    assert len(persisted_ids) == 2
+    assert sink.size == 2
+
+
+def test_persist_historical_series_metrics_skips_observations_without_nav():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series(
+        [
+            ("2025-01-01", 101.67, "hash1"),
+            ("2025-02-01", None, "hash2"),
+        ]
+    )
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    persisted_ids = persist_historical_series_metrics(series, sink)
+
+    assert len(persisted_ids) == 1
+
+
+def test_persist_historical_series_metrics_is_idempotent():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 101.67, "hash1")])
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    first = persist_historical_series_metrics(series, sink)
+    second = persist_historical_series_metrics(series, sink)
+
+    assert first == second
+    assert sink.size == 1
+
+
+def test_persist_historical_series_metrics_syncs_projection_when_requested():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 101.67, "hash1")])
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    persist_historical_series_metrics(series, sink, sync_projection=True)
+
+    assert len(sink.projections) == 1
+
+
+def test_persist_historical_series_metrics_uses_custom_metric_name():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 101.67, "hash1")])
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    persist_historical_series_metrics(series, sink, metric_name="NAV_Custom")
+
+    evidence_id = sink.persisted_ids.pop()
+    assert evidence_id.startswith("evidence:metric:")
