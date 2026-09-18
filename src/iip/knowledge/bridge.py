@@ -236,6 +236,167 @@ class KnowledgeBridge:
         )
         return result
 
+    def sync_identity_projection(self, asset, ticker: str, asset_class: str) -> ProjectionSyncResult:
+        """Project the verified registry record (``iip.portfolio.registry.
+        PortfolioAsset``) into the identity note -- already-real, already-
+        verified fields (CNPJ, manager, structure...), just never
+        surfaced into the vault before."""
+        provenance = getattr(asset.classification_provenance, "value", asset.classification_provenance)
+        lines = [
+            f"Ticker: {asset.ticker}",
+            f"Classe: {asset.asset_class}" + (f" ({asset.subtype})" if asset.subtype else ""),
+            f"Estrutura: {asset.structure or 'não informado'}",
+            f"Segmento: {asset.segment or 'não informado'}",
+            f"Gestora/Administrador: {asset.manager or 'não informado'}",
+            f"CNPJ: {asset.cnpj or 'não informado'}",
+            f"Indexadores: {', '.join(asset.indexation) if asset.indexation else 'não informado'}",
+            f"Perfil de risco: {asset.risk_profile or 'não informado'}",
+            f"Estratégia: {asset.strategy or 'não informado'}",
+            f"Fonte institucional: {asset.source_url or 'não informado'}",
+            f"Procedência da classificação: {provenance}",
+        ]
+        return self.sync_asset_section(
+            ticker, asset_class, "identity", "IIP:identity", "\n".join(lines)
+        )
+
+    def sync_portfolio_composition_projection(
+        self, series, ticker: str, asset_class: str
+    ) -> ProjectionSyncResult:
+        """Project the latest patrimonio/cotistas snapshot from the
+        persisted historical series -- real when the source reports it
+        (CVM-backed series), honestly absent otherwise (e.g. B3 COTAHIST
+        has no such fields). Individual credit holdings (CRIs/CRAs) are
+        never shown here -- that requires a management report, which
+        this session has no structured source for beyond CRAA11/Sparta."""
+        if not series.observations:
+            content = "Sem série histórica persistida para este ativo."
+        else:
+            latest = series.observations[-1]
+            lines = []
+            if latest.patrimonio_liquido is not None:
+                lines.append(f"Patrimônio líquido ({latest.period}): R$ {latest.patrimonio_liquido:,.2f}")
+            if latest.valor_ativo is not None:
+                lines.append(f"Valor do ativo: R$ {latest.valor_ativo:,.2f}")
+            if latest.total_numero_cotistas is not None:
+                lines.append(f"Número de cotistas: {int(latest.total_numero_cotistas)}")
+            if not lines:
+                lines.append(
+                    f"A fonte deste ativo ({series.provider}) não reporta patrimônio/cotistas."
+                )
+            lines.append("")
+            lines.append(
+                "Composição individual de créditos (CRIs/CRAs) não disponível -- "
+                "exigiria relatório de gestão, sem fonte estruturada para este ativo."
+            )
+            content = "\n".join(lines)
+        return self.sync_asset_section(
+            ticker, asset_class, "portfolio", "IIP:portfolio_composition", content
+        )
+
+    def sync_distributions_projection(
+        self,
+        ticker: str,
+        asset_class: str,
+        *,
+        series=None,
+        snapshot_yield_pct: float | None = None,
+    ) -> ProjectionSyncResult:
+        """Project dividend/yield data -- monthly TTM from the CVM-backed
+        series when available (FII only; CVM's other datasets and B3
+        COTAHIST don't carry this field), else a point-in-time snapshot
+        (bolsai, for equities) when that's all that's real."""
+        lines: list[str] = []
+        monthly = [
+            (o.period, o.dividend_yield_mes)
+            for o in (series.observations if series is not None else ())
+            if o.dividend_yield_mes is not None
+        ]
+        if monthly:
+            recent = monthly[-12:]
+            ttm = sum(value for _, value in recent) * 100
+            lines.append(
+                f"Dividend yield TTM (CVM, soma dos últimos {len(recent)} mês(es) com dado): {ttm:.2f}%"
+            )
+            lines.append("")
+            lines.extend(f"- {period}: {value * 100:.4f}%" for period, value in monthly[-6:])
+        if snapshot_yield_pct is not None:
+            lines.append(f"Dividend yield (snapshot, bolsai): {snapshot_yield_pct:.2f}%")
+        if not lines:
+            lines.append("Sem dado de distribuição disponível para este ativo nas fontes atuais.")
+        return self.sync_asset_section(
+            ticker, asset_class, "distributions", "IIP:distributions", "\n".join(lines)
+        )
+
+    def sync_events_projection(self, series, ticker: str, asset_class: str) -> ProjectionSyncResult:
+        """Project detected quota splits/groupings (HistoricalSeries.
+        adjustments, from normalize_quota_splits) -- the only kind of
+        corporate event this session has a real, computed source for.
+        Other events (mergers, incorporations) have no structured
+        source and are never guessed at here."""
+        if series.adjustments:
+            lines = [
+                f"- {adj['period']}: {adj['field']} ajustado por fator {adj['factor']:.6f} "
+                f"({adj['reason']})"
+                for adj in series.adjustments
+            ]
+            content = "\n".join(lines)
+        else:
+            content = "Nenhum desdobramento/grupamento de cotas detectado na série histórica persistida."
+        return self.sync_asset_section(
+            ticker, asset_class, "events", "IIP:events", content
+        )
+
+    def sync_performance_projection(self, series, ticker: str, asset_class: str) -> ProjectionSyncResult:
+        """Project the persisted series' real extent (period range,
+        endpoints, observation count) -- full return/volatility stats
+        live in IIP:quantitative on the scoring note already, not
+        duplicated here. No benchmark comparison (IFIX/CDI): no index
+        data source exists in this session."""
+        if not series.observations:
+            content = "Sem série histórica persistida para este ativo."
+        else:
+            first, last = series.observations[0], series.observations[-1]
+            content = (
+                f"Observações: {len(series.observations)}\n"
+                f"Período: {first.period} a {last.period}\n"
+                f"Valor inicial: {first.valor_patrimonial_cotas}\n"
+                f"Valor final: {last.valor_patrimonial_cotas}\n"
+                f"Fonte: {series.provider}\n\n"
+                "Estatísticas completas de retorno/volatilidade: ver seção "
+                "IIP:quantitative na nota Score e Ranking.\n\n"
+                "Comparação com benchmark (IFIX/CDI) não disponível -- sem fonte "
+                "de índice de referência nesta sessão."
+            )
+        return self.sync_asset_section(
+            ticker, asset_class, "performance", "IIP:performance", content
+        )
+
+    def sync_sources_summary_projection(self, ticker: str, asset_class: str) -> ProjectionSyncResult:
+        """Project a real list of this ticker's Atlas evidence entries
+        (04_Evidence/), reusing ObsidianRepository.list_evidence -- a
+        plain enumeration of what's already persisted, not a new
+        fetch."""
+        paths = self.repository.list_evidence(ticker)
+        entries = []
+        for path in paths:
+            fields, _ = self.projector._parse_frontmatter(path.read_text(encoding="utf-8"))
+            entries.append(fields)
+        if not entries:
+            content = "Nenhuma evidência registrada no Atlas para este ativo ainda."
+        else:
+            shown = entries[:30]
+            lines = [
+                f"- {e.get('date', '?')} · {e.get('source_type', '?')} · "
+                f"{e.get('title') or (e.get('document_hash', '') or '')[:12]} · {e.get('source_url', '')}"
+                for e in shown
+            ]
+            content = f"Total de evidências no Atlas: {len(entries)}\n\n" + "\n".join(lines)
+            if len(entries) > len(shown):
+                content += f"\n... e mais {len(entries) - len(shown)} entrada(s)."
+        return self.sync_asset_section(
+            ticker, asset_class, "sources", "IIP:sources_summary", content
+        )
+
     def assemble(self, ticker: str) -> KnowledgeContext:
         return self.context.assemble(ticker)
 
