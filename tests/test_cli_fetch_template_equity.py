@@ -199,6 +199,33 @@ def test_fetch_template_equity_keeps_defaults_for_unavailable_ratios(
             assert fin["current_ratio"] == pytest.approx(3316531 / 1284420, abs=1e-4)
 
 
+def test_fetch_template_equity_carries_bolsai_valuation_inputs(monkeypatch, tmp_path):
+    monkeypatch.setenv("IIP_BOLSAI_API_KEY", "fake-key")
+    monkeypatch.setattr(
+        BolsaiHTTPHarvester,
+        "fetch",
+        lambda self, target: FetchedFundamentals(
+            target=target,
+            status_code=200,
+            fundamentals=fake_fundamentals(lpa=1.43, vpa=4.6, pl=14.36, pvp=4.47),
+        ),
+    )
+    out_file = tmp_path / "out.json"
+    result = CliRunner().invoke(
+        cli,
+        ["fetch-template", "CXSE3", "--type", "equity", "--cnpj", CNPJ,
+         "--ano", "2025", "-o", str(out_file)],
+    )
+    assert result.exit_code == 0, result.output
+    fin = json.loads(out_file.read_text(encoding="utf-8"))["financials"]
+    assert fin["lpa"] == 1.43
+    assert fin["vpa"] == 4.6
+    # named so they can't be confused with "patrimônio líquido" (bolsai's "pl")
+    assert fin["price_to_earnings"] == 14.36
+    assert fin["price_to_book"] == 4.47
+    assert "pl" not in fin
+
+
 def test_fetch_template_fii_still_requires_cnpj(tmp_path):
     runner = CliRunner()
     result = runner.invoke(cli, ["fetch-template", "BTLG11", "--type", "fii"])

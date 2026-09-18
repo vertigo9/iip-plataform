@@ -15,6 +15,7 @@ class ValuationMethod(StrEnum):
     YIELD = "Yield"
     BOOK = "Book"
     RELATIVE = "Relative"
+    GRAHAM = "Graham"
 
 
 @dataclass(frozen=True)

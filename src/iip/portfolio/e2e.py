@@ -9,6 +9,7 @@ from typing import Any, Callable
 from iip.analysis import AssetData, FIIAnalyzer
 from iip.knowledge import KnowledgeBridge
 from iip.portfolio_data.valuation import ValuationMethod, ValuationSnapshot, build_snapshot
+from iip.portfolio_data.valuation_methods import evaluate_valuations, first_valuation
 from iip.portfolio.historical_series import HistoricalSeriesStore
 from iip.universal.concentration import all_concentrations
 from iip.universal.portfolio_state import PortfolioState
@@ -94,7 +95,40 @@ class AssetE2ERunner:
             steps.append(E2EStep("fundamental_analysis", "error", f"{type(exc).__name__}: {exc}"))
 
         if fair_value is None:
-            steps.append(E2EStep("valuation", "blocked", "fair_value is required; no valuation was fabricated"))
+            # No caller-supplied fair value: let the catalog pick the methods
+            # that fit this asset (class + sector) and compute what it can from
+            # the template. Nothing is invented -- if no method yields a value
+            # the stage stays blocked, now listing why each one did not.
+            attempts = evaluate_valuations(
+                ticker=ticker,
+                asset_class=asset_class,
+                sector=template.get("sector") or "",
+                industry=template.get("industry") or "",
+                price=template.get("price"),
+                inputs=template.get("financials", {}),
+            )
+            valuation = first_valuation(attempts)
+            if valuation is None:
+                why = "; ".join(f"{a.method.value}={a.status} ({a.reason})" for a in attempts)
+                steps.append(
+                    E2EStep(
+                        "valuation",
+                        "blocked",
+                        f"fair_value is required; no valuation was fabricated. Methods tried: {why}",
+                    )
+                )
+            else:
+                try:
+                    self.bridge.sync_valuation_projection(valuation, ticker, asset_class)
+                    steps.append(
+                        E2EStep(
+                            "valuation",
+                            "ok",
+                            f"{valuation.method.value}: margin_of_safety={valuation.margin_of_safety}",
+                        )
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    steps.append(E2EStep("valuation", "error", f"{type(exc).__name__}: {exc}"))
         else:
             try:
                 valuation = build_snapshot(ticker, valuation_method, fair_value, template.get("price"))

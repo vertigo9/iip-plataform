@@ -442,6 +442,26 @@ def fetch_equity_template_live(
             if fund.dividend_yield is not None:
                 financials["dividend_yield"] = fund.dividend_yield
                 fetched.append("dividend_yield")
+            # Per-share and multiple figures: not read by EquityAnalyzer, they
+            # feed the valuation catalog (iip.portfolio_data.valuation_methods,
+            # e.g. Graham needs lpa and vpa). Stored under names that can't be
+            # confused with "patrimônio líquido" (bolsai calls P/L just "pl").
+            bolsai_valuation_inputs = (
+                ("lpa", fund.lpa),
+                ("vpa", fund.vpa),
+                ("price_to_earnings", fund.pl),
+                ("price_to_book", fund.pvp),
+            )
+            for field_name, value in bolsai_valuation_inputs:
+                if value is not None:
+                    financials[field_name] = value
+                    fetched.append(field_name)
+            if any(value is not None for _, value in bolsai_valuation_inputs):
+                warnings.append(
+                    "lpa/vpa/price_to_earnings/price_to_book vêm do bolsai na base "
+                    "dele (último balanço/janela móvel), que pode diferir do ano "
+                    "fiscal da DFP usada nos demais campos."
+                )
         except Exception as exc:  # noqa: BLE001 — bolsai é opcional; qualquer falha aqui não deve impedir o template de ser gerado
             warnings.append(f"não consegui buscar fundamentos via bolsai: {exc}")
     elif brapi_token:
