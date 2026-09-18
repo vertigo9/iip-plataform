@@ -96,8 +96,12 @@ class AssetE2ERunner:
         if fair_value is None:
             steps.append(E2EStep("valuation", "blocked", "fair_value is required; no valuation was fabricated"))
         else:
-            valuation = build_snapshot(ticker, valuation_method, fair_value, template.get("price"))
-            steps.append(E2EStep("valuation", "ok", f"margin_of_safety={valuation.margin_of_safety}"))
+            try:
+                valuation = build_snapshot(ticker, valuation_method, fair_value, template.get("price"))
+                self.bridge.sync_valuation_projection(valuation, ticker, asset_class)
+                steps.append(E2EStep("valuation", "ok", f"margin_of_safety={valuation.margin_of_safety}"))
+            except Exception as exc:  # noqa: BLE001
+                steps.append(E2EStep("valuation", "error", f"{type(exc).__name__}: {exc}"))
 
         if historical_series is None:
             steps.append(E2EStep("quantitative", "blocked", "historical_series is required"))
@@ -105,25 +109,65 @@ class AssetE2ERunner:
             if len(historical_series) < 2 or any(value <= 0 for value in historical_series):
                 steps.append(E2EStep("quantitative", "blocked", "at least two positive observations are required"))
             else:
-                returns = tuple(
-                    (current / previous) - 1.0
-                    for previous, current in zip(historical_series, historical_series[1:])
-                )
-                quantitative = {
-                    "observations": float(len(historical_series)),
-                    "mean_price": mean(historical_series),
-                    "price_volatility": pstdev(historical_series),
-                    "mean_return": mean(returns),
-                    "return_volatility": pstdev(returns),
-                    "total_return": (historical_series[-1] / historical_series[0]) - 1.0,
-                }
-                steps.append(E2EStep("quantitative", "ok", f"observations={len(historical_series)}; total_return={quantitative['total_return']:.6f}"))
+                try:
+                    returns = tuple(
+                        (current / previous) - 1.0
+                        for previous, current in zip(historical_series, historical_series[1:])
+                    )
+                    quantitative = {
+                        "observations": float(len(historical_series)),
+                        "mean_price": mean(historical_series),
+                        "price_volatility": pstdev(historical_series),
+                        "mean_return": mean(returns),
+                        "return_volatility": pstdev(returns),
+                        "total_return": (historical_series[-1] / historical_series[0]) - 1.0,
+                    }
+                    self.bridge.sync_quantitative_projection(quantitative, ticker, asset_class)
+                    steps.append(E2EStep("quantitative", "ok", f"observations={len(historical_series)}; total_return={quantitative['total_return']:.6f}"))
+                except Exception as exc:  # noqa: BLE001
+                    steps.append(E2EStep("quantitative", "error", f"{type(exc).__name__}: {exc}"))
 
         if portfolio_state is None:
             steps.append(E2EStep("cross_asset", "blocked", "portfolio_state is required"))
         else:
-            concentrations = all_concentrations(portfolio_state.positions)
-            steps.append(E2EStep("cross_asset", "ok", f"concentrations={len(concentrations)}"))
+            try:
+                concentrations = all_concentrations(portfolio_state.positions)
+                own_position = next(
+                    (p for p in portfolio_state.positions if p.ticker == ticker), None
+                )
+                own_dimensions = tuple(
+                    value
+                    for value in (
+                        getattr(own_position, "manager", None),
+                        getattr(own_position, "segment", None),
+                        getattr(own_position, "asset_class", None),
+                    )
+                    if value
+                )
+                self.bridge.sync_cross_asset_projection(
+                    concentrations, ticker, asset_class, own_dimensions=own_dimensions
+                )
+                steps.append(E2EStep("cross_asset", "ok", f"concentrations={len(concentrations)}"))
+            except Exception as exc:  # noqa: BLE001
+                steps.append(E2EStep("cross_asset", "error", f"{type(exc).__name__}: {exc}"))
+
+        try:
+            import datetime as _dt
+
+            stages_ok = sum(1 for step in steps if step.status == "ok")
+            self.bridge.sync_asset_frontmatter(
+                ticker,
+                asset_class,
+                "scoring",
+                {
+                    "ticker": ticker.upper(),
+                    "asset_class": asset_class,
+                    "stages_ok": stages_ok,
+                    "as_of": _dt.date.today().isoformat(),
+                },
+            )
+        except Exception:  # noqa: BLE001 -- summary frontmatter is best-effort, never masks the real per-stage results above
+            pass
 
         return AssetE2EResult(ticker, template, analysis, valuation, concentrations, quantitative, tuple(steps))
 

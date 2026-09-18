@@ -1,4 +1,25 @@
-"""Módulo gerador do Dashboard Consolidado do Portfolio no Obsidian."""
+"""Módulo gerador do Dashboard Consolidado do Portfolio no Obsidian.
+
+Redirecionado (17/09/2026) para o vault real usado pelo
+``KnowledgeBridge``/``AssetE2ERunner`` (``vault/01_Assets/<Categoria>/
+<TICKER>/<TICKER> - Score e Ranking.md``) -- a versão anterior deste
+gerador apontava para um layout legado (``01 - Portfolio/Assets/
+{TICKER}.md``, vault de demonstração ``MeuVaultFinanceiro``) que nunca
+foi escrito pelo pipeline real, então o dashboard sempre mostrava
+"N/A" em tudo.
+
+Os blocos DataviewJS abaixo só conseguem ler campos de frontmatter
+(YAML), nunca o texto das seções ``IIP:BEGIN/END`` -- por isso
+``KnowledgeBridge.sync_valuation_projection`` /
+``sync_quantitative_projection`` / ``sync_cross_asset_projection`` /
+``sync_analysis_projection`` também escrevem esses mesmos campos como
+frontmatter na nota "Score e Ranking" de cada ativo (ver
+``iip.knowledge.bridge``). Um ativo só aparece numa linha se o campo
+usado no filtro (``stages_ok``, ``margin_of_safety``,
+``concentration_breaches``) já tiver sido escrito por uma rodada real
+do ``AssetE2ERunner`` -- nada aqui é calculado ou aproximado pelo
+próprio dashboard.
+"""
 
 from __future__ import annotations
 
@@ -16,83 +37,99 @@ DASHBOARD_TEMPLATE = "\n".join([
     "  - iip/portfolio",
     "---",
     "",
-    "# 📊 Visão Geral do Portfolio — IIP Engine",
+    "# 📊 Dashboard Consolidado — IIP",
     "",
     "<!-- IIP:BEGIN:METRICS_SUMMARY -->",
     "> [!info] Status do Sistema",
-    "> Painel atualizado pelo **DecisionEngine**. Cotações spot, taxas de câmbio, proventos e alertas de rebalanceamento são sincronizados automaticamente.",
+    "> Cada tabela abaixo lê o frontmatter que `AssetE2ERunner` grava na nota "
+    '"Score e Ranking" de cada ativo ao rodar as 5 etapas (coleta, análise '
+    "fundamentalista, valuation, quantitativo, cross-asset). Um ativo sem "
+    "nenhuma rodada ainda não aparece em nenhuma tabela.",
     "<!-- IIP:END:METRICS_SUMMARY -->",
     "",
     "---",
     "",
-    "## 🟢 Matriz de Decisão e Vereditos Globais",
+    "## 🟢 Status do Pipeline por Ativo",
     "",
     "```dataviewjs",
-    'const pages = dv.pages(\'"01 - Portfolio/Assets"\')',
-    '    .where(p => p.file.name !== "00 - Visão Geral do Portfolio");',
+    'const pages = dv.pages(\'"01_Assets"\')',
+    "    .where(p => p.stages_ok !== undefined);",
+    "",
+    "const tableData = pages",
+    "    .sort(p => p.stages_ok, 'asc')",
+    "    .map(p => [",
+    "        p.file.link,",
+    '        p.asset_class || "N/A",',
+    '        (p.stages_ok !== undefined ? p.stages_ok : "?") + "/5",',
+    '        p.score !== undefined ? p.score : "N/A",',
+    '        p.recommendation || "N/A",',
+    '        p.risk || "N/A",',
+    '        p.as_of || "N/A"',
+    "    ]);",
+    "",
+    'dv.table(["Ativo", "Classe", "Estágios OK", "Score", "Recomendação", "Risco", "Atualizado em"], tableData);',
+    "```",
+    "",
+    "---",
+    "",
+    "## 💰 Valuation — Margem de Segurança",
+    "",
+    "```dataviewjs",
+    'const pages = dv.pages(\'"01_Assets"\')',
+    "    .where(p => p.margin_of_safety !== undefined);",
+    "",
+    "const tableData = pages",
+    "    .sort(p => p.margin_of_safety, 'desc')",
+    "    .map(p => [",
+    "        p.file.link,",
+    '        p.valuation_method || "N/A",',
+    '        p.fair_value !== undefined ? p.fair_value : "N/A",',
+    '        p.market_price !== undefined ? p.market_price : "N/A",',
+    '        p.margin_of_safety !== undefined ? (Number(p.margin_of_safety) * 100).toFixed(1) + "%" : "N/A"',
+    "    ]);",
+    "",
+    'dv.table(["Ativo", "Método", "Valor Justo", "Preço de Mercado", "Margem de Segurança"], tableData);',
+    "```",
+    "",
+    "---",
+    "",
+    "## 📈 Qualidade Quantitativa (Volatilidade / Retorno)",
+    "",
+    "```dataviewjs",
+    'const pages = dv.pages(\'"01_Assets"\')',
+    "    .where(p => p.quantitative_observations !== undefined);",
+    "",
+    "const tableData = pages",
+    "    .sort(p => p.return_volatility, 'desc')",
+    "    .map(p => [",
+    "        p.file.link,",
+    '        p.quantitative_observations !== undefined ? p.quantitative_observations : "N/A",',
+    '        p.total_return !== undefined ? (Number(p.total_return) * 100).toFixed(1) + "%" : "N/A",',
+    '        p.return_volatility !== undefined ? (Number(p.return_volatility) * 100).toFixed(2) + "%" : "N/A"',
+    "    ]);",
+    "",
+    'dv.table(["Ativo", "Observações", "Retorno Total", "Volatilidade do Retorno"], tableData);',
+    "```",
+    "",
+    "---",
+    "",
+    "## ⚠️ Alertas de Concentração",
+    "",
+    "```dataviewjs",
+    'const pages = dv.pages(\'"01_Assets"\')',
+    "    .where(p => p.concentration_breaches !== undefined && Number(p.concentration_breaches) > 0);",
     "",
     "const tableData = pages.map(p => [",
     "    p.file.link,",
     '    p.asset_class || "N/A",',
-    '    p.score || "N/A",',
-    '    p.verdict || "AGUARDAR",',
-    '    p.currency || "BRL",',
-    '    p.spot_price_brl ? "R$ " + Number(p.spot_price_brl).toFixed(2) : "N/A",',
-    '    p.file.mtime.toFormat("dd/MM/yyyy HH:mm")',
+    "    p.concentration_breaches",
     "]);",
     "",
-    'dv.table(["Ativo", "Classe", "Score", "Veredito", "Moeda", "Preço (BRL)", "Atualização"], tableData);',
-    "```",
-    "",
-    "---",
-    "",
-    "## 💵 Exposição Cambial do Portfolio",
-    "",
-    "```dataviewjs",
-    'const pages = dv.pages(\'"01 - Portfolio/Assets"\');',
-    'const groups = pages.groupBy(p => p.currency || "BRL");',
-    "",
-    "const summary = groups.map(g => {",
-    "    const total = g.rows.length;",
-    '    const pct = ((total / Math.max(pages.length, 1)) * 100).toFixed(1) + "%";',
-    "    return [g.key, total, pct];",
-    "});",
-    "",
-    'dv.table(["Moeda Base", "Qtd. Ativos", "Participação Relativa"], summary);',
-    "```",
-    "",
-    "---",
-    "",
-    "## 💰 Projeção de Renda Passiva Mensal",
-    "",
-    "```dataviewjs",
-    'const pages = dv.pages(\'"01 - Portfolio/Assets"\');',
-    "const incomeData = pages.map(p => [",
-    "    p.file.link,",
-    '    p.dividend_yield_ttm ? (Number(p.dividend_yield_ttm) * 100).toFixed(2) + "%" : "N/A",',
-    '    p.monthly_payout_brl ? "R$ " + Number(p.monthly_payout_brl).toFixed(2) : "N/A",',
-    '    p.annual_payout_brl ? "R$ " + Number(p.annual_payout_brl).toFixed(2) : "N/A"',
-    "]);",
-    "",
-    'dv.table(["Ativo", "DY TTM", "Est. Mensal (BRL)", "Est. Anual (BRL)"], incomeData);',
-    "```",
-    "",
-    "---",
-    "",
-    "## ⚠️ Alertas de Rebalanceamento & Desvios",
-    "",
-    "```dataviewjs",
-    'const pages = dv.pages(\'"01 - Portfolio/Assets"\');',
-    "const rebalanceData = pages",
-    '    .where(p => p.verdict === "REDUZIR" || p.verdict === "COMPRAR")',
-    "    .map(p => [",
-    "        p.file.link,",
-    '        p.asset_class || "N/A",',
-    '        p.verdict === "COMPRAR" ? "🎯 APORTAR" : "🔻 REDUZIR",',
-    '        p.score || "N/A"',
-    "    ]);",
-    "",
-    'dv.table(["Ativo", "Classe", "Ação Sugerida", "Score"], rebalanceData);',
+    "if (tableData.length > 0) {",
+    '    dv.table(["Ativo", "Classe", "Dimensões de Concentração Excedidas"], tableData);',
+    "} else {",
+    '    dv.paragraph("Nenhuma concentração acima do limite nas últimas rodadas.");',
+    "}",
     "```",
     "",
 ])
@@ -101,7 +138,7 @@ DASHBOARD_TEMPLATE = "\n".join([
 def generate_portfolio_dashboard(vault_path: Path | str) -> Path:
     """Gera ou atualiza de forma idempotente a nota de Dashboard no Obsidian Vault."""
     vault = Path(vault_path)
-    dashboard_path = vault / "00 - Visão Geral do Portfolio.md"
+    dashboard_path = vault / "02_Portfolio" / "Dashboard.md"
 
     dashboard_path.parent.mkdir(parents=True, exist_ok=True)
     dashboard_path.write_text(DASHBOARD_TEMPLATE, encoding="utf-8")

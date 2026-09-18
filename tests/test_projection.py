@@ -67,6 +67,69 @@ def test_project_asset_section_creates_only_canonical_note(tmp_path: Path):
     assert "Ticker canônico: PCIP11" in path.read_text(encoding="utf-8")
 
 
+def test_project_frontmatter_creates_frontmatter_when_absent(tmp_path: Path):
+    path = tmp_path / "BBSE3.md"
+    path.write_text("# BBSE3\n\ncorpo existente.\n", encoding="utf-8")
+    projector = AssetNoteProjector(tmp_path / "vault")
+
+    projector.project_frontmatter(path, {"score": 82.5, "ticker": "BBSE3"})
+
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith("---\n")
+    assert "score: 82.5" in text
+    assert "ticker: BBSE3" in text
+    assert "corpo existente." in text
+
+
+def test_project_frontmatter_merges_and_preserves_other_keys(tmp_path: Path):
+    path = tmp_path / "BBSE3.md"
+    path.write_text("---\nticker: BBSE3\nasset_class: equity\n---\ncorpo\n", encoding="utf-8")
+    projector = AssetNoteProjector(tmp_path / "vault")
+
+    projector.project_frontmatter(path, {"score": 82.5})
+
+    text = path.read_text(encoding="utf-8")
+    assert "ticker: BBSE3" in text
+    assert "asset_class: equity" in text
+    assert "score: 82.5" in text
+    assert text.count("---") == 2
+    assert "corpo" in text
+
+
+def test_project_frontmatter_is_idempotent_on_repeated_calls(tmp_path: Path):
+    path = tmp_path / "BBSE3.md"
+    projector = AssetNoteProjector(tmp_path / "vault")
+
+    projector.project_frontmatter(path, {"score": 10})
+    projector.project_frontmatter(path, {"score": 20})
+
+    text = path.read_text(encoding="utf-8")
+    assert text.count("score:") == 1
+    assert "score: 20" in text
+
+
+def test_project_frontmatter_drops_none_values_instead_of_writing_them(tmp_path: Path):
+    path = tmp_path / "BBSE3.md"
+    projector = AssetNoteProjector(tmp_path / "vault")
+
+    projector.project_frontmatter(path, {"score": 10, "fair_value": None})
+    text = path.read_text(encoding="utf-8")
+    assert "fair_value" not in text
+    assert "score: 10" in text
+
+
+def test_project_asset_frontmatter_targets_canonical_note(tmp_path: Path):
+    vault = tmp_path / "vault"
+    projector = AssetNoteProjector(vault)
+
+    path = projector.project_asset_frontmatter(
+        "bbse3", "equity", "scoring", {"score": 55.0}
+    )
+
+    assert path == vault / "01_Assets" / "Equities" / "BBSE3" / "BBSE3 - Score e Ranking.md"
+    assert "score: 55.0" in path.read_text(encoding="utf-8")
+
+
 def test_projector_rejects_invalid_role_or_section(tmp_path: Path):
     projector = AssetNoteProjector(tmp_path / "vault")
 

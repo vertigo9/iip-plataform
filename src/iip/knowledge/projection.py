@@ -37,6 +37,7 @@ class AssetNoteProjector:
     """Project controlled IIP sections without replacing human-authored Markdown."""
     BEGIN_TEMPLATE = "<!-- IIP:BEGIN {section} -->"
     END_TEMPLATE = "<!-- IIP:END {section} -->"
+    _FRONTMATTER_RE = re.compile(r"\A---\n(.*?)\n---\n?", re.DOTALL)
     def __init__(self, vault: str | Path):
         self.locator = AssetVaultLocator(vault)
     @staticmethod
@@ -61,6 +62,45 @@ class AssetNoteProjector:
         path.parent.mkdir(parents=True, exist_ok=True); path.write_text(updated, encoding="utf-8"); return path
     def project_asset_section(self, ticker: str, asset_class: str, role: str, section: str, content: str) -> Path:
         return self.project_section(self.locate(ticker, asset_class, role).path, section, content)
+    @classmethod
+    def _parse_frontmatter(cls, text: str) -> tuple[dict[str, str], str]:
+        """Hand-rolled parse (same convention as ObsidianRepository.save_evidence's
+        hand-written frontmatter, no YAML dependency needed for simple scalars).
+        Values keep their raw string form -- callers that need numbers back
+        parse them themselves; Dataview reads frontmatter as text either way."""
+        match = cls._FRONTMATTER_RE.match(text)
+        if not match:
+            return {}, text
+        fields: dict[str, str] = {}
+        for line in match.group(1).splitlines():
+            if ":" in line:
+                key, _, value = line.partition(":")
+                fields[key.strip()] = value.strip()
+        return fields, text[match.end():]
+    @staticmethod
+    def _format_frontmatter(fields: dict[str, str]) -> str:
+        body = "\n".join(f"{key}: {value}" for key, value in fields.items())
+        return f"---\n{body}\n---\n"
+    def project_frontmatter(self, path: str | Path, updates: dict[str, object]) -> Path:
+        """Idempotently merge ``updates`` into the note's YAML frontmatter,
+        preserving both the rest of the file and any existing frontmatter
+        keys not in ``updates``. None values are dropped (not written as
+        the literal string "None") rather than fabricated as empty."""
+        path = Path(path)
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+        fields, rest = self._parse_frontmatter(existing)
+        for key, value in updates.items():
+            if value is None:
+                fields.pop(key, None)
+            else:
+                fields[key] = str(value)
+        updated = self._format_frontmatter(fields) + rest
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(updated, encoding="utf-8")
+        return path
+    def project_asset_frontmatter(self, ticker: str, asset_class: str, role: str, updates: dict[str, object]) -> Path:
+        return self.project_frontmatter(self.locate(ticker, asset_class, role).path, updates)
     @staticmethod
     def _normalize_section(section: str) -> str:
         value = str(section).strip()
