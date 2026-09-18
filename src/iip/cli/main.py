@@ -1238,7 +1238,8 @@ def collect_btg_documents_command(
 @click.option(
     "--ticker",
     required=True,
-    help="Ação com config MZIQ registrada: hoje só ABCB4.",
+    help="Ação com config MZIQ registrada: ABCB4, BBSE3, CXSE3, SAUD3, "
+    "ALOS3, VBBR3, KLBN4, FESA4, LEVE3 ou PASS3.",
 )
 @click.option(
     "--ano",
@@ -1289,9 +1290,10 @@ def collect_equity_documents_command(
 ) -> None:
     """Lista e baixa documentos reais de RI de uma ação via MZIQ
     (``iip.sources.equity_mziq``) -- mesma abordagem leve dos comandos
-    `collect-patria-documents`/`collect-btg-documents`, aplicada à
-    ABCB4 (Banco ABC Brasil), a única ação da carteira confirmada na
-    plataforma MZIQ até agora.
+    `collect-patria-documents`/`collect-btg-documents`, cobrindo 10 das
+    14 ações da carteira confirmadas na plataforma MZIQ (as outras 4 --
+    ISAE4, CPFE3, CMIG4, CSUD3 -- usam plataformas de RI diferentes,
+    ver docstring de ``iip.sources.equity_mziq``).
     """
     from iip.sources import equity_mziq
 

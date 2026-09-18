@@ -89,7 +89,7 @@ def test_collect_equity_documents_rejects_unknown_ticker(tmp_path):
         [
             "collect-equity-documents",
             "--ticker",
-            "BBSE3",
+            "CMIG4",
             "--vault",
             str(tmp_path / "vault"),
         ],
