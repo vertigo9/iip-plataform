@@ -283,6 +283,25 @@ def fetch_equity_template_live(
     (brapi's quote response has no dividend_yield or market_cap field
     at all, confirmed by its own dataclass shape) — so a brapi-only
     fetch fills just ``price``, nothing else.
+
+    CONFIRMED LIVE CONSEQUENCE (18/09/2026): ran ``iip analyze --type
+    equity --decide --persist`` for all 14 portfolio equities using
+    templates built this way. Every one of the 14 real ``Decision``
+    objects came back byte-for-byte identical (same composite score,
+    same verdict, same all-9-pillar breakdown, same confidence) despite
+    real, different price/market_cap/dividend_yield per company --
+    confirmed by diffing two of the persisted "Score e Ranking" notes
+    directly (ABCB4 vs. CMIG4, zero diff in the IIP:analysis block).
+    The 3 genuinely-fetched fields do not move ``EquityAnalyzer``'s
+    composite score enough to differentiate real companies once the
+    other ~26 fields all sit at identical defaults -- meaning every
+    equity Decision produced this way is currently NOT a real,
+    differentiated recommendation, just the analyzer's default-driven
+    baseline wearing a real ticker's name. Treat any equity Decision
+    built from this function's output as low-confidence/placeholder
+    until EquityAnalyzer has a real source for revenue/net_income/
+    equity/invested_capital -- no source in this project provides
+    those absolute figures today (see the ROE/ROIC note above).
     """
     from iip.sources.b3_bolsai import build_target as _build_bolsai_target
     from iip.sources.b3_bolsai_harvester import (
