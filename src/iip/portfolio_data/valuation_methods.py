@@ -16,10 +16,19 @@ Two separate questions, deliberately kept apart:
   - can it be COMPUTED from the data we have (a calculator exists and its
     inputs are present and valid)? -- ``evaluate_valuations``
 
-Only Graham has a calculator today. The catalog already lists the other
+Graham and Bazin have calculators today. The catalog already lists the other
 methods that are appropriate per class, so they show up as
 ``not_implemented`` instead of silently vanishing; adding a calculator, or
 refining the sector rules, is a change to the tables below and nothing else.
+
+Bazin's ceiling price is ``dividend per share / required yield``. Bazin
+fixed the required yield at 6% (the risk-free rate of the 1990s). Here it is
+the CURRENT REAL yield of the longest NTN-B (``iip.sources.tesouro_direto``),
+passed in as ``ntnb_real_yield``: dividends of a company that passes inflation
+through behave like a real yield, so the inflation-linked government coupon is
+the opportunity cost to beat. When rates rise the ceiling falls (more discount
+demanded), when they fall it rises. No rate, no Bazin value -- it never falls
+back to a silent 6%.
 
 Graham's fair value is ``sqrt(22.5 * LPA * VPA)`` (LPA = earnings per share,
 VPA = book value per share). It needs both to be positive -- the square root
@@ -124,11 +133,40 @@ def _graham(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
     )
 
 
+def bazin_ceiling_price(
+    dividend_per_share: float | None, required_yield: float | None
+) -> float | None:
+    """``DPS / required yield`` rounded to cents; ``None`` unless the dividend
+    and the yield are both present and strictly positive."""
+    if (
+        dividend_per_share is None
+        or required_yield is None
+        or dividend_per_share <= 0
+        or required_yield <= 0
+    ):
+        return None
+    return round(dividend_per_share / required_yield, 2)
+
+
+def _bazin(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
+    dps = inputs.get("dividend_per_share")
+    rate = inputs.get("ntnb_real_yield")
+    if rate is None or rate <= 0:
+        return None, "taxa real da NTN-B longa indisponível (Bazin não usa taxa fixa)"
+    if dps is None:
+        return None, "dividendo por ação indisponível"
+    if dps <= 0:
+        return None, f"dividendo por ação={dps}: sem dividendos pagos, Bazin não se aplica"
+    ceiling = bazin_ceiling_price(dps, rate)
+    return ceiling, f"DPS={dps}, taxa real NTN-B={rate:.2%}"
+
+
 # method -> calculator returning (fair_value or None, detail/reason)
 CALCULATORS: dict[
     ValuationMethod, Callable[[Mapping[str, float | None]], tuple[float | None, str]]
 ] = {
     ValuationMethod.GRAHAM: _graham,
+    ValuationMethod.BAZIN: _bazin,
 }
 
 

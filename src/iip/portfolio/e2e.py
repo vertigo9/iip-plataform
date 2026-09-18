@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from statistics import mean, pstdev
 from typing import Any, Callable
 
 from iip.analysis import AssetData, FIIAnalyzer
 from iip.knowledge import KnowledgeBridge
-from iip.portfolio_data.valuation import ValuationMethod, ValuationSnapshot, build_snapshot
-from iip.portfolio_data.valuation_methods import evaluate_valuations, first_valuation
 from iip.portfolio.historical_series import HistoricalSeriesStore
+from iip.portfolio_data.valuation import (
+    ValuationMethod,
+    ValuationSnapshot,
+    build_snapshot,
+)
+from iip.portfolio_data.valuation_methods import evaluate_valuations, first_valuation
 from iip.universal.concentration import all_concentrations
 from iip.universal.portfolio_state import PortfolioState
 
@@ -60,7 +65,11 @@ class AssetE2ERunner:
         valuation_method: ValuationMethod = ValuationMethod.NAV,
         portfolio_state: PortfolioState | None = None,
         historical_series: tuple[float, ...] | None = None,
+        market_inputs: Mapping[str, float | None] | None = None,
     ) -> AssetE2EResult:
+        """``market_inputs``: market-wide numbers the valuation catalog may need
+        that are not properties of the asset (e.g. ``ntnb_real_yield`` for
+        Bazin). Supplied by the caller; this runner does no network I/O for it."""
         steps: list[E2EStep] = []
         template: dict[str, Any] | None = None
         analysis = None
@@ -105,7 +114,7 @@ class AssetE2ERunner:
                 sector=template.get("sector") or "",
                 industry=template.get("industry") or "",
                 price=template.get("price"),
-                inputs=template.get("financials", {}),
+                inputs={**template.get("financials", {}), **(market_inputs or {})},
             )
             valuation = first_valuation(attempts)
             if valuation is None:
@@ -215,6 +224,7 @@ class AssetE2ERunner:
         fair_value: float | None = None,
         valuation_method: ValuationMethod = ValuationMethod.NAV,
         portfolio_state: PortfolioState | None = None,
+        market_inputs: Mapping[str, float | None] | None = None,
     ) -> AssetE2EResult:
         """Run the E2E flow using the persisted NAV history when valid."""
         series = series_store.load(ticker)
@@ -227,6 +237,7 @@ class AssetE2ERunner:
                 valuation_method=valuation_method,
                 portfolio_state=portfolio_state,
                 historical_series=None,
+                market_inputs=market_inputs,
             )
             steps = tuple(
                 E2EStep(
@@ -255,4 +266,5 @@ class AssetE2ERunner:
             valuation_method=valuation_method,
             portfolio_state=portfolio_state,
             historical_series=series.nav_values,
+            market_inputs=market_inputs,
         )

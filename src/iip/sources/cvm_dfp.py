@@ -104,6 +104,9 @@ class DfpRow:
     cd_conta: str
     ds_conta: str
     vl_conta: float | None
+    # CVM's "ESCALA_MOEDA": "MIL" (values in thousands) or "UNIDADE". Kept
+    # because per-share figures need absolute reais, unlike the ratios.
+    escala: str = ""
 
 
 @dataclass(frozen=True)
@@ -126,6 +129,11 @@ class CompanyFundamentals:
     divida_bruta: float | None = None
     # As reported: a negative number (an expense).
     despesas_financeiras: float | None = None
+    # Dividends + JCP actually PAID to the company's shareholders during the
+    # fiscal year (cash-flow statement, financing activities), in absolute
+    # BRL and positive. ``None`` when no such line is found or the scale is
+    # unknown; a real ``0.0`` when the company reports paying nothing.
+    dividendos_pagos: float | None = None
 
     @property
     def current_ratio(self) -> float | None:
@@ -224,6 +232,7 @@ def _parse_statement(body: bytes, filename_fragment: str) -> tuple[DfpRow, ...]:
             cd_conta=row.get("CD_CONTA", ""),
             ds_conta=row.get("DS_CONTA", ""),
             vl_conta=_parse_number(row.get("VL_CONTA", "")),
+            escala=row.get("ESCALA_MOEDA", "").strip().upper(),
         )
         for row in rows
     )
@@ -251,6 +260,15 @@ def parse_dre_con(body: bytes) -> tuple[DfpRow, ...]:
 
 def parse_dre_ind(body: bytes) -> tuple[DfpRow, ...]:
     return _parse_statement(body, "_DRE_ind_")
+
+
+def parse_dfc_con(body: bytes) -> tuple[DfpRow, ...]:
+    # A company files the direct (MD) OR the indirect (MI) method, never both.
+    return _parse_statement(body, "_DFC_MD_con_") + _parse_statement(body, "_DFC_MI_con_")
+
+
+def parse_dfc_ind(body: bytes) -> tuple[DfpRow, ...]:
+    return _parse_statement(body, "_DFC_MD_ind_") + _parse_statement(body, "_DFC_MI_ind_")
 
 
 def _find_ativo_total(rows: tuple[DfpRow, ...]) -> DfpRow | None:
@@ -326,6 +344,48 @@ def _find_exact(
     )
 
 
+_ESCALA_FACTOR = {"UNIDADE": 1.0, "MIL": 1_000.0}
+_DIVIDEND_MARKERS = ("dividendo", "capital proprio")
+# Financing-activity lines that mention dividends but are NOT what the
+# company paid its own shareholders (minority holders of subsidiaries,
+# SCP/SPE partnerships) or are inflows (received from investees).
+_DIVIDEND_EXCLUSIONS = ("nao controlador", "scp", "spe", "recebid", "participacao")
+
+
+def _dividendos_pagos(dfc_rows: tuple[DfpRow, ...]) -> float | None:
+    """Dividends + JCP paid to the company's own shareholders, in absolute BRL.
+
+    The cash-flow statement books them in financing activities (``6.03.NN``)
+    but under labels and positions that vary by company (checked live over 14
+    portfolio companies: ``6.03.01`` "Pagamento de dividendos", ``6.03.03``
+    "Juros sobre o Capital Próprio e Dividendos", ``6.03.08`` "Dividendos/Juros
+    sobre capital próprio pagos"...). So this matches financing lines (depth-2
+    ``6.03.*``) whose description mentions dividends/JCP, is an outflow, and is
+    not one of the exclusions above. Lines are summed; ``None`` if there are
+    none or the currency scale is unknown (never guessed).
+    """
+    total = 0.0
+    found = False
+    for r in dfc_rows:
+        if r.ordem_exerc != _ULTIMO:
+            continue
+        if not r.cd_conta.startswith("6.03.") or r.cd_conta.count(".") != 2:
+            continue
+        if r.vl_conta is None or r.vl_conta > 0:
+            continue
+        text = _normalize_text(r.ds_conta)
+        if not any(m in text for m in _DIVIDEND_MARKERS):
+            continue
+        if any(x in text for x in _DIVIDEND_EXCLUSIONS):
+            continue
+        factor = _ESCALA_FACTOR.get(r.escala)
+        if factor is None:
+            return None
+        total += -r.vl_conta * factor
+        found = True
+    return total if found else None
+
+
 def _divida_bruta(bpp_rows: tuple[DfpRow, ...]) -> float | None:
     curto = _find_exact(bpp_rows, "2.01.04", "Empréstimos e Financiamentos")
     longo = _find_exact(bpp_rows, "2.02.01", "Empréstimos e Financiamentos")
@@ -346,6 +406,8 @@ def extract_fundamentals(
     bpp_ind: tuple[DfpRow, ...],
     dre_con: tuple[DfpRow, ...],
     dre_ind: tuple[DfpRow, ...],
+    dfc_con: tuple[DfpRow, ...] = (),
+    dfc_ind: tuple[DfpRow, ...] = (),
 ) -> CompanyFundamentals | None:
     """Extract one company's real fundamentals from a year's already-
     parsed DFP statements. Returns ``None`` if the CNPJ has no rows in
@@ -369,6 +431,7 @@ def extract_fundamentals(
         return None
     bpp_rows = _for_cnpj(bpp_con) if consolidado else _for_cnpj(bpp_ind)
     dre_rows = _for_cnpj(dre_con) if consolidado else _for_cnpj(dre_ind)
+    dfc_rows = _for_cnpj(dfc_con) if consolidado else _for_cnpj(dfc_ind)
 
     bpa_ultimo = tuple(r for r in bpa_rows if r.ordem_exerc == _ULTIMO)
     bpp_ultimo = tuple(r for r in bpp_rows if r.ordem_exerc == _ULTIMO)
@@ -398,4 +461,5 @@ def extract_fundamentals(
         passivo_circulante=passivo_circ.vl_conta if passivo_circ else None,
         divida_bruta=_divida_bruta(bpp_ultimo),
         despesas_financeiras=desp_fin.vl_conta if desp_fin else None,
+        dividendos_pagos=_dividendos_pagos(dfc_rows),
     )

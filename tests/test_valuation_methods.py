@@ -7,6 +7,7 @@ from iip.portfolio.e2e import AssetE2ERunner
 from iip.portfolio_data.valuation import ValuationMethod
 from iip.portfolio_data.valuation_methods import (
     applicability,
+    bazin_ceiling_price,
     evaluate_valuations,
     first_valuation,
     graham_fair_value,
@@ -67,7 +68,7 @@ def _statuses(attempts):
     return {a.method: a.status for a in attempts}
 
 
-def test_equity_with_lpa_vpa_gets_graham_and_reports_the_rest_as_not_implemented():
+def test_equity_with_lpa_vpa_gets_graham_and_reports_the_rest_honestly():
     attempts = evaluate_valuations(
         ticker="cxse3",
         asset_class="equity",
@@ -79,7 +80,7 @@ def test_equity_with_lpa_vpa_gets_graham_and_reports_the_rest_as_not_implemented
 
     assert _statuses(attempts) == {
         ValuationMethod.GRAHAM: "ok",
-        ValuationMethod.BAZIN: "not_implemented",
+        ValuationMethod.BAZIN: "insufficient_data",  # no dividend / no NTN-B rate given
         ValuationMethod.DCF: "not_implemented",
         ValuationMethod.RELATIVE: "not_implemented",
     }
@@ -214,3 +215,73 @@ def test_e2e_explicit_fair_value_still_takes_precedence(tmp_path: Path):
 
     assert result.valuation.fair_value == 99.0
     assert result.valuation.method is ValuationMethod.DCF
+
+
+# --- Bazin with the NTN-B real yield ------------------------------------------
+
+
+def test_bazin_ceiling_is_dividend_over_the_required_yield():
+    assert bazin_ceiling_price(1.26, 0.073) == 17.26  # 1.26 / 0.073
+    # the same dividend against Bazin's old fixed 6% would allow a higher price:
+    assert bazin_ceiling_price(1.26, 0.06) == 21.0
+    assert bazin_ceiling_price(1.26, 0.073) < bazin_ceiling_price(1.26, 0.06)
+
+
+@pytest.mark.parametrize(
+    ("dps", "rate"),
+    [(None, 0.073), (1.0, None), (0.0, 0.073), (-1.0, 0.073), (1.0, 0.0), (1.0, -0.01)],
+)
+def test_bazin_is_none_without_positive_dividend_and_rate(dps, rate):
+    assert bazin_ceiling_price(dps, rate) is None
+
+
+def _bazin_attempt(**inputs):
+    attempts = evaluate_valuations(
+        ticker="CXSE3", asset_class="equity", sector="Financeiro", industry="Seguros",
+        price=20.0, inputs=inputs,
+    )
+    return next(a for a in attempts if a.method is ValuationMethod.BAZIN)
+
+
+def test_bazin_uses_the_supplied_ntnb_rate_and_reports_it():
+    attempt = _bazin_attempt(dividend_per_share=1.26, ntnb_real_yield=0.073)
+
+    assert attempt.status == "ok"
+    assert attempt.snapshot.fair_value == 17.26
+    assert attempt.snapshot.margin_of_safety == pytest.approx(17.26 / 20.0 - 1.0)
+    assert "7.30%" in attempt.reason
+
+
+def test_bazin_without_a_rate_never_falls_back_to_six_percent():
+    attempt = _bazin_attempt(dividend_per_share=1.26)
+
+    assert attempt.status == "insufficient_data"
+    assert attempt.snapshot is None
+    assert "NTN-B" in attempt.reason
+
+
+def test_bazin_with_zero_dividends_is_insufficient_not_a_zero_ceiling():
+    attempt = _bazin_attempt(dividend_per_share=0.0, ntnb_real_yield=0.073)
+
+    assert attempt.status == "insufficient_data"
+    assert "sem dividendos" in attempt.reason
+
+
+def test_e2e_market_inputs_reach_the_bazin_calculator(tmp_path: Path):
+    def build():
+        return {
+            "symbol": "KLBN4", "sector": "Materiais Básicos", "industry": "Madeiras e Papel",
+            "price": 3.0, "financials": {"dividend_per_share": 0.15},
+        }, _FetchResult()
+
+    runner = AssetE2ERunner(vault_path=str(tmp_path), analyzer_factory=EquityAnalyzer)
+    blocked = runner.run(ticker="KLBN4", asset_class="equity", fetch_template=build)
+    ok = runner.run(
+        ticker="KLBN4", asset_class="equity", fetch_template=build,
+        market_inputs={"ntnb_real_yield": 0.075},
+    )
+
+    assert next(s for s in blocked.steps if s.name == "valuation").status == "blocked"
+    assert next(s for s in ok.steps if s.name == "valuation").status == "ok"
+    assert ok.valuation.method is ValuationMethod.BAZIN
+    assert ok.valuation.fair_value == 2.0  # 0.15 / 0.075

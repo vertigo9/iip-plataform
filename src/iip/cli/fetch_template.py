@@ -426,6 +426,7 @@ def fetch_equity_template_live(
     warnings: list[str] = []
     price: float | None = None
     market_cap: float | None = None
+    shares_outstanding: float | None = None
 
     if bolsai_api_key:
         try:
@@ -439,6 +440,7 @@ def fetch_equity_template_live(
             if fund.market_cap is not None:
                 market_cap = fund.market_cap
                 fetched.append("market_cap")
+            shares_outstanding = fund.shares_outstanding
             if fund.dividend_yield is not None:
                 financials["dividend_yield"] = fund.dividend_yield
                 fetched.append("dividend_yield")
@@ -491,6 +493,8 @@ def fetch_equity_template_live(
             bpp_ind=result.bpp_ind,
             dre_con=result.dre_con,
             dre_ind=result.dre_ind,
+            dfc_con=result.dfc_con,
+            dfc_ind=result.dfc_ind,
         )
 
     current = None
@@ -537,6 +541,29 @@ def fetch_equity_template_live(
                 current.patrimonio_liquido + current.passivo_nao_circulante, 2
             )
             fetched.append("invested_capital")
+
+        if current.dividendos_pagos is not None:
+            if shares_outstanding:
+                financials["dividend_per_share"] = round(
+                    current.dividendos_pagos / shares_outstanding, 4
+                )
+                fetched.append("dividend_per_share")
+                warnings.append(
+                    "dividend_per_share = dividendos e JCP PAGOS no ano fiscal "
+                    f"{ano} (DFC da CVM) ÷ total de ações de todas as classes "
+                    "(bolsai): média entre classes e caixa pago no ano, não o "
+                    "declarado — proventos extraordinários entram no valor."
+                )
+            else:
+                warnings.append(
+                    "Dividendos pagos encontrados na DFC, mas o número de ações "
+                    "(bolsai) não está disponível — dividend_per_share não calculado."
+                )
+        else:
+            warnings.append(
+                "Dividendos pagos não encontrados na DFC (esperado para alguns "
+                "bancos) — dividend_per_share não calculado."
+            )
 
         resilience = (
             ("current_ratio", current.current_ratio),

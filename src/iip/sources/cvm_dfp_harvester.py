@@ -18,6 +18,8 @@ from .cvm_dfp import (
     parse_bpa_ind,
     parse_bpp_con,
     parse_bpp_ind,
+    parse_dfc_con,
+    parse_dfc_ind,
     parse_dre_con,
     parse_dre_ind,
 )
@@ -36,6 +38,8 @@ class FetchedDfpYear:
     content_type: str = ""
     body: bytes = b""
     final_url: str = ""
+    dfc_con: tuple[DfpRow, ...] = ()
+    dfc_ind: tuple[DfpRow, ...] = ()
 
 
 class CvmDfpHTTPHarvester:
@@ -83,6 +87,8 @@ class CvmDfpHTTPHarvester:
             bpp_ind=parse_bpp_ind(body),
             dre_con=parse_dre_con(body),
             dre_ind=parse_dre_ind(body),
+            dfc_con=parse_dfc_con(body),
+            dfc_ind=parse_dfc_ind(body),
             content_type=content_type,
             body=body,
             final_url=final_url,

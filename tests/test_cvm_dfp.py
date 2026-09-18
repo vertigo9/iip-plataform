@@ -4,12 +4,15 @@ import zipfile
 import pytest
 
 from iip.sources.cvm_dfp import (
+    DfpRow,
     build_target,
     extract_fundamentals,
     parse_bpa_con,
     parse_bpa_ind,
     parse_bpp_con,
     parse_bpp_ind,
+    parse_dfc_con,
+    parse_dfc_ind,
     parse_dre_con,
     parse_dre_ind,
 )
@@ -232,3 +235,104 @@ def test_ratios_guard_non_positive_denominators():
     assert ok.debt_to_equity == 0.4
     negative_equity = CompanyFundamentals(**{**base, "patrimonio_liquido": -5.0})
     assert negative_equity.debt_to_equity is None
+
+
+# --- dividends paid (DFC) ------------------------------------------------------
+
+
+def _dfc_row(cnpj, cd_conta, ds_conta, valor, *, escala="MIL", ordem="ÚLTIMO"):
+    return DfpRow(
+        cnpj_cia=cnpj, ordem_exerc=ordem, dt_fim_exerc="2025-12-31",
+        cd_conta=cd_conta, ds_conta=ds_conta, vl_conta=valor, escala=escala,
+    )
+
+
+def _dividends(rows):
+    from iip.sources.cvm_dfp import _dividendos_pagos
+
+    return _dividendos_pagos(tuple(rows))
+
+
+def test_dividends_paid_from_the_financing_section_in_absolute_brl():
+    rows = [_dfc_row("x", "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0)]
+
+    assert _dividends(rows) == 957_000_000.0  # scale MIL -> x1000
+
+
+def test_dividends_paid_matches_label_variants_seen_in_real_filings():
+    variants = [
+        ("6.03.01", "Pagamento de dividendos"),
+        ("6.03.03", "Juros sobre o Capital Próprio e Dividendos"),
+        ("6.03.05", "Dividendos e Juros sobre capital próprio pagos"),
+        ("6.03.08", "Dividendo e juros sobre o capital próprio pagos"),
+    ]
+    for code, label in variants:
+        assert _dividends([_dfc_row("x", code, label, -10.0)]) == 10_000.0, label
+
+
+def test_dividends_paid_excludes_minorities_partnerships_and_inflows():
+    rows = [
+        _dfc_row("x", "6.03.07", "Pagamento dividendos SCPs e SPEs", -165269.0),
+        _dfc_row("x", "6.03.19", "Dividendos pagos aos acionistas não controladores", -115598.0),
+        _dfc_row("x", "6.03.06", "Participação dos acionistas não controladores nos dividendos", -5.0),
+        _dfc_row("x", "6.02.07", "Dividendos recebidos", 158120.0),  # investing inflow
+        _dfc_row("x", "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0),
+    ]
+
+    assert _dividends(rows) == 957_000_000.0
+
+
+def test_dividends_paid_ignores_operating_receipts_positive_values_and_prior_year():
+    rows = [
+        _dfc_row("x", "6.01.03.01", "Recebimento de dividendos", -100.0),  # not 6.03.*
+        _dfc_row("x", "6.03.09", "Dividendos a pagar - Atualização monetária", 500.0),  # inflow sign
+        _dfc_row("x", "6.03.01", "Dividendos pagos", -300.0, ordem="PENÚLTIMO"),
+    ]
+
+    assert _dividends(rows) is None
+
+
+def test_dividends_paid_none_when_no_line_and_zero_when_reported_zero():
+    assert _dividends([]) is None
+    # SAUD3 in the real data: the line exists and is 0 -> a real "paid nothing",
+    # distinct from "no dividend line found" (None).
+    assert _dividends([_dfc_row("x", "6.03.05", "Dividendos pagos", 0.0)]) == 0.0
+
+
+def test_dividends_paid_handles_unidade_scale_and_refuses_unknown_scale():
+    assert _dividends([_dfc_row("x", "6.03.01", "Dividendos pagos", -2500.0, escala="UNIDADE")]) == 2500.0
+    assert _dividends([_dfc_row("x", "6.03.01", "Dividendos pagos", -2500.0, escala="MILHAO")]) is None
+
+
+def test_extract_fundamentals_reads_dividends_from_dfc_rows(parsed):
+    dfc = (_dfc_row(NON_FINANCIAL_CNPJ, "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0),)
+
+    result = extract_fundamentals(2025, NON_FINANCIAL_CNPJ, dfc_con=dfc, **parsed)
+
+    assert result.dividendos_pagos == 957_000_000.0
+    assert extract_fundamentals(2025, NON_FINANCIAL_CNPJ, **parsed).dividendos_pagos is None
+
+
+def test_dfc_parsers_read_both_cash_flow_methods_and_the_scale():
+    import io as _io
+    import zipfile as _zip
+
+    header = "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_MOEDA;ORDEM_EXERC;DT_INI_EXERC;DT_FIM_EXERC;CD_CONTA;DS_CONTA;VL_CONTA;ST_CONTA_FIXA"
+
+    def row(cnpj, cd, ds, val, escala):
+        return f"{cnpj};2025-12-31;1;X;1;Y;REAL;{escala};ÚLTIMO;2025-01-01;2025-12-31;{cd};{ds};{val};S"
+
+    buffer = _io.BytesIO()
+    with _zip.ZipFile(buffer, "w") as zf:
+        zf.writestr("dfp_cia_aberta_DFC_MD_con_2025.csv",
+                    "\r\n".join([header, row("A", "6.03.01", "Dividendos pagos", "-5", "UNIDADE")]).encode("latin-1"))
+        zf.writestr("dfp_cia_aberta_DFC_MI_con_2025.csv",
+                    "\r\n".join([header, row("B", "6.03.01", "Dividendos pagos", "-7", "MIL")]).encode("latin-1"))
+        zf.writestr("dfp_cia_aberta_DFC_MI_ind_2025.csv",
+                    "\r\n".join([header, row("C", "6.03.01", "Dividendos pagos", "-9", "MIL")]).encode("latin-1"))
+    body = buffer.getvalue()
+
+    con = parse_dfc_con(body)
+
+    assert {(r.cnpj_cia, r.escala) for r in con} == {("A", "UNIDADE"), ("B", "MIL")}
+    assert {r.cnpj_cia for r in parse_dfc_ind(body)} == {"C"}

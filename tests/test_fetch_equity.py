@@ -309,3 +309,103 @@ def test_fetch_equity_continues_when_brapi_fetch_fails(monkeypatch):
 
     assert template["price"] is None
     assert any("não consegui buscar preço via brapi" in w for w in resultado.warnings)
+
+
+def _mock_dfp_with_dividends(monkeypatch, dfc_rows):
+    def fake_fetch(self, target):
+        import iip.sources.cvm_dfp_harvester as mod
+
+        body = make_zip()
+        return mod.FetchedDfpYear(
+            target=target,
+            status_code=200,
+            bpa_con=mod.parse_bpa_con(body),
+            bpa_ind=mod.parse_bpa_ind(body),
+            bpp_con=mod.parse_bpp_con(body),
+            bpp_ind=mod.parse_bpp_ind(body),
+            dre_con=mod.parse_dre_con(body),
+            dre_ind=mod.parse_dre_ind(body),
+            dfc_con=tuple(dfc_rows),
+        )
+
+    monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_fetch)
+
+
+def _dividend_row(valor, code="6.03.08", label="Dividendos/Juros sobre capital próprio pagos"):
+    from iip.sources.cvm_dfp import DfpRow
+
+    return DfpRow(
+        cnpj_cia=NON_FINANCIAL_CNPJ, ordem_exerc="ÚLTIMO", dt_fim_exerc="2025-12-31",
+        cd_conta=code, ds_conta=label, vl_conta=valor, escala="MIL",
+    )
+
+
+def _bolsai_with_shares(monkeypatch, shares):
+    monkeypatch.setattr(
+        BolsaiHTTPHarvester,
+        "fetch",
+        lambda self, target: FetchedFundamentals(
+            target=target,
+            status_code=200,
+            fundamentals=make_bolsai_fundamentals(shares_outstanding=shares),
+        ),
+    )
+
+
+def test_fetch_equity_derives_dividend_per_share_from_dfc_and_bolsai_shares(monkeypatch):
+    _bolsai_with_shares(monkeypatch, 6_241_478_850.0)
+    _mock_dfp_with_dividends(monkeypatch, [_dividend_row(-957000.0)])
+
+    template, resultado = fetch_equity_template_live(
+        "KLBN4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+
+    # R$ 957 mi paid / 6.24 bi shares
+    assert template["financials"]["dividend_per_share"] == pytest.approx(0.1533, abs=1e-4)
+    assert "dividend_per_share" in resultado.fetched_fields
+    assert any("PAGOS" in w and "média entre classes" in w for w in resultado.warnings)
+
+
+def test_fetch_equity_reports_a_real_zero_dividend_as_zero(monkeypatch):
+    _bolsai_with_shares(monkeypatch, 1_000_000_000.0)
+    _mock_dfp_with_dividends(monkeypatch, [_dividend_row(0.0, "6.03.05", "Dividendos pagos")])
+
+    template, _ = fetch_equity_template_live("SAUD3", NON_FINANCIAL_CNPJ, 2025, "fake-key", None)
+
+    assert template["financials"]["dividend_per_share"] == 0.0
+
+
+def test_fetch_equity_without_dividend_line_leaves_dividend_per_share_unset(monkeypatch):
+    _bolsai_with_shares(monkeypatch, 1_000_000_000.0)
+    _mock_dfp_with_dividends(monkeypatch, [])
+
+    template, resultado = fetch_equity_template_live(
+        "ABCB4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+
+    assert "dividend_per_share" not in template["financials"]
+    assert "dividend_per_share" not in resultado.fetched_fields
+    assert any("Dividendos pagos não encontrados" in w for w in resultado.warnings)
+
+
+def test_fetch_equity_without_share_count_does_not_guess_dividend_per_share(monkeypatch):
+    _bolsai_with_shares(monkeypatch, None)
+    _mock_dfp_with_dividends(monkeypatch, [_dividend_row(-957000.0)])
+
+    template, resultado = fetch_equity_template_live(
+        "KLBN4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+
+    assert "dividend_per_share" not in template["financials"]
+    assert any("número de ações" in w for w in resultado.warnings)
+
+
+def test_bolsai_parser_reads_shares_outstanding():
+    import json
+
+    from iip.sources.b3_bolsai import parse_fundamentals_response
+
+    body = json.dumps({"ticker": "CXSE3", "shares_outstanding": 3000000000}).encode()
+
+    assert parse_fundamentals_response(body).shares_outstanding == 3_000_000_000.0
+    assert parse_fundamentals_response(b'{"ticker": "X"}').shares_outstanding is None

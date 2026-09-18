@@ -66,6 +66,9 @@ class BolsaiFundamentals:
     lpa: float | None
     vpa: float | None
     ebitda: float | None
+    # Total shares (all classes). Absolute count, no scale trap unlike CVM's
+    # composição de capital (which mixes thousands and units per company).
+    shares_outstanding: float | None = None
 
 
 @dataclass(frozen=True)
@@ -144,6 +147,7 @@ def parse_fundamentals_response(body: bytes) -> BolsaiFundamentals:
         lpa=_as_float(raw.get("lpa")),
         vpa=_as_float(raw.get("vpa")),
         ebitda=_as_float(raw.get("ebitda")),
+        shares_outstanding=_as_float(raw.get("shares_outstanding")),
     )
 
 
