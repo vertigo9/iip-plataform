@@ -391,13 +391,16 @@ def fetch_equity_template_live(
         CNPJ predates the 2023 Aliansce+BrMalls merger) — cross-check
         before treating as a clean organic growth signal.
 
-    ``debt_to_equity`` is deliberately NOT computed here: CVM's DFP
-    doesn't cleanly separate interest-bearing debt from other
-    liabilities (provisions, deferred taxes...) at a stable label
-    across sectors, and a total-liabilities/equity proxy would
-    systematically and misleadingly penalize banks/insurers, whose
-    business model is intentionally leveraged. Left at the analyzer's
-    default rather than invented.
+      - ``current_ratio``, ``debt_to_equity``, ``interest_coverage`` —
+        from CVM's standard-chart lines (circulante; "Empréstimos e
+        Financiamentos" short + long term; "Despesas Financeiras").
+        Revises this function's earlier call to leave ``debt_to_equity``
+        out: checked live, that label IS stable across the 10
+        non-financial portfolio companies. Banks/insurers don't carry
+        those lines under those labels, so they stay at the default
+        (their leverage is the business model, not a financing choice).
+        A debt total of zero is treated as unavailable, not as "no
+        debt" (ALOS3 files its debt outside those lines).
 
     Qualitative/judgment fields (moat, governance, management quality,
     pricing power, WACC, detailed cash flow...) remain at the
@@ -515,6 +518,24 @@ def fetch_equity_template_live(
             )
             fetched.append("invested_capital")
 
+        resilience = (
+            ("current_ratio", current.current_ratio),
+            ("debt_to_equity", current.debt_to_equity),
+            ("interest_coverage", current.interest_coverage),
+        )
+        for field_name, value in resilience:
+            if value is not None:
+                financials[field_name] = value
+                fetched.append(field_name)
+        missing = [name for name, value in resilience if value is None]
+        if missing:
+            warnings.append(
+                f"{'/'.join(missing)} não derivável(is) do balanço padrão da "
+                "CVM (esperado para bancos/seguradoras, ou quando a dívida "
+                "financeira não aparece nas linhas padrão) — continuam no "
+                "valor-padrão."
+            )
+
     ano_base = ano - 3
     baseline = None
     try:
@@ -552,8 +573,7 @@ def fetch_equity_template_live(
 
     warnings.append(
         "Campos qualitativos/de julgamento (moat, governança, gestão, poder "
-        "de precificação, WACC, fluxo de caixa detalhado, debt_to_equity "
-        "etc.) continuam com os valores-padrão do analisador — não são "
+        "de precificação, WACC, fluxo de caixa detalhado etc.) continuam com os valores-padrão do analisador — não são "
         "derivados de demonstrações financeiras estruturadas."
     )
 

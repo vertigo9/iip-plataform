@@ -20,6 +20,8 @@ DRE_HEADER = "CNPJ_CIA;DT_REFER;VERSAO;DENOM_CIA;CD_CVM;GRUPO_DFP;MOEDA;ESCALA_M
 NON_FINANCIAL_CNPJ = "89.637.490/0001-45"
 BANK_CNPJ = "28.195.667/0001-06"
 HOLDING_CNPJ = "17.344.597/0001-94"
+# Loan lines all zero despite real financial expense (ALOS3 in the real data).
+ZERO_DEBT_CNPJ = "05.878.397/0001-32"
 
 
 def _row(cnpj, ordem, cd_conta, ds_conta, valor, *, dre=False):
@@ -39,6 +41,9 @@ def make_zip() -> bytes:
             _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "1", "Ativo Total", "63796777"),
             _row(NON_FINANCIAL_CNPJ, "PENÚLTIMO", "1", "Ativo Total", "60000000"),
             _row(HOLDING_CNPJ, "ÚLTIMO", "1", "Ativo Total", "23097696"),
+            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "1.01", "Ativo Circulante", "18049685"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "1", "Ativo Total", "30000000"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "1.01", "Ativo Circulante", "3316531"),
         ]
         zf.writestr(
             "dfp_cia_aberta_BPA_con_2025.csv",
@@ -63,6 +68,13 @@ def make_zip() -> bytes:
             _row(NON_FINANCIAL_CNPJ, "PENÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "13000000"),
             _row(HOLDING_CNPJ, "ÚLTIMO", "2", "Passivo Total", "23097696"),
             _row(HOLDING_CNPJ, "ÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "10384393"),
+            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.01.04", "Empréstimos e Financiamentos", "1770665"),
+            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.02.01", "Empréstimos e Financiamentos", "34950377"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2", "Passivo Total", "30000000"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.01", "Passivo Circulante", "1284420"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.01.04", "Empréstimos e Financiamentos", "0"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.02.01", "Empréstimos e Financiamentos", "0"),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "18000000"),
         ]
         zf.writestr(
             "dfp_cia_aberta_BPP_con_2025.csv",
@@ -88,6 +100,11 @@ def make_zip() -> bytes:
             _row(NON_FINANCIAL_CNPJ, "PENÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "1500000", dre=True),
             _row(HOLDING_CNPJ, "ÚLTIMO", "3.01", "Receitas das Atividades Seguradoras/Resseguradoras", "0", dre=True),
             _row(HOLDING_CNPJ, "ÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "9017329", dre=True),
+            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "3.06.02", "Despesas Financeiras", "-2628543", dre=True),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.01", "Receita de Venda de Bens e/ou Serviços", "5000000", dre=True),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.05", "Resultado Antes do Resultado Financeiro e dos Tributos", "1539360", dre=True),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.06.02", "Despesas Financeiras", "-1010822", dre=True),
+            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "900000", dre=True),
         ]
         zf.writestr(
             "dfp_cia_aberta_DRE_con_2025.csv",
@@ -167,3 +184,51 @@ def test_holding_company_zeroed_revenue_is_treated_as_unavailable(parsed):
 def test_unknown_cnpj_returns_none(parsed):
     result = extract_fundamentals(2025, "00.000.000/0000-00", **parsed)
     assert result is None
+
+
+def test_resilience_ratios_from_standard_chart_lines(parsed):
+    result = extract_fundamentals(2025, NON_FINANCIAL_CNPJ, **parsed)
+    assert result is not None
+    assert result.divida_bruta == 1770665.0 + 34950377.0
+    assert result.despesas_financeiras == -2628543.0
+    assert result.current_ratio == pytest.approx(18049685 / 8767398, abs=1e-4)
+    assert result.debt_to_equity == pytest.approx(36721042 / 14401101, abs=1e-4)
+    # expense is stored negative (as reported); coverage must still be positive.
+    assert result.interest_coverage == pytest.approx(4480349 / 2628543, abs=1e-4)
+
+
+def test_zero_debt_lines_are_unavailable_not_a_real_zero(parsed):
+    result = extract_fundamentals(2025, ZERO_DEBT_CNPJ, **parsed)
+    assert result is not None
+    assert result.divida_bruta == 0.0
+    assert result.debt_to_equity is None
+    # the other ratios of the same company are still real
+    assert result.current_ratio == pytest.approx(3316531 / 1284420, abs=1e-4)
+    assert result.interest_coverage == pytest.approx(1539360 / 1010822, abs=1e-4)
+
+
+def test_financial_institutions_get_no_resilience_ratios(parsed):
+    for cnpj in (BANK_CNPJ, HOLDING_CNPJ):
+        result = extract_fundamentals(2025, cnpj, **parsed)
+        assert result is not None
+        assert result.current_ratio is None
+        assert result.debt_to_equity is None
+        assert result.interest_coverage is None
+
+
+def test_ratios_guard_non_positive_denominators():
+    from iip.sources.cvm_dfp import CompanyFundamentals
+
+    base = {
+        "cnpj_cia": "x", "ano_referencia": 2025, "consolidado": True,
+        "ativo_total": 1.0, "patrimonio_liquido": 100.0, "receita": 1.0,
+        "lucro_liquido": 1.0, "ebit": -50.0, "passivo_nao_circulante": 1.0,
+        "ativo_circulante": 10.0, "passivo_circulante": 0.0,
+        "divida_bruta": 40.0, "despesas_financeiras": -10.0,
+    }
+    ok = CompanyFundamentals(**base)
+    assert ok.current_ratio is None  # zero current liabilities
+    assert ok.interest_coverage == -5.0  # negative EBIT is a real, negative coverage
+    assert ok.debt_to_equity == 0.4
+    negative_equity = CompanyFundamentals(**{**base, "patrimonio_liquido": -5.0})
+    assert negative_equity.debt_to_equity is None

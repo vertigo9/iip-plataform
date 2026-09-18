@@ -1,3 +1,5 @@
+import pytest
+
 from iip.cli.fetch_template import fetch_equity_template_live
 from iip.sources.b3_bolsai import BolsaiFundamentals
 from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFundamentals
@@ -130,7 +132,25 @@ def test_fetch_equity_treats_zeroed_holding_revenue_as_unavailable(monkeypatch):
     assert any("Receita" in w and "zerada" in w for w in resultado.warnings)
 
 
-def test_fetch_equity_never_fills_debt_to_equity(monkeypatch):
+def test_fetch_equity_fills_debt_to_equity_from_standard_dfp_lines(monkeypatch):
+    def fake_bolsai(self, target):
+        raise RuntimeError("no bolsai in this test")
+
+    monkeypatch.setattr(BolsaiHTTPHarvester, "fetch", fake_bolsai)
+    _mock_dfp_with_fixture(monkeypatch)
+
+    template, resultado = fetch_equity_template_live(
+        "KLBN4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+    )
+    assert "debt_to_equity" in resultado.fetched_fields
+    assert template["financials"]["debt_to_equity"] == pytest.approx(
+        36721042 / 14401101, abs=1e-4
+    )
+
+
+def test_fetch_equity_never_reports_zero_debt_total_as_debt_to_equity(monkeypatch):
+    from tests.test_cvm_dfp import ZERO_DEBT_CNPJ
+
     def fake_bolsai(self, target):
         raise RuntimeError("no bolsai in this test")
 
@@ -138,9 +158,10 @@ def test_fetch_equity_never_fills_debt_to_equity(monkeypatch):
     _mock_dfp_with_fixture(monkeypatch)
 
     _template, resultado = fetch_equity_template_live(
-        "KLBN4", NON_FINANCIAL_CNPJ, 2025, "fake-key", None
+        "ALOS3", ZERO_DEBT_CNPJ, 2025, "fake-key", None
     )
     assert "debt_to_equity" not in resultado.fetched_fields
+    assert any("debt_to_equity" in w for w in resultado.warnings)
 
 
 def test_fetch_equity_computes_real_3y_cagr_from_two_distinct_dfp_years(monkeypatch):

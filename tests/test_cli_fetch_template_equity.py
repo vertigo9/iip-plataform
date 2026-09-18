@@ -8,7 +8,12 @@ from iip.config import get_settings
 from iip.sources.b3_bolsai import BolsaiFundamentals
 from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFundamentals
 from iip.sources.cvm_dfp_harvester import CvmDfpHTTPHarvester
-from tests.test_cvm_dfp import NON_FINANCIAL_CNPJ, make_zip
+from tests.test_cvm_dfp import (
+    BANK_CNPJ,
+    NON_FINANCIAL_CNPJ,
+    ZERO_DEBT_CNPJ,
+    make_zip,
+)
 
 CNPJ = NON_FINANCIAL_CNPJ
 
@@ -146,6 +151,52 @@ def test_fetch_template_equity_fills_real_dfp_fundamentals(monkeypatch, tmp_path
     assert data["financials"]["equity"] == 14401101.0
     assert data["financials"]["net_income"] == 1678211.0
     assert data["financials"]["revenue"] == 20697507.0
+
+
+def _run_equity_template(monkeypatch, tmp_path, cnpj):
+    monkeypatch.setenv("IIP_BOLSAI_API_KEY", "fake-key")
+    monkeypatch.setattr(
+        BolsaiHTTPHarvester,
+        "fetch",
+        lambda self, target: FetchedFundamentals(
+            target=target, status_code=200, fundamentals=fake_fundamentals()
+        ),
+    )
+    out_file = tmp_path / "out.json"
+    result = CliRunner().invoke(
+        cli,
+        ["fetch-template", "KLBN4", "--type", "equity", "--cnpj", cnpj,
+         "--ano", "2025", "-o", str(out_file)],
+    )
+    assert result.exit_code == 0, result.output
+    return json.loads(out_file.read_text(encoding="utf-8")), result.output
+
+
+def test_fetch_template_equity_fills_resilience_ratios(monkeypatch, tmp_path):
+    data, _ = _run_equity_template(monkeypatch, tmp_path, CNPJ)
+    fin = data["financials"]
+    assert fin["current_ratio"] == pytest.approx(18049685 / 8767398, abs=1e-4)
+    assert fin["debt_to_equity"] == pytest.approx(36721042 / 14401101, abs=1e-4)
+    assert fin["interest_coverage"] == pytest.approx(4480349 / 2628543, abs=1e-4)
+
+
+def test_fetch_template_equity_keeps_defaults_for_unavailable_ratios(
+    monkeypatch, tmp_path
+):
+    from iip.cli.fetch_template import _equity_defaults
+
+    defaults = _equity_defaults()
+    for cnpj in (BANK_CNPJ, ZERO_DEBT_CNPJ):
+        data, _ = _run_equity_template(monkeypatch, tmp_path, cnpj)
+        fin = data["financials"]
+        # bank: nothing derivable; ZERO_DEBT: real current ratio and
+        # coverage, but the zero debt total must NOT become debt_to_equity=0.
+        assert fin["debt_to_equity"] == defaults["debt_to_equity"]
+        if cnpj == BANK_CNPJ:
+            assert fin["current_ratio"] == defaults["current_ratio"]
+            assert fin["interest_coverage"] == defaults["interest_coverage"]
+        else:
+            assert fin["current_ratio"] == pytest.approx(3316531 / 1284420, abs=1e-4)
 
 
 def test_fetch_template_fii_still_requires_cnpj(tmp_path):

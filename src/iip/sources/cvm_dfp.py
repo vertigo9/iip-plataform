@@ -50,6 +50,17 @@ text instead, wherever the code position isn't provably fixed:
     financial institutions rather than approximated from an unrelated
     line — same "don't invent" call as the equity/holding case above.
 
+RESILIENCE FIELDS (added 18/09/2026) -- ``current_ratio``,
+``debt_to_equity`` and ``interest_coverage`` are derived from the
+standard-chart lines above. This revises the earlier call to leave
+``debt_to_equity`` out (no stable label for interest-bearing debt):
+checked live against 10 non-financial portfolio companies (KLBN,
+VBBR, CPFE, ISAE, CMIG, PASS, LEVE, FESA, CSUD, ALOS), the CVM
+standard chart DOES carry it at ``2.01.04`` + ``2.02.01``. One real
+exception stays handled, not ignored: ALOS3's loan lines are all zero
+while it pays R$ 1 bi of financial expense, so a zero debt total is
+reported as unavailable (see ``CompanyFundamentals.debt_to_equity``).
+
 Same request/response split as the other sources: this module builds
 the request URL and parses the response; it performs no HTTP request
 itself (see ``.cvm_dfp_harvester`` for the transport).
@@ -106,6 +117,53 @@ class CompanyFundamentals:
     lucro_liquido: float | None
     ebit: float | None
     passivo_nao_circulante: float | None
+    ativo_circulante: float | None = None
+    passivo_circulante: float | None = None
+    # Sum of the two standard "Empréstimos e Financiamentos" lines
+    # (2.01.04 short-term + 2.02.01 long-term, each already including
+    # debêntures and lease financing as children). ``None`` unless BOTH
+    # lines are present with that exact label.
+    divida_bruta: float | None = None
+    # As reported: a negative number (an expense).
+    despesas_financeiras: float | None = None
+
+    @property
+    def current_ratio(self) -> float | None:
+        """Ativo circulante / passivo circulante, in "times" (the unit
+        ``EquityAnalyzer`` scores). ``None`` when either side is missing
+        or the denominator isn't positive."""
+        if self.ativo_circulante is None or not self.passivo_circulante:
+            return None
+        if self.passivo_circulante <= 0:
+            return None
+        return round(self.ativo_circulante / self.passivo_circulante, 4)
+
+    @property
+    def debt_to_equity(self) -> float | None:
+        """Gross financial debt / equity, as a plain ratio (0.5 = 50%).
+
+        A total of ZERO is reported as ``None``, never as a real 0:
+        confirmed live (ALOS3, 2025) a company can show every standard
+        loan line at 0 while carrying R$ 1 bi of financial expense --
+        its debt sits under "Outras Obrigações" instead. "No debt" is
+        therefore not something this module can prove from the standard
+        lines alone, and a fabricated 0 would score as a perfect
+        balance sheet."""
+        if not self.divida_bruta or self.divida_bruta <= 0:
+            return None
+        if not self.patrimonio_liquido or self.patrimonio_liquido <= 0:
+            return None
+        return round(self.divida_bruta / self.patrimonio_liquido, 4)
+
+    @property
+    def interest_coverage(self) -> float | None:
+        """EBIT / financial expenses, in "times". ``None`` for financial
+        institutions (no EBIT line, see module docstring) or when there
+        is no financial expense to divide by. Can be negative (EBIT
+        below zero) -- that is a real, meaningful coverage."""
+        if self.ebit is None or not self.despesas_financeiras:
+            return None
+        return round(self.ebit / abs(self.despesas_financeiras), 4)
 
 
 def build_target(ano: int) -> CvmDfpTarget:
@@ -247,6 +305,37 @@ def _find_passivo_nao_circulante(rows: tuple[DfpRow, ...]) -> DfpRow | None:
     return candidates[0] if candidates else None
 
 
+def _find_exact(
+    rows: tuple[DfpRow, ...], cd_conta: str, ds_conta: str
+) -> DfpRow | None:
+    """Match on BOTH the account code and its exact (normalized)
+    description. Confirmed live across 10 non-financial portfolio
+    companies that these standard-chart lines are stable
+    (``2.01.04``/``2.02.01`` "Empréstimos e Financiamentos",
+    ``3.06.02`` "Despesas Financeiras", ``1.01``/``2.01`` circulante);
+    requiring the description too is what keeps banks and insurers --
+    whose same-numbered accounts mean something else -- from matching."""
+    target = _normalize_text(ds_conta)
+    return next(
+        (
+            r
+            for r in rows
+            if r.cd_conta == cd_conta and _normalize_text(r.ds_conta) == target
+        ),
+        None,
+    )
+
+
+def _divida_bruta(bpp_rows: tuple[DfpRow, ...]) -> float | None:
+    curto = _find_exact(bpp_rows, "2.01.04", "Empréstimos e Financiamentos")
+    longo = _find_exact(bpp_rows, "2.02.01", "Empréstimos e Financiamentos")
+    if curto is None or longo is None:
+        return None
+    if curto.vl_conta is None or longo.vl_conta is None:
+        return None
+    return curto.vl_conta + longo.vl_conta
+
+
 def extract_fundamentals(
     ano: int,
     cnpj: str,
@@ -291,6 +380,9 @@ def extract_fundamentals(
     lucro = _find_lucro_liquido(dre_ultimo)
     ebit = _find_ebit(dre_ultimo)
     passivo_nc = _find_passivo_nao_circulante(bpp_ultimo)
+    ativo_circ = _find_exact(bpa_ultimo, "1.01", "Ativo Circulante")
+    passivo_circ = _find_exact(bpp_ultimo, "2.01", "Passivo Circulante")
+    desp_fin = _find_exact(dre_ultimo, "3.06.02", "Despesas Financeiras")
 
     return CompanyFundamentals(
         cnpj_cia=cnpj,
@@ -302,4 +394,8 @@ def extract_fundamentals(
         lucro_liquido=lucro.vl_conta if lucro else None,
         ebit=ebit.vl_conta if ebit else None,
         passivo_nao_circulante=passivo_nc.vl_conta if passivo_nc else None,
+        ativo_circulante=ativo_circ.vl_conta if ativo_circ else None,
+        passivo_circulante=passivo_circ.vl_conta if passivo_circ else None,
+        divida_bruta=_divida_bruta(bpp_ultimo),
+        despesas_financeiras=desp_fin.vl_conta if desp_fin else None,
     )
