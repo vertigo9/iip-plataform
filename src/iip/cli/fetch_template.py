@@ -204,13 +204,17 @@ def _enrich_fii_with_patria_fundamentos(
     """Best-effort enrichment from Pátria's real "Planilha de
     Fundamentos" spreadsheet (see
     ``iip.sources.patria_planilha_fundamentos``, added 18/09/2026) --
-    fills ``occupancy_rate``/``avg_lease_term_years`` with real data
-    for Pátria's "tijolo" (physical real-estate) funds. Confirmed live
-    for HGRU11/LVBI11/PVBI11; HGCR11/PCIP11 are credit funds and don't
-    have this sheet layout at all (no vacância/WALE/locatários
-    concept for a receivables fund), so this silently contributes
-    nothing for them via the ``fundamentos is None`` branch below --
-    not an error, not a gap unique to this function.
+    fills real data for Pátria's two sheet layouts:
+
+      - "tijolo" (physical real-estate) funds HGRU11/LVBI11/PVBI11:
+        ``occupancy_rate`` (1 - vacância financeira) and
+        ``avg_lease_term_years`` (WALE).
+      - credit funds HGCR11/PCIP11: only ``reserves_to_npa`` (reserva
+        acumulada por cota / VP por cota). Their sheet also carries
+        prazo médio/spread of the CRI portfolio, but those are NOT
+        mapped: a CRI portfolio's duration is not a lease term, so
+        feeding it to ``avg_lease_term_years`` would be a
+        semantically wrong number dressed up as a real one.
 
     No-ops entirely (returns ``financials`` unchanged, no warning) for
     any ticker without a Pátria MZIQ config at all -- this is called
@@ -237,22 +241,29 @@ def _enrich_fii_with_patria_fundamentos(
         )
         return financials, fetched, warnings
 
-    if result.fundamentos is None:
+    if result.fundamentos is None and result.credito is None:
         warnings.append(
-            "Planilha de Fundamentos da Pátria não tem o layout 'tijolo' "
-            "esperado (ou não há documento publicado ainda) — "
-            "occupancy_rate/avg_lease_term_years continuam no valor-padrão."
+            "Planilha de Fundamentos da Pátria não tem o layout 'tijolo' nem "
+            "o de crédito esperado (ou não há documento publicado ainda) — "
+            "occupancy_rate/avg_lease_term_years/reserves_to_npa continuam "
+            "no valor-padrão."
         )
         return financials, fetched, warnings
 
     financials = dict(financials)
-    fund = result.fundamentos
-    if fund.occupancy_rate is not None:
-        financials["occupancy_rate"] = fund.occupancy_rate
-        fetched.append("occupancy_rate")
-    if fund.wale_anos is not None:
-        financials["avg_lease_term_years"] = round(fund.wale_anos, 2)
-        fetched.append("avg_lease_term_years")
+    if result.fundamentos is not None:
+        fund = result.fundamentos
+        if fund.occupancy_rate is not None:
+            financials["occupancy_rate"] = fund.occupancy_rate
+            fetched.append("occupancy_rate")
+        if fund.wale_anos is not None:
+            financials["avg_lease_term_years"] = round(fund.wale_anos, 2)
+            fetched.append("avg_lease_term_years")
+    else:
+        reserves = result.credito.reserves_to_npa
+        if reserves is not None:
+            financials["reserves_to_npa"] = reserves
+            fetched.append("reserves_to_npa")
 
     return financials, fetched, warnings
 
@@ -271,7 +282,8 @@ def fetch_fii_template_live(
     optional (the CVM-only fields still get filled).
 
     Also tries a Pátria-specific enrichment (real occupancy_rate/
-    avg_lease_term_years for HGRU11/LVBI11/PVBI11 — see
+    avg_lease_term_years for HGRU11/LVBI11/PVBI11, reserves_to_npa for
+    HGCR11/PCIP11 — see
     ``_enrich_fii_with_patria_fundamentos``) — best-effort, same
     never-raises-on-failure treatment as the bolsai price lookup.
     """

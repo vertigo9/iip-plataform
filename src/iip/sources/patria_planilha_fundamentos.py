@@ -34,9 +34,15 @@ funds (CRI), and their "Resumo" sheet is a completely different
 template (yield curve sensitivity table, % PL by asset class -- no
 WALE, no vacância, no locatários at all, since those concepts don't
 apply to a credit fund). ``parse_resumo_tijolo`` returns ``None`` for
-these rather than guessing at a wrong shape -- a genuinely different
-extractor would be needed for the credit-fund template, not attempted
-here.
+these rather than guessing at a wrong shape; the credit template has
+its own extractor, ``parse_resumo_credito`` (added 18/09/2026, checked
+live against HGCR11 and PCIP11 for 07/2026). Its layout differs in
+kind, not just in labels: PL / valor de mercado carry their value to
+the RIGHT of the label (same row), most other indicators sit one row
+BELOW their header, and the portfolio composition is a table keyed by
+a "% PL" header whose row labels sit one column to its left. Cells are
+located by label text, never by coordinate (the two funds' blocks are
+offset by one column from each other).
 
 REAL UNIT GOTCHA (confirmed live, would have been a silent 1000x
 error): "Patrimônio líquido" and "Valor de Mercado" are unitless raw
@@ -142,6 +148,14 @@ def _int(cell) -> int | None:
     return int(value) if value is not None else None
 
 
+def _find_competencia(ws) -> date | None:
+    for row in ws.iter_rows(min_row=1, max_row=6):
+        for cell in row:
+            if hasattr(cell.value, "date"):
+                return cell.value.date()
+    return None
+
+
 def is_tijolo_layout(ws) -> bool:
     """True when this sheet has every label the "tijolo" Resumo
     template requires -- used to distinguish HGRU11/LVBI11/PVBI11's
@@ -173,14 +187,7 @@ def parse_resumo_tijolo(workbook, ticker: str) -> FundamentosPlanilha | None:
     if not is_tijolo_layout(ws):
         return None
 
-    competencia = None
-    for row in ws.iter_rows(min_row=1, max_row=6):
-        for cell in row:
-            if hasattr(cell.value, "date"):
-                competencia = cell.value.date()
-                break
-        if competencia:
-            break
+    competencia = _find_competencia(ws)
 
     return FundamentosPlanilha(
         ticker=ticker.strip().upper(),
@@ -196,4 +203,144 @@ def parse_resumo_tijolo(workbook, ticker: str) -> FundamentosPlanilha | None:
         p_vp=_num(_find_value_below_label(ws, "p/vp")),
         dy_mercado=_num(_find_value_below_label(ws, "dy (mercado)")),
         dy_patrimonial=_num(_find_value_below_label(ws, "dy (patrimonial)")),
+    )
+
+
+# --- credit-fund ("recebíveis") layout: HGCR11, PCIP11 ---------------------
+
+_CREDITO_REQUIRED_LABELS = (
+    "patrimonio liquido",
+    "valor de mercado",
+    "tabela de sensibilidade",
+    "% pl",
+    "prazo medio (anos)",
+    "spread",
+)
+
+
+@dataclass(frozen=True)
+class CreditoPlanilha:
+    ticker: str
+    competencia: date | None
+    patrimonio_liquido: float | None  # BRL, raw (never "milhões")
+    valor_mercado: float | None  # BRL, raw
+    vp_cota: float | None  # R$/cota
+    preco_cota: float | None  # R$/cota
+    rendimento_cota: float | None  # R$/cota, last month
+    reserva_acumulada_cota: float | None  # R$/cota
+    n_cotistas: int | None
+    pct_pl_cri: float | None  # fraction of PL in CRI + structured ops
+    pct_pl_fii: float | None
+    pct_pl_caixa: float | None
+    yield_ipca_carteira: float | None  # fraction, real yield over IPCA
+    prazo_medio_carteira_anos: float | None
+    spread_carteira: float | None  # fraction
+
+    @property
+    def reserves_to_npa(self) -> float | None:
+        """Accumulated reserve per cota over net asset value per cota
+        -- the same "reserve relative to net assets" meaning as
+        ``FIIAnalyzer``'s ``reserves_to_npa`` (a fraction: the score
+        multiplies it by 100)."""
+        if self.reserva_acumulada_cota is None or not self.vp_cota:
+            return None
+        return round(self.reserva_acumulada_cota / self.vp_cota, 6)
+
+
+def _find_cell(ws, *label_variants: str):
+    targets = {_normalize_text(v) for v in label_variants}
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value is not None and _normalize_text(str(cell.value)) in targets:
+                return cell
+    return None
+
+
+def _cell_at(ws, cell, d_row: int, d_col: int):
+    if cell is None:
+        return None
+    return ws.cell(row=cell.row + d_row, column=cell.column + d_col)
+
+
+def _parse_composicao_table(ws) -> dict[str, dict[str, float | None]]:
+    """Read the "% PL / Yield / Prazo Médio / Spread" table: the header
+    row is the one holding a "% PL" cell, each row's label sits one
+    column to its left. "-" cells (rows with no data, e.g.
+    Compromissada) come back as ``None``."""
+
+    header = _find_cell(ws, "% pl")
+    if header is None:
+        return {}
+    columns = {
+        _normalize_text(str(c.value)): c.column
+        for c in ws[header.row]
+        if c.value is not None
+    }
+    label_col = header.column - 1
+    rows: dict[str, dict[str, float | None]] = {}
+    for r in range(header.row + 1, header.row + 12):
+        label = ws.cell(row=r, column=label_col).value
+        if label is None:
+            break
+        rows[_normalize_text(str(label))] = {
+            name: _num(ws.cell(row=r, column=col)) for name, col in columns.items()
+        }
+    return rows
+
+
+def _row_starting_with(rows: dict[str, dict[str, float | None]], prefix: str):
+    for label, values in rows.items():
+        if label.startswith(prefix):
+            return values
+    return {}
+
+
+def is_credito_layout(ws) -> bool:
+    found = set()
+    for row in ws.iter_rows():
+        for cell in row:
+            if cell.value is not None:
+                found.add(_normalize_text(str(cell.value)))
+    return all(
+        any(label in text for text in found) for label in _CREDITO_REQUIRED_LABELS
+    )
+
+
+def parse_resumo_credito(workbook, ticker: str) -> CreditoPlanilha | None:
+    """Extract the credit-fund Resumo sheet (see module docstring).
+    Returns ``None`` if there is no "Resumo" sheet or it doesn't match
+    the credit layout -- e.g. a "tijolo" fund's sheet."""
+
+    if "Resumo" not in workbook.sheetnames:
+        return None
+    ws = workbook["Resumo"]
+    if not is_credito_layout(ws):
+        return None
+
+    pl = _find_cell(ws, "patrimonio liquido")
+    vm = _find_cell(ws, "valor de mercado")
+    tabela = _parse_composicao_table(ws)
+    cri = _row_starting_with(tabela, "cri")
+    fii = _row_starting_with(tabela, "fii")
+    caixa = _row_starting_with(tabela, "caixa")
+    carteira = _row_starting_with(tabela, "carteira")
+
+    return CreditoPlanilha(
+        ticker=ticker.strip().upper(),
+        competencia=_find_competencia(ws),
+        patrimonio_liquido=_normalized_brl(_cell_at(ws, pl, 0, 1)),
+        valor_mercado=_normalized_brl(_cell_at(ws, vm, 0, 1)),
+        vp_cota=_num(_cell_at(ws, pl, 0, 2)),
+        preco_cota=_num(_cell_at(ws, vm, 0, 2)),
+        rendimento_cota=_num(_find_value_below_label(ws, "rendimento por cota")),
+        reserva_acumulada_cota=_num(
+            _find_value_below_label(ws, "reserva acumulada")
+        ),
+        n_cotistas=_int(_find_value_below_label(ws, "numero de cotistas")),
+        pct_pl_cri=cri.get("% pl"),
+        pct_pl_fii=fii.get("% pl"),
+        pct_pl_caixa=caixa.get("% pl"),
+        yield_ipca_carteira=carteira.get("yield (ipca +)"),
+        prazo_medio_carteira_anos=carteira.get("prazo medio (anos)"),
+        spread_carteira=carteira.get("spread"),
     )

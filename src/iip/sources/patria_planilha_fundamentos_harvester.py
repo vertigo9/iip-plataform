@@ -4,7 +4,8 @@ a given ticker -- finds the right MZIQ category from
 + "fundamentos" in a category's internal name, never hardcoding the
 exact per-fund slug string a second time here), lists its documents
 for the most recent year, downloads the newest one, and parses it with
-``iip.sources.patria_planilha_fundamentos.parse_resumo_tijolo``.
+``iip.sources.patria_planilha_fundamentos.parse_resumo_tijolo`` (real-
+estate funds) or, failing that, ``parse_resumo_credito`` (credit funds).
 
 Three real HTTP round-trips per call (years lookup, document listing,
 file download) -- reuses ``MziqHTTPHarvester`` for the first two (same
@@ -25,7 +26,12 @@ from urllib.request import Request, urlopen
 from .mziq import MziqDocument, build_documents_target, build_years_target
 from .mziq_harvester import MziqHTTPHarvester
 from .patria_mziq import fund_for_ticker
-from .patria_planilha_fundamentos import FundamentosPlanilha, parse_resumo_tijolo
+from .patria_planilha_fundamentos import (
+    CreditoPlanilha,
+    FundamentosPlanilha,
+    parse_resumo_credito,
+    parse_resumo_tijolo,
+)
 
 
 def _normalize(value: str) -> str:
@@ -47,6 +53,7 @@ class FetchedPlanilhaFundamentos:
     category: str
     document: MziqDocument | None
     fundamentos: FundamentosPlanilha | None
+    credito: CreditoPlanilha | None = None
 
 
 class PatriaPlanilhaFundamentosHTTPHarvester:
@@ -77,9 +84,10 @@ class PatriaPlanilhaFundamentosHTTPHarvester:
         a real configuration gap, not something to silently skip.
         Returns ``document=None``/``fundamentos=None`` (not an
         exception) when the category exists but genuinely has no
-        published documents yet, or when the sheet doesn't match the
-        "tijolo" layout (e.g. a credit fund) -- both real, expected
-        outcomes a caller should handle, not error paths.
+        published documents yet, or when the sheet matches neither the
+        "tijolo" nor the credit layout (``fundamentos`` and ``credito``
+        both ``None``) -- both real, expected outcomes a caller should
+        handle, not error paths.
         """
 
         fund = fund_for_ticker(ticker)
@@ -119,10 +127,12 @@ class PatriaPlanilhaFundamentosHTTPHarvester:
 
         workbook = openpyxl.load_workbook(io.BytesIO(body), data_only=True)
         fundamentos = parse_resumo_tijolo(workbook, ticker)
+        credito = None if fundamentos else parse_resumo_credito(workbook, ticker)
 
         return FetchedPlanilhaFundamentos(
             ticker=ticker.upper(),
             category=category,
             document=latest_document,
             fundamentos=fundamentos,
+            credito=credito,
         )
