@@ -637,6 +637,113 @@ def analyze_portfolio_command(
         raise SystemExit(1)
 
 
+def _valuation_cell(attempts, method) -> str:
+    attempt = next((a for a in attempts if a.method is method), None)
+    if attempt is None or attempt.snapshot is None:
+        return "—"
+    snapshot = attempt.snapshot
+    if snapshot.margin_of_safety is None:
+        return f"{snapshot.fair_value:.2f}"
+    return f"{snapshot.fair_value:.2f} ({snapshot.margin_of_safety:+.0%})"
+
+
+@cli.command("value-portfolio")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env). Só usado com --persist.",
+)
+@click.option(
+    "--ano",
+    type=int,
+    default=None,
+    help="Ano fiscal da DFP (padrão: ano anterior — a DFP só sai meses depois).",
+)
+@click.option(
+    "--persist",
+    is_flag=True,
+    default=False,
+    help="Grava no vault o primeiro método que produziu valor (a nota de score "
+    "guarda um só snapshot de valuation). Sem esta opção nada é gravado.",
+)
+def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -> None:
+    """Valuation da carteira: cada posição é avaliada por TODOS os métodos
+    que cabem nela (Graham, Bazin...), lado a lado, com valor e margem de
+    segurança contra o preço atual.
+
+    Bazin usa como taxa exigida o yield REAL atual da NTN-B longa (Tesouro
+    Transparente), buscado uma vez por rodada — nunca os 6% fixos. Sem a
+    taxa, Bazin fica sem valor e o motivo é mostrado.
+
+    Só avalia classes com método implementado (hoje ações); o resto aparece
+    como "pulado" com o motivo. Nunca inventa valor: onde nenhum método
+    produz, a linha diz por quê.
+    """
+    from iip.portfolio.batch_value import NO_METHOD_PREFIX, value_portfolio
+    from iip.portfolio_data.valuation import ValuationMethod
+
+    bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
+    brapi_token = _unwrap_secret(get_settings().brapi_token)
+    vault_path = vault or str(get_settings().obsidian_vault)
+
+    if not bolsai_key:
+        console.print("[dim]IIP_BOLSAI_API_KEY não definida — sem preço/LPA/VPA, Graham não calcula.[/]")
+
+    console.print("[dim]Avaliando carteira...[/]\n")
+    resultado = value_portfolio(
+        bolsai_api_key=bolsai_key,
+        brapi_token=brapi_token,
+        vault_path=vault_path,
+        persist=persist,
+        ano=ano,
+    )
+    console.print(f"[dim]{resultado.ntnb_note}[/]\n")
+
+    table = Table(title="Valuation da carteira — valor justo/teto (margem de segurança)")
+    table.add_column("Ticker")
+    table.add_column("Preço", justify="right")
+    table.add_column("Graham", justify="right")
+    table.add_column("Bazin (NTN-B)", justify="right")
+    table.add_column("Status")
+    table.add_column("Detalhe")
+
+    # Positions of a class with no implemented method would be N identical
+    # "pulado" rows; summarize them per class in one line instead.
+    class_skips: dict[str, list[str]] = {}
+    shown = []
+    for outcome in resultado.outcomes:
+        if outcome.status == "pulado" and outcome.detail.startswith(NO_METHOD_PREFIX):
+            class_skips.setdefault(outcome.detail, []).append(outcome.ticker)
+        else:
+            shown.append(outcome)
+
+    for outcome in shown:
+        cor = {"ok": "green", "erro": "red", "pulado": "yellow"}[outcome.status]
+        table.add_row(
+            outcome.ticker,
+            f"{outcome.price:.2f}" if outcome.price is not None else "—",
+            _valuation_cell(outcome.attempts, ValuationMethod.GRAHAM),
+            _valuation_cell(outcome.attempts, ValuationMethod.BAZIN),
+            f"[{cor}]{outcome.status}[/]",
+            outcome.detail[:70],
+        )
+
+    console.print(table)
+    for detail, tickers in class_skips.items():
+        console.print(f"[yellow]pulado[/] ({len(tickers)}): {detail} — {', '.join(tickers)}")
+    console.print(
+        f"\n[bold]Resumo:[/] {len(resultado.succeeded)} ok, "
+        f"{len(resultado.failed)} erro, {len(resultado.skipped)} pulado"
+    )
+    console.print(
+        "[dim]Valor justo não é recomendação: Graham parte do patrimônio (fraco para "
+        "tecnologia e ativos intangíveis); Bazin usa o caixa pago no ano fiscal.[/]"
+    )
+
+    if resultado.failed:
+        raise SystemExit(1)
+
+
 @cli.command()
 @click.argument("symbol")
 @click.option(

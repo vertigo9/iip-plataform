@@ -220,6 +220,12 @@ def evaluate_valuations(
     return tuple(attempts)
 
 
+def has_calculator(asset_class: str) -> bool:
+    """Whether any method catalogued for the class can actually be computed."""
+    methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower(), ())
+    return any(method in CALCULATORS for method in methods)
+
+
 def first_valuation(attempts: tuple[MethodAttempt, ...]) -> ValuationSnapshot | None:
     """The snapshot of the first method (in catalog order) that produced one."""
     return next((a.snapshot for a in attempts if a.snapshot is not None), None)
