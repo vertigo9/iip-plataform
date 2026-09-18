@@ -77,6 +77,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://btlg.btgpactual.com",
         indexation=("IPCA",),  # confirmado via busca (site oficial + agregador concordam; parte dos contratos)
         strategy="Logística",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável (apenas linguagem vaga de volatilidade).
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="11.839.593/0001-09",  # verificado ao vivo nesta sessão
     ),
@@ -90,6 +92,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://trxf11.com.br/relatorios-gerenciais-2",
         indexation=("IPCA", "IGP-M"),  # confirmado via busca (agregador; site oficial confirma mandato híbrido)
         strategy="Tijolo/Híbrido",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.548.288/0001-52",  # verificado via busca (multiplas fontes concordam)
     ),
@@ -103,6 +107,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://realestate.patria.com/tijolo/hgru",
         indexation=("IPCA",),  # confirmado via busca (2 fontes independentes, uma com percentual preciso: 99,36% dos contratos)
         strategy="Renda Urbana",
+        risk_profile="Médio",  # confirmado via busca (baixa confiança: blog agregador descreve como "perfil moderado", não é doc formal da gestora)
         classification_provenance=ClassificationProvenance.USER,
         cnpj="29.641.226/0001-53",  # verificado via busca
     ),
@@ -130,6 +135,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://sparta.com.br/juro11",
         indexation=("IPCA", "CDI"),  # confirmado via busca (agregador; site oficial confirma referência ao IMA-B 5)
         strategy="FI-Infra",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="42.730.834/0001-00",  # verificado via busca (multiplas fontes concordam)
     ),
@@ -157,6 +164,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://btgpactual.com/asset-management/.../BTCI11",
         indexation=("IPCA", "CDI"),  # confirmado via busca (2 fontes agregadoras concordam: IPCA predominante, CDI secundário)
         strategy="Papel/Crédito Imobiliário",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável ("high grade" descreve o crédito
+        # subjacente, não um tier baixo/médio/alto a nível de fundo).
         classification_provenance=ClassificationProvenance.USER,
         cnpj="09.552.812/0001-14",  # confirmado pelo usuario via extrato real da corretora
     ),
@@ -170,6 +180,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://valorainvest.com.br/fundo/vgip11",
         indexation=("IPCA",),  # confirmado via busca (site oficial: benchmark ligado a índices de inflação)
         strategy="CRI",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="34.197.811/0001-46",  # verificado via busca (5 fontes concordam)
     ),
@@ -188,6 +200,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://realestate.patria.com/papel/pcip11/",
         indexation=("IPCA",),  # confirmado via busca (fonte oficial: "CRI indexado a IPCA")
         strategy="CRI",
+        risk_profile="Médio",  # confirmado via busca (relatório XP: carteira de crédito descrita como "moderate risk"/perfil mais conservador)
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.729.197/0001-13",  # verificado via busca (2 fontes concordam)
     ),
@@ -204,6 +217,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         # em 2021 vs. 53% IPCA em relatório mais recente) -- sem indexador único
         # declarado a nível de fundo, diferente dos fundos de papel/crédito.
         strategy="Tijolo/Renda (Logística)",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="30.629.603/0001-18",  # verificado via busca (3 fontes concordam)
     ),
@@ -230,6 +245,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://capitaniainfra.com.br/cpti11",
         indexation=("IPCA",),  # confirmado via busca (site oficial + relatório mensal: "carrego bruto de IPCA + 8,56%")
         strategy="Debêntures Incentivadas",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável (apenas fatores de risco genéricos
+        # de crédito/mercado/liquidez, comuns a qualquer FI-Infra).
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="38.065.012/0001-77",  # verificado via busca (docs oficiais CVM/B3)
     ),
@@ -259,6 +277,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         # FNET/CVM + agregadores), sem indexador único declarado a nível de
         # fundo -- típico de tijolo, contratos variam por locatário/período.
         strategy="Tijolo/Renda (Shopping)",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável (fontes contraditórias: "perfil
+        # moderado e arrojado" vs. "fundo defensivo" no mesmo período).
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="32.892.018/0001-31",  # verificado via busca (muitas fontes concordam)
     ),
@@ -270,7 +291,14 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Shopping",
         manager="XP Asset",
         source_url="https://xpasset.com.br/fundos/xp-malls",
+        # indexation deliberadamente vazio: pesquisado (fiisimplificado.com.br +
+        # XP Asset), contratos de shopping distribuídos entre IPCA, IGP-M e CDI
+        # por propriedade/locatário, sem indexador único declarado a nível de
+        # fundo -- mesmo padrão de LVBI11/HSML11. (O "IPCA+6% a.a." que aparece
+        # em materiais da XP Malls é benchmark de taxa de performance, não
+        # indexador de contrato de locação -- não confundir.)
         strategy="Shopping Centers (aluguel mínimo + percentual sobre vendas)",
+        risk_profile="Médio",  # confirmado via busca (confiança média: agregador Rico aos Poucos, não é doc formal da gestora)
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.757.546/0001-00",  # verificado via busca (muitas fontes concordam)
     ),
@@ -296,6 +324,16 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Varejo / Renda Urbana",
         manager="Rio Bravo",
         source_url="https://riobravo.com.br/rbva11",
+        # indexation de baixa/média confiança: múltiplas buscas independentes
+        # sobre o relatório gerencial da Rio Bravo concordam na composição
+        # IPCA + IGP-M (sem CDI/IGP-DI), mas o PDF primário é digitalizado
+        # (não extraível) e os percentuais variam entre buscas e no tempo
+        # (~93% IGP-M/7% IPCA em 2021 vs. ~39% IPCA/61% IGP-M em set/2024) --
+        # por isso só a composição de dois índices é registrada, não a
+        # proporção. Revisão humana do PDF recomendada antes de usar em cálculo.
+        indexation=("IPCA", "IGP-M"),
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         strategy="Varejo de rua / Agências bancárias (Buy-to-Lease e Built-to-Suit)",
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="15.576.907/0001-70",  # verificado via busca (site oficial)
@@ -310,6 +348,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://realestate.patria.com/tijolo/pvbi11",
         indexation=("IPCA", "IGP-M"),  # confirmado via busca (2 fontes concordam: 84% IPCA / 16% IGP-M)
         strategy="Lajes Corporativas AAA (contratos típicos, Faria Lima/Itaim/Vila Olímpia)",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="35.652.102/0001-76",  # verificado via busca (doc oficial B3/FNET)
     ),
@@ -323,6 +363,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://alzr11.alianza.com.br",
         indexation=("IPCA",),  # confirmado via busca (relatórios gerenciais oficiais, IPCA em múltiplos imóveis; % do total não confirmado)
         strategy="Renda Urbana — contratos atípicos de longo prazo",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="28.737.771/0001-85",  # verificado via busca (site oficial)
     ),
@@ -336,6 +378,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://kinea.com.br/fundos/.../knri11",
         indexation=("IPCA", "IGP-M"),  # confirmado via busca (site oficial Kinea: "reajuste anual pela inflação, IGPM ou IPCA")
         strategy="Renda",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável (relatório XP usa "perfil defensivo"
+        # no título, mas "moderado a arrojado" no corpo -- inconsistente).
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="12.005.956/0001-65",  # verificado via busca
     ),
@@ -347,7 +392,15 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Shopping",
         manager="Hedge Investments",
         source_url="https://hedgeinvest.com.br/fundos/hgbs",
+        # indexation pesquisado, sem fonte fundo-nível confiável: os
+        # relatórios de gestão/informe trimestral da Hedge Investments (FNET)
+        # são digitalizados (não extraíveis por texto) e buscas independentes
+        # retornaram números inconsistentes entre si (IGP-DI dominante vs.
+        # IPCA 59% vs. sem percentuais) -- provável mistura heterogênea como
+        # LVBI11/HSML11 (mesmo perfil de shopping/tijolo), mas não confirmado.
         strategy="Renda",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="08.431.747/0001-06",  # verificado via busca (muitas fontes concordam)
     ),
@@ -361,6 +414,7 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         source_url="https://www.investoetf.com/etf/lftb11/",
         indexation=("Selic", "IPCA"),  # confirmado via busca (site oficial: cesta Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)
         strategy="Gestão passiva — réplica de cesta de títulos públicos (Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)",
+        risk_profile="Baixo",  # confirmado via busca (confiança média: réplica de títulos públicos, agregadores descrevem como baixa volatilidade/baixo risco; emissora não usa rótulo explícito)
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="56.176.507/0001-55",  # verificado ao vivo nesta sessão
     ),
@@ -377,6 +431,11 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         sector="Utilities",
         industry="Electric Utilities / Renewable",
         manager="Daycoval",
+        # risk_profile pesquisado, sem classificação explícita de risco
+        # encontrada para o fundo em si (apenas boilerplate genérico de
+        # fatores de risco de FMP-FGTS: mercado, juros, liquidez,
+        # concentração; "renda variável é considerada de alto risco" é
+        # categoria geral, não classificação específica deste fundo).
         classification_provenance=ClassificationProvenance.DATABASE,
         # CNPJ do FUNDO Daycoval FMP-FGTS Eletrobras (verificado via
         # busca, multiplas fontes concordam, inclusive documento do
