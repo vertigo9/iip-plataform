@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from io import BytesIO
 from urllib.request import Request, urlopen
 
+from . import btg_mziq, hsi_mziq, xp_mziq
 from .fii_vacancia import (
     VacanciaReading,
     latest_hedge_url,
@@ -16,6 +17,15 @@ from .fii_vacancia import (
     latest_trx_url,
     profile_for_ticker,
 )
+
+# gestoras cujos relatórios estão numa plataforma MZIQ: o módulo com a configuração
+# do fundo e o nome interno da categoria do relatório gerencial (a BTG escreve com
+# underscore e no plural, a XP também, a HSI com hífen e no singular)
+_MZIQ_REPORT_SOURCES = {
+    "BTLG11": (btg_mziq, "relatorios_gerenciais"),
+    "HSML11": (hsi_mziq, "relatorio-gerencial"),
+    "XPML11": (xp_mziq, "relatorios_gerenciais"),
+}
 
 
 @dataclass(frozen=True)
@@ -43,11 +53,10 @@ class FiiVacanciaHTTPHarvester:
         return response.read()
 
     def _latest_url(self, ticker: str) -> str | None:
-        from . import btg_mziq
         from .static_pdf_listing_harvester import StaticPdfListingHTTPHarvester
 
-        if btg_mziq.fund_for_ticker(ticker) is not None:
-            return self._latest_btg_url(ticker)
+        if ticker in _MZIQ_REPORT_SOURCES:
+            return self._latest_mziq_url(ticker)
         documents = StaticPdfListingHTTPHarvester(
             self._opener, timeout=self.timeout, user_agent=self.user_agent
         ).collect(ticker)
@@ -62,19 +71,23 @@ class FiiVacanciaHTTPHarvester:
             return latest_knri_url(urls)
         return None
 
-    def _latest_btg_url(self, ticker: str) -> str | None:
-        from .btg_mziq import build_documents_target, build_years_target
+    def _latest_mziq_url(self, ticker: str) -> str | None:
         from .mziq_harvester import MziqHTTPHarvester
 
+        source, report_category = _MZIQ_REPORT_SOURCES[ticker]
         mziq = MziqHTTPHarvester(
             self._opener, timeout=self.timeout, user_agent=self.user_agent
         )
         # do ano mais recente para trás: o primeiro com relatório gerencial publicado
-        for year in sorted(mziq.fetch_years(build_years_target(ticker)), reverse=True):
+        for year in sorted(
+            mziq.fetch_years(source.build_years_target(ticker)), reverse=True
+        ):
             reports = [
                 d
-                for d in mziq.fetch_documents(build_documents_target(ticker, year))
-                if d.category == "relatorios_gerenciais" and d.is_published and d.url
+                for d in mziq.fetch_documents(
+                    source.build_documents_target(ticker, year)
+                )
+                if d.category == report_category and d.is_published and d.url
             ]
             if reports:
                 return max(reports, key=lambda d: d.file_date or "").url
