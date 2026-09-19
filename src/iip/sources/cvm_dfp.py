@@ -134,6 +134,22 @@ class CompanyFundamentals:
     # BRL and positive. ``None`` when no such line is found or the scale is
     # unknown; a real ``0.0`` when the company reports paying nothing.
     dividendos_pagos: float | None = None
+    # Net income in absolute BRL (``lucro_liquido`` is in the statement's own
+    # scale, so it cannot be divided by ``dividendos_pagos`` directly).
+    lucro_liquido_brl: float | None = None
+
+    @property
+    def payout_ratio_pct(self) -> float | None:
+        """Dividends + JCP paid in the year over the year's net income, as a
+        PERCENT number (the unit ``EquityAnalyzer`` scores). ``None`` without
+        both figures or when net income is not positive (a payout over a loss
+        is meaningless). Can exceed 100 when a company pays out earnings of
+        earlier years -- reported as is, not capped."""
+        if self.dividendos_pagos is None or not self.lucro_liquido_brl:
+            return None
+        if self.lucro_liquido_brl <= 0:
+            return None
+        return round(self.dividendos_pagos / self.lucro_liquido_brl * 100, 2)
 
     @property
     def current_ratio(self) -> float | None:
@@ -364,11 +380,13 @@ def _dividendos_pagos(dfc_rows: tuple[DfpRow, ...]) -> float | None:
     not one of the exclusions above. Lines are summed; ``None`` if there are
     none or the currency scale is unknown (never guessed).
     """
+    return _sum_dividend_lines(tuple(r for r in dfc_rows if r.ordem_exerc == _ULTIMO))
+
+
+def _sum_dividend_lines(dfc_rows: tuple[DfpRow, ...]) -> float | None:
     total = 0.0
     found = False
     for r in dfc_rows:
-        if r.ordem_exerc != _ULTIMO:
-            continue
         if not r.cd_conta.startswith("6.03.") or r.cd_conta.count(".") != 2:
             continue
         if r.vl_conta is None or r.vl_conta > 0:
@@ -384,6 +402,65 @@ def _dividendos_pagos(dfc_rows: tuple[DfpRow, ...]) -> float | None:
         total += -r.vl_conta * factor
         found = True
     return total if found else None
+
+
+def dividend_history(
+    cnpj: str,
+    *,
+    dfc_con: tuple[DfpRow, ...],
+    dfc_ind: tuple[DfpRow, ...],
+) -> dict[int, float]:
+    """Dividends + JCP paid in the fiscal year a DFP file is FOR (absolute BRL).
+
+    Only the file's own year (``ÚLTIMO``) is read, never its prior-year column
+    (``PENÚLTIMO``): checked live, a prior-year comparative can be zeroed by
+    the filer (ABCB4's 2025 file reports every 2024 financing flow as 0 for a
+    bank that pays JCP every year), and a company can switch between the
+    consolidated and individual basis from one year to the next, so a later
+    file's comparative and an earlier file's own figure can be on different
+    bases. Each year therefore comes from its own file. Same consolidated-first
+    rule as ``extract_fundamentals``. A year with no dividend line is absent
+    from the result (unknown), never 0.
+    """
+    normalized = _normalize_cnpj(cnpj)
+    con = tuple(r for r in dfc_con if _normalize_cnpj(r.cnpj_cia) == normalized)
+    rows = con or tuple(r for r in dfc_ind if _normalize_cnpj(r.cnpj_cia) == normalized)
+    by_year: dict[int, list[DfpRow]] = {}
+    for r in rows:
+        if r.ordem_exerc != _ULTIMO:
+            continue
+        try:
+            year = int(r.dt_fim_exerc[:4])
+        except ValueError:
+            continue
+        by_year.setdefault(year, []).append(r)
+    history: dict[int, float] = {}
+    for year, year_rows in by_year.items():
+        total = _sum_dividend_lines(tuple(year_rows))
+        if total is not None:
+            history[year] = total
+    return history
+
+
+def consecutive_dividend_years(
+    history: dict[int, float], latest_year: int, window: int = 5
+) -> int | None:
+    """How many consecutive fiscal years, counting back from ``latest_year``,
+    the company paid dividends (> 0), looking at most ``window`` years.
+
+    ``None`` when ``latest_year`` itself is unknown. The count stops at the
+    first year that is zero OR missing from ``history`` -- an unknown year is
+    never assumed to be a payment. The result is capped by ``window``, so
+    ``window`` means "at least that many", not "exactly"."""
+    if latest_year not in history:
+        return None
+    streak = 0
+    for year in range(latest_year, latest_year - window, -1):
+        if history.get(year, 0.0) > 0:
+            streak += 1
+        else:
+            break
+    return streak
 
 
 def _divida_bruta(bpp_rows: tuple[DfpRow, ...]) -> float | None:
@@ -446,6 +523,7 @@ def extract_fundamentals(
     ativo_circ = _find_exact(bpa_ultimo, "1.01", "Ativo Circulante")
     passivo_circ = _find_exact(bpp_ultimo, "2.01", "Passivo Circulante")
     desp_fin = _find_exact(dre_ultimo, "3.06.02", "Despesas Financeiras")
+    lucro_factor = _ESCALA_FACTOR.get(lucro.escala) if lucro else None
 
     return CompanyFundamentals(
         cnpj_cia=cnpj,
@@ -462,4 +540,9 @@ def extract_fundamentals(
         divida_bruta=_divida_bruta(bpp_ultimo),
         despesas_financeiras=desp_fin.vl_conta if desp_fin else None,
         dividendos_pagos=_dividendos_pagos(dfc_rows),
+        lucro_liquido_brl=(
+            lucro.vl_conta * lucro_factor
+            if lucro and lucro.vl_conta is not None and lucro_factor
+            else None
+        ),
     )

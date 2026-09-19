@@ -7,8 +7,11 @@ so tests never download a real file.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
+import functools
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, replace
 from urllib.request import Request, urlopen
 
 from .cvm_dfp import (
@@ -93,3 +96,53 @@ class CvmDfpHTTPHarvester:
             body=body,
             final_url=final_url,
         )
+
+
+class CachedCvmDfpHarvester:
+    """Memoizes ``CvmDfpHTTPHarvester.fetch`` per fiscal year for the life of
+    the instance. A DFP ZIP covers EVERY listed company, so in a portfolio run
+    the same year is otherwise re-downloaded (~13 MB) once per equity. The raw
+    ``body`` is dropped from the cached copy to keep memory bounded; only the
+    parsed rows are needed."""
+
+    def __init__(self, inner: CvmDfpHTTPHarvester | None = None) -> None:
+        self._inner = inner or CvmDfpHTTPHarvester()
+        self._cache: dict[int, FetchedDfpYear] = {}
+
+    def fetch(self, target: CvmDfpTarget) -> FetchedDfpYear:
+        if target.ano not in self._cache:
+            self._cache[target.ano] = replace(self._inner.fetch(target), body=b"")
+        return self._cache[target.ano]
+
+
+_ACTIVE_CACHE: ContextVar[CachedCvmDfpHarvester | None] = ContextVar(
+    "iip_active_dfp_cache", default=None
+)
+
+
+def active_dfp_cache() -> CachedCvmDfpHarvester | None:
+    """The shared cache of the enclosing ``shared_dfp_cache()`` block, if any."""
+    return _ACTIVE_CACHE.get()
+
+
+@contextmanager
+def shared_dfp_cache() -> Iterator[CachedCvmDfpHarvester]:
+    """Within this block, ``fetch_equity_template_live`` reuses one cache, so a
+    batch downloads each fiscal year's DFP once instead of once per equity."""
+    cache = CachedCvmDfpHarvester()
+    token = _ACTIVE_CACHE.set(cache)
+    try:
+        yield cache
+    finally:
+        _ACTIVE_CACHE.reset(token)
+
+
+def with_shared_dfp_cache(func: Callable) -> Callable:
+    """Decorator form of ``shared_dfp_cache`` for batch entry points."""
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with shared_dfp_cache():
+            return func(*args, **kwargs)
+
+    return wrapper

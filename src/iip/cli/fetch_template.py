@@ -356,8 +356,13 @@ def fetch_equity_template_live(
     ano: int,
     bolsai_api_key: str | None,
     brapi_token: str | None,
+    dfp_harvester: Any = None,
 ) -> tuple[dict[str, Any], FetchResult]:
     """Fill what's honestly fillable for an equity from real data.
+
+    ``dfp_harvester`` (anything with ``.fetch(target)``) lets a batch share one
+    ``CachedCvmDfpHarvester`` so each fiscal year's ~13 MB DFP ZIP is downloaded
+    once per run instead of once per equity.
 
     RESOLVED (18/09/2026) — this function used to fill only price/
     market_cap/dividend_yield via bolsai/brapi, since bolsai's stock
@@ -415,10 +420,15 @@ def fetch_equity_template_live(
     from iip.sources.b3_brapi import build_target as _build_brapi_target
     from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
     from iip.sources.cvm_dfp import build_target as _build_cvm_dfp_target
+    from iip.sources.cvm_dfp import (
+        consecutive_dividend_years as _consecutive_dividend_years,
+    )
+    from iip.sources.cvm_dfp import dividend_history as _dividend_history
     from iip.sources.cvm_dfp import extract_fundamentals as _extract_dfp_fundamentals
     from iip.sources.cvm_dfp_harvester import (
         CvmDfpHTTPHarvester as _CvmDfpHTTPHarvester,
     )
+    from iip.sources.cvm_dfp_harvester import active_dfp_cache as _active_dfp_cache
 
     default_financials = _equity_defaults()
     financials = dict(default_financials)
@@ -482,8 +492,18 @@ def fetch_equity_template_live(
             "nenhum dado de preço buscado."
         )
 
+    harvester = dfp_harvester or _active_dfp_cache() or _CvmDfpHTTPHarvester()
+    dfp_by_year: dict[int, Any] = {}
+
+    def _load_dfp(target_ano: int):
+        # one download per fiscal year within this call (the current-year and
+        # dividend-history passes both need some of the same years)
+        if target_ano not in dfp_by_year:
+            dfp_by_year[target_ano] = harvester.fetch(_build_cvm_dfp_target(target_ano))
+        return dfp_by_year[target_ano]
+
     def _fetch_dfp(target_ano: int):
-        result = _CvmDfpHTTPHarvester().fetch(_build_cvm_dfp_target(target_ano))
+        result = _load_dfp(target_ano)
         return _extract_dfp_fundamentals(
             target_ano,
             cnpj,
@@ -575,6 +595,21 @@ def fetch_equity_template_live(
                 "bancos) — dividend_per_share não calculado."
             )
 
+        payout = current.payout_ratio_pct
+        if payout is not None:
+            financials["payout_ratio"] = payout
+            fetched.append("payout_ratio")
+            warnings.append(
+                "payout_ratio = dividendos e JCP PAGOS no ano fiscal ÷ lucro "
+                "líquido do mesmo ano (em %): pode passar de 100% quando a "
+                "empresa distribui lucros de anos anteriores."
+            )
+        elif current.dividendos_pagos is not None:
+            warnings.append(
+                "payout_ratio não calculado: lucro líquido do ano ausente ou "
+                "não positivo (payout sobre prejuízo não tem sentido)."
+            )
+
         resilience = (
             ("current_ratio", current.current_ratio),
             ("debt_to_equity", current.debt_to_equity),
@@ -627,6 +662,48 @@ def fetch_equity_template_live(
             f"Sem dado DFP de {ano_base} para calcular crescimento 3y — "
             "revenue/earnings/book_value_growth_3y continuam no valor-padrão."
         )
+
+    if current is not None:
+        # Years of dividend history: each year is read from ITS OWN DFP file
+        # (see cvm_dfp.dividend_history for why the prior-year comparative
+        # column is not used). A 5-year window is 5 files (ano and ano-3 are
+        # already loaded above); in a batch they come from the shared cache.
+        history: dict[int, float] = {}
+        for history_ano in range(ano, ano - 5, -1):
+            try:
+                loaded = _load_dfp(history_ano)
+            except Exception as exc:  # noqa: BLE001 — histórico é opcional; falha aqui não derruba o restante do template
+                warnings.append(
+                    f"não consegui buscar DFP da CVM de {history_ano} (para histórico de dividendos): {exc}"
+                )
+                continue
+            for year, value in _dividend_history(
+                cnpj, dfc_con=loaded.dfc_con, dfc_ind=loaded.dfc_ind
+            ).items():
+                history[year] = value
+
+        streak = _consecutive_dividend_years(history, ano, window=5)
+        if streak is not None:
+            financials["dividend_consistency_years"] = streak
+            fetched.append("dividend_consistency_years")
+            warnings.append(
+                f"dividend_consistency_years = anos consecutivos (até {ano}) com "
+                "dividendos/JCP pagos > 0, numa janela de no máximo 5 anos"
+                + (" — 5 significa 'pelo menos 5'." if streak >= 5 else ".")
+            )
+            broken_year = ano - streak
+            if (
+                streak < 5
+                and history.get(broken_year) == 0.0
+                and any(history.get(y, 0.0) > 0 for y in range(broken_year - 1, ano - 5, -1))
+            ):
+                warnings.append(
+                    f"dividend_consistency_years parou em {broken_year}, ano com "
+                    "dividendos = 0 na DFC, mas há anos anteriores pagantes na "
+                    "janela — confira: pode ser suspensão real ou só classificação "
+                    "diferente do fluxo de caixa (ex.: bancos lançam JCP/dividendos "
+                    "fora do financiamento; confirmado ao vivo no ABCB4)."
+                )
 
     warnings.append(
         "Campos qualitativos/de julgamento (moat, governança, gestão, poder "

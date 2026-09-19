@@ -20,6 +20,7 @@ from dataclasses import dataclass, field
 
 from iip.portfolio.refresh import PositionOutcome, _template_type_for
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
+from iip.sources.cvm_dfp_harvester import with_shared_dfp_cache
 
 # _template_type_for() usa "fiagro" (nome do dataset CVM); ANALYZERS
 # (iip.cli.main) usa "agro" (nome do analisador) -- mesma distinção já
@@ -74,6 +75,7 @@ class _BatchDeps:
     knowledge_bridge_cls: object = None
 
 
+@with_shared_dfp_cache
 def analyze_portfolio(
     *,
     bolsai_api_key: str | None,

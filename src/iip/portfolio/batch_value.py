@@ -33,6 +33,7 @@ from iip.portfolio_data.valuation_methods import (
     first_valuation,
     has_calculator,
 )
+from iip.sources.cvm_dfp_harvester import with_shared_dfp_cache
 from iip.sources.tesouro_direto import NtnbRate
 
 NO_METHOD_PREFIX = "nenhum método de valuation implementado para a classe"
@@ -72,6 +73,7 @@ def _default_fetch_rate() -> NtnbRate | None:
     return TesouroDiretoHTTPHarvester().fetch_long_ntnb_rate()
 
 
+@with_shared_dfp_cache
 def value_portfolio(
     *,
     bolsai_api_key: str | None,
