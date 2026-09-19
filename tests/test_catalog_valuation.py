@@ -171,3 +171,57 @@ def test_a_ntnb_failure_does_not_stop_the_decision(tmp_path, monkeypatch):
     assert result.exit_code == 0, result.output
     assert "não consegui buscar a taxa da NTN-B" in result.output
     assert "Valuation automático: Graham" in result.output  # Graham needs no rate
+
+
+# --- FIIs through the same flag ------------------------------------------------------
+
+
+def _fii_file(tmp_path, *, structure="Tijolo", segment="Logístico", price=99.78, **financials):
+    runner = CliRunner()
+    path = tmp_path / "fii.json"
+    runner.invoke(cli, ["analyze-template", "--type", "fii", "-o", str(path)])
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.update({"sector": structure, "industry": segment, "price": price})
+    data["financials"].update(financials)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def _analyze_fii(tmp_path, monkeypatch, *extra, **file_kwargs):
+    import iip.portfolio.batch_value as bv
+
+    monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
+    path = _fii_file(tmp_path, **file_kwargs)
+    return CliRunner().invoke(
+        cli,
+        ["analyze", "BTLG11", "--type", "fii", "--data-file", str(path), "--decide",
+         "--evidence-id", "ev-1", *extra],
+    )
+
+
+def test_auto_valuation_uses_the_nav_for_a_fii(tmp_path, monkeypatch):
+    result = _analyze_fii(tmp_path, monkeypatch, "--auto-valuation", nav_per_share=106.86)
+
+    assert result.exit_code == 0, result.output
+    assert "Valuation automático: NAV" in result.output
+    assert "valuation_score não fornecido" not in result.output
+
+
+def test_a_paper_fund_is_still_valued_by_the_nav_only(tmp_path, monkeypatch):
+    result = _analyze_fii(
+        tmp_path, monkeypatch, "--auto-valuation", structure="Papel",
+        segment="Crédito Imobiliário", nav_per_share=97.4, dividend_per_share=11.99,
+        dividend_yield_ttm=12.31,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Valuation automático: NAV" in result.output
+
+
+def test_a_fii_without_nav_keeps_the_neutral_value_and_says_why(tmp_path, monkeypatch):
+    result = _analyze_fii(tmp_path, monkeypatch, "--auto-valuation")  # no nav_per_share
+
+    assert result.exit_code == 0, result.output
+    assert "valuation automático sem valor" in result.output
+    assert "patrimônio por cota" in result.output
+    assert "valuation_score não fornecido" in result.output

@@ -873,9 +873,12 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
     "auto_valuation",
     is_flag=True,
     default=False,
-    help="Só com --decide e --type equity: calcula a nota de valuation pelo método "
-    "principal do catálogo para o setor (Bazin em setores de dividendo, Graham nos "
-    "demais; Bazin usa a NTN-B longa, buscada agora). Um --valuation-score "
+    help="Só com --decide e --type equity ou fii: calcula a nota de valuation pelo "
+    "método principal do catálogo (ações: Bazin em setores de dividendo, Graham nos "
+    "demais; FIIs: NAV, o patrimônio por cota; Bazin/Yield usam a NTN-B longa, "
+    "buscada agora). O --data-file precisa trazer os insumos (lpa/vpa/"
+    "dividend_per_share nas ações; nav_per_share nos FIIs) e, nos FIIs, sector/"
+    "industry = estrutura/segmento (Tijolo, Papel...). Um --valuation-score "
     "explícito tem precedência. Se nenhum método produz valor, fica neutro (5.0) "
     "e o motivo é mostrado.",
 )
