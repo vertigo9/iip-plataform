@@ -21,11 +21,11 @@ produced a value is written; the side-by-side view is what the run returns.
 from __future__ import annotations
 
 import datetime as _dt
-import functools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from iip.portfolio.batch_analyze import _sector_industry_for
+from iip.portfolio.batch_core import FetchPlan, fetch_template_for, resolve_fetchers
 from iip.portfolio.refresh import _template_type_for, missing_required_market_data
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
 from iip.portfolio_data.valuation_methods import (
@@ -104,21 +104,15 @@ def value_portfolio(
     fetch_rate: Callable[[], NtnbRate | None] | None = None,
     bridge_cls: Callable[[str], object] | None = None,
 ) -> ValuationRunResult:
-    from iip.cli.fetch_template import (
-        fetch_equity_template_live,
-        fetch_fiagro_template_live,
-        fetch_fii_template_live,
-        fetch_fixed_income_template_live,
-    )
-
-    fetch_equity = fetch_equity or fetch_equity_template_live
-    fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
-    fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
     # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
     # previous-year CVM file, NAV trend): skip them -- fewer downloads, and fewer
     # calls to spend the daily provider quota on.
-    fetch_fii = fetch_fii or functools.partial(
-        fetch_fii_template_live, analysis_inputs=False
+    fetchers = resolve_fetchers(
+        fii=fetch_fii,
+        fixed_income=fetch_fixed_income,
+        equity=fetch_equity,
+        fiagro=fetch_fiagro,
+        fii_analysis_inputs=False,
     )
     fetch_rate = fetch_rate or _default_fetch_rate
 
@@ -151,10 +145,17 @@ def value_portfolio(
 
     # data de calendário (ano fiscal da DFP), não timestamp
     hoje = _dt.date.today()  # noqa: DTZ011
-    ano_dfp = ano or (hoje.year - 1)
     # FII monthly reports are filed for the CURRENT year (unlike the annual DFP),
-    # so ``ano`` (a fiscal year) does not apply to them.
-    ano_fii = hoje.year
+    # so ``ano`` (a fiscal year) applies only to the DFP of equities.
+    plan = FetchPlan(
+        ano=hoje.year,
+        mes=hoje.month,
+        ano_dfp=ano or (hoje.year - 1),
+        bolsai_api_key=bolsai_api_key,
+        brapi_token=brapi_token,
+        # FIAGRO is valued by NAV through the same bolsai record (see the catalog)
+        fiagro_uses_bolsai=True,
+    )
 
     market_inputs = {"ntnb_real_yield": rate.real_yield if rate else None}
     all_positions = positions if positions is not None else assets_refreshable_now()
@@ -185,33 +186,7 @@ def value_portfolio(
             continue
 
         try:
-            if template_type == "fii":
-                template, _ = fetch_fii(
-                    position.ticker, position.cnpj, ano_fii, bolsai_api_key
-                )
-            elif template_type == "fi_infra":
-                # Only listed FI-Infra reach here, so ``symbol`` is the fund's own
-                # B3 ticker and the price lookup is safe (unlike AXIA3's).
-                template, _ = fetch_fixed_income(
-                    position.ticker,
-                    position.cnpj,
-                    ano_fii,
-                    hoje.month,
-                    brapi_token=brapi_token,
-                )
-            elif template_type == "fiagro":
-                template, _ = fetch_fiagro(
-                    position.ticker,
-                    position.cnpj,
-                    ano_fii,
-                    hoje.month,
-                    brapi_token,
-                    bolsai_api_key=bolsai_api_key,
-                )
-            else:
-                template, _ = fetch_equity(
-                    position.ticker, position.cnpj, ano_dfp, bolsai_api_key, brapi_token
-                )
+            template, _ = fetch_template_for(template_type, position, fetchers, plan)
             incomplete = missing_required_market_data(
                 template_type,
                 template,

@@ -23,6 +23,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from iip.portfolio.batch_core import FetchPlan, fetch_template_for, resolve_fetchers
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
 from iip.sources.shared_caches import with_shared_fetch_caches
 
@@ -150,27 +151,23 @@ def refresh_portfolio(
     functions) purely for testability — same pattern as the
     harvesters' injectable ``opener``.
     """
-    from iip.cli.fetch_template import (
-        fetch_equity_template_live,
-        fetch_etf_template_live,
-        fetch_fiagro_template_live,
-        fetch_fii_template_live,
-        fetch_fixed_income_template_live,
+    fetchers = resolve_fetchers(
+        fii=fetch_fii,
+        etf=fetch_etf,
+        fixed_income=fetch_fixed_income,
+        equity=fetch_equity,
+        fiagro=fetch_fiagro,
     )
-
-    fetch_fii = fetch_fii or fetch_fii_template_live
-    fetch_etf = fetch_etf or fetch_etf_template_live
-    fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
-    fetch_equity = fetch_equity or fetch_equity_template_live
-    fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
 
     # data de calendário (data de referência do snapshot), não timestamp
     hoje = _dt.date.today()  # noqa: DTZ011
-    ano_efetivo = ano or hoje.year
-    mes_efetivo = mes or hoje.month
-    # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
-    # mesmo comentário em iip.cli.main's fetch-template equity branch.
-    ano_dfp_efetivo = ano or (hoje.year - 1)
+    plan = FetchPlan.for_run(
+        ano=ano,
+        mes=mes,
+        bolsai_api_key=bolsai_api_key,
+        brapi_token=brapi_token,
+        today=hoje,
+    )
     run_date = hoje.isoformat()
 
     all_positions = positions if positions is not None else assets_refreshable_now()
@@ -183,41 +180,9 @@ def refresh_portfolio(
     for position in refreshable:
         template_type = _template_type_for(position)
         try:
-            if template_type == "fii":
-                template, resultado = fetch_fii(
-                    position.ticker, position.cnpj, ano_efetivo, bolsai_api_key
-                )
-            elif template_type == "etf":
-                template, resultado = fetch_etf(
-                    position.ticker,
-                    position.cnpj,
-                    ano_efetivo,
-                    mes_efetivo,
-                    brapi_token,
-                )
-            elif template_type == "equity":
-                template, resultado = fetch_equity(
-                    position.ticker,
-                    position.cnpj,
-                    ano_dfp_efetivo,
-                    bolsai_api_key,
-                    brapi_token,
-                )
-            elif template_type == "fiagro":
-                template, resultado = fetch_fiagro(
-                    position.ticker,
-                    position.cnpj,
-                    ano_efetivo,
-                    mes_efetivo,
-                    brapi_token,
-                )
-            else:  # fixed_income
-                template, resultado = fetch_fixed_income(
-                    position.ticker,
-                    position.cnpj,
-                    ano_efetivo,
-                    mes_efetivo,
-                )
+            template, resultado = fetch_template_for(
+                template_type, position, fetchers, plan
+            )
         # isolamento por posição, ver docstring do módulo
         except Exception as exc:  # noqa: BLE001
             outcomes.append(

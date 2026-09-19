@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from iip.portfolio.batch_core import FetchPlan, fetch_template_for, resolve_fetchers
 from iip.portfolio.refresh import (
     PositionOutcome,
     _template_type_for,
@@ -93,35 +94,27 @@ def analyze_portfolio(
     """Busca dado real, roda o analisador certo, e persiste no vault --
     para toda posição que tem sector/industry reais disponíveis.
     """
-    import datetime as _dt
-
     from iip.analysis import AssetData
-    from iip.cli.fetch_template import (
-        fetch_equity_template_live,
-        fetch_etf_template_live,
-        fetch_fiagro_template_live,
-        fetch_fii_template_live,
-        fetch_fixed_income_template_live,
-    )
     from iip.cli.main import ANALYZERS
     from iip.knowledge.bridge import KnowledgeBridge
 
     deps = deps or _BatchDeps()
-    fetch_fii = deps.fetch_fii or fetch_fii_template_live
-    fetch_etf = deps.fetch_etf or fetch_etf_template_live
-    fetch_fixed_income = deps.fetch_fixed_income or fetch_fixed_income_template_live
-    fetch_equity = deps.fetch_equity or fetch_equity_template_live
-    fetch_fiagro = deps.fetch_fiagro or fetch_fiagro_template_live
+    fetchers = resolve_fetchers(
+        fii=deps.fetch_fii,
+        etf=deps.fetch_etf,
+        fixed_income=deps.fetch_fixed_income,
+        equity=deps.fetch_equity,
+        fiagro=deps.fetch_fiagro,
+    )
     analyzers = deps.analyzers or ANALYZERS
     knowledge_bridge_cls = deps.knowledge_bridge_cls or KnowledgeBridge
 
-    # data de calendário (referência CVM), não timestamp
-    hoje = _dt.date.today()  # noqa: DTZ011
-    ano_efetivo = ano or hoje.year
-    mes_efetivo = mes or hoje.month
-    # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
-    # mesmo comentário em iip.cli.main's fetch-template equity branch.
-    ano_dfp_efetivo = ano or (hoje.year - 1)
+    plan = FetchPlan.for_run(
+        ano=ano,
+        mes=mes,
+        bolsai_api_key=bolsai_api_key,
+        brapi_token=brapi_token,
+    )
 
     all_positions = positions if positions is not None else assets_refreshable_now()
     bridge = knowledge_bridge_cls(vault_path)
@@ -155,38 +148,7 @@ def analyze_portfolio(
             continue
 
         try:
-            if template_type == "fii":
-                template, _ = fetch_fii(
-                    position.ticker, position.cnpj, ano_efetivo, bolsai_api_key
-                )
-            elif template_type == "etf":
-                template, _ = fetch_etf(
-                    position.ticker,
-                    position.cnpj,
-                    ano_efetivo,
-                    mes_efetivo,
-                    brapi_token,
-                )
-            elif template_type == "equity":
-                template, _ = fetch_equity(
-                    position.ticker,
-                    position.cnpj,
-                    ano_dfp_efetivo,
-                    bolsai_api_key,
-                    brapi_token,
-                )
-            elif template_type == "fiagro":
-                template, _ = fetch_fiagro(
-                    position.ticker,
-                    position.cnpj,
-                    ano_efetivo,
-                    mes_efetivo,
-                    brapi_token,
-                )
-            else:  # fixed_income
-                template, _ = fetch_fixed_income(
-                    position.ticker, position.cnpj, ano_efetivo, mes_efetivo
-                )
+            template, _ = fetch_template_for(template_type, position, fetchers, plan)
         # isolamento por posição, mesmo padrão de refresh_portfolio
         except Exception as exc:  # noqa: BLE001
             outcomes.append(
