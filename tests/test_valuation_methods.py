@@ -8,9 +8,11 @@ from iip.portfolio_data.valuation import ValuationMethod
 from iip.portfolio_data.valuation_methods import (
     applicability,
     bazin_ceiling_price,
+    data_condition_violation,
     evaluate_valuations,
     first_valuation,
     graham_fair_value,
+    ordered_methods,
 )
 
 
@@ -117,8 +119,8 @@ def test_technology_equity_is_not_applicable_even_with_valid_inputs():
         inputs={"lpa": 1.0, "vpa": 4.0},
     )
 
-    assert attempts[0].method is ValuationMethod.GRAHAM
-    assert attempts[0].status == "not_applicable"
+    graham = next(a for a in attempts if a.method is ValuationMethod.GRAHAM)
+    assert graham.status == "not_applicable"
     assert first_valuation(attempts) is None
 
 
@@ -285,3 +287,104 @@ def test_e2e_market_inputs_reach_the_bazin_calculator(tmp_path: Path):
     assert next(s for s in ok.steps if s.name == "valuation").status == "ok"
     assert ok.valuation.method is ValuationMethod.BAZIN
     assert ok.valuation.fair_value == 2.0  # 0.15 / 0.075
+
+
+# --- sector order and data conditions ---------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("sector", "industry"),
+    [
+        ("Utilidade Pública", "Energia Elétrica"),
+        ("Utilidade Pública", "Gás"),
+        ("Financeiro", "Previdência e Seguros"),
+        ("Financeiro", "Intermediários Financeiros (Bancos)"),
+    ],
+)
+def test_bazin_leads_in_dividend_centric_sectors(sector, industry):
+    order = ordered_methods("equity", sector, industry)
+
+    assert order[0] is ValuationMethod.BAZIN
+    assert order[1] is ValuationMethod.GRAHAM
+    assert set(order) == {
+        ValuationMethod.BAZIN, ValuationMethod.GRAHAM, ValuationMethod.DCF, ValuationMethod.RELATIVE,
+    }
+
+
+@pytest.mark.parametrize(
+    ("sector", "industry"),
+    [
+        ("Materiais Básicos", "Madeiras e Papel"),
+        ("Financeiro", "Exploração de Imóveis"),  # sector "Financeiro" alone is not dividend-led
+        ("Saúde", "Serviços Médico-Hospitalares"),
+        ("Bens Industriais", "Material de Transporte"),
+    ],
+)
+def test_graham_leads_elsewhere(sector, industry):
+    assert ordered_methods("equity", sector, industry)[0] is ValuationMethod.GRAHAM
+
+
+def test_order_does_not_touch_classes_without_bazin():
+    assert ordered_methods("fii", "Utilidade Pública", "Energia Elétrica") == (
+        ValuationMethod.NAV, ValuationMethod.YIELD,
+    )
+    assert ordered_methods("etf") == ()
+
+
+def test_evaluation_puts_the_lead_method_first_so_it_is_the_one_persisted():
+    inputs = {"lpa": 4.97, "vpa": 19.72, "dividend_per_share": 3.05, "ntnb_real_yield": 0.073,
+              "dividend_consistency_years": 5, "payout_ratio": 61.0}
+    utility = evaluate_valuations(
+        ticker="CPFE3", asset_class="equity", sector="Utilidade Pública",
+        industry="Energia Elétrica", price=45.0, inputs=inputs,
+    )
+    industrial = evaluate_valuations(
+        ticker="KLBN4", asset_class="equity", sector="Materiais Básicos",
+        industry="Madeiras e Papel", price=45.0, inputs=inputs,
+    )
+
+    assert first_valuation(utility).method is ValuationMethod.BAZIN
+    assert first_valuation(industrial).method is ValuationMethod.GRAHAM
+
+
+@pytest.mark.parametrize("years", [0, 1, 2])
+def test_bazin_needs_a_dividend_track_record(years):
+    reason = data_condition_violation(ValuationMethod.BAZIN, {"dividend_consistency_years": years})
+
+    assert reason is not None and "mínimo 3" in reason
+
+
+def test_bazin_track_record_boundary_and_unknown_fields():
+    assert data_condition_violation(ValuationMethod.BAZIN, {"dividend_consistency_years": 3}) is None
+    assert data_condition_violation(ValuationMethod.BAZIN, {"dividend_consistency_years": 5}) is None
+    assert data_condition_violation(ValuationMethod.BAZIN, {}) is None  # unknown is not a violation
+    assert data_condition_violation(ValuationMethod.BAZIN, {"dividend_consistency_years": None}) is None
+
+
+def test_bazin_refuses_a_payout_the_earnings_cannot_sustain():
+    reason = data_condition_violation(ValuationMethod.BAZIN, {"payout_ratio": 130.0})
+
+    assert reason is not None and "130%" in reason
+    assert data_condition_violation(ValuationMethod.BAZIN, {"payout_ratio": 100.0}) is None
+    assert data_condition_violation(ValuationMethod.BAZIN, {"payout_ratio": 91.8}) is None
+
+
+def test_graham_has_no_data_condition_beyond_its_own_positivity():
+    assert data_condition_violation(
+        ValuationMethod.GRAHAM, {"dividend_consistency_years": 0, "payout_ratio": 500.0}
+    ) is None
+
+
+def test_a_bazin_attempt_blocked_by_its_data_says_why_and_never_computes():
+    attempts = evaluate_valuations(
+        ticker="ABCB4", asset_class="equity", sector="Financeiro",
+        industry="Intermediários Financeiros (Bancos)", price=25.0,
+        inputs={"dividend_per_share": 2.42, "ntnb_real_yield": 0.073, "dividend_consistency_years": 1,
+                "lpa": 3.9, "vpa": 27.5},
+    )
+
+    bazin = next(a for a in attempts if a.method is ValuationMethod.BAZIN)
+    assert bazin.status == "not_applicable" and bazin.snapshot is None
+    assert "mínimo 3" in bazin.reason
+    # Graham still values it, and becomes the persisted method since Bazin has none
+    assert first_valuation(attempts).method is ValuationMethod.GRAHAM

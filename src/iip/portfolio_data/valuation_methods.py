@@ -30,6 +30,19 @@ the opportunity cost to beat. When rates rise the ceiling falls (more discount
 demanded), when they fall it rises. No rate, no Bazin value -- it never falls
 back to a silent 6%.
 
+Two kinds of rule decide how a method is used for an asset, each stated with
+its reason:
+
+  - DATA CONDITIONS: a method's own premise must hold in the asset's data.
+    Bazin assumes a recurring, sustainable dividend, so it needs a track record
+    (``BAZIN_MIN_CONSISTENCY_YEARS`` consecutive paying years) and a payout that
+    earnings can support (``BAZIN_MAX_PAYOUT_PCT``). A missing field is not a
+    violation (unknown), a present one that fails is.
+  - SECTOR ORDER: which method LEADS. In dividend-centric businesses (regulated
+    utilities, insurers, banks) the dividend is the product, so Bazin comes
+    first; elsewhere Graham does. The lead method is the one the batch persists
+    and, later, the one that can feed a decision.
+
 Graham's fair value is ``sqrt(22.5 * LPA * VPA)`` (LPA = earnings per share,
 VPA = book value per share). It needs both to be positive -- the square root
 of a negative product is undefined, and a company with negative earnings or
@@ -72,6 +85,20 @@ SECTOR_EXCLUSIONS: dict[ValuationMethod, tuple[tuple[str, str], ...]] = {
     ),
 }
 
+# Businesses whose value is mostly their dividend stream: Bazin leads the order.
+# Lowercase substrings matched against sector + industry.
+DIVIDEND_LED_KEYWORDS: tuple[str, ...] = (
+    "utilidade pública",
+    "energia elétrica",
+    "previdência",
+    "seguros",
+    "bancos",
+    "intermediários financeiros",
+)
+
+BAZIN_MIN_CONSISTENCY_YEARS = 3
+BAZIN_MAX_PAYOUT_PCT = 100.0
+
 AttemptStatus = Literal["ok", "not_applicable", "not_implemented", "insufficient_data"]
 
 
@@ -109,6 +136,43 @@ def applicability(
         if needle in haystack:
             return Applicability(False, reason)
     return Applicability(True, "aplicável")
+
+
+def ordered_methods(
+    asset_class: str, sector: str = "", industry: str = ""
+) -> tuple[ValuationMethod, ...]:
+    """The class's catalogued methods, Bazin first for dividend-led sectors
+    (relative order of the others is kept)."""
+    methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower(), ())
+    haystack = f"{sector} {industry}".lower()
+    if ValuationMethod.BAZIN in methods and any(k in haystack for k in DIVIDEND_LED_KEYWORDS):
+        return (
+            ValuationMethod.BAZIN,
+            *(m for m in methods if m is not ValuationMethod.BAZIN),
+        )
+    return methods
+
+
+def data_condition_violation(
+    method: ValuationMethod, inputs: Mapping[str, float | None]
+) -> str | None:
+    """Why the asset's OWN data breaks the method's premise, or ``None``.
+    Absent fields are unknown, not violations."""
+    if method is ValuationMethod.BAZIN:
+        years = inputs.get("dividend_consistency_years")
+        if years is not None and years < BAZIN_MIN_CONSISTENCY_YEARS:
+            return (
+                f"Bazin exige dividendos recorrentes: {years:g} ano(s) consecutivo(s) "
+                f"de pagamento, mínimo {BAZIN_MIN_CONSISTENCY_YEARS} "
+                "(0 também pode indicar histórico não obtido)"
+            )
+        payout = inputs.get("payout_ratio")
+        if payout is not None and payout > BAZIN_MAX_PAYOUT_PCT:
+            return (
+                f"payout de {payout:.0f}% acima de {BAZIN_MAX_PAYOUT_PCT:.0f}%: o "
+                "dividendo pago não é sustentado pelo lucro, o teto sairia inflado"
+            )
+    return None
 
 
 def graham_fair_value(lpa: float | None, vpa: float | None) -> float | None:
@@ -183,7 +247,7 @@ def evaluate_valuations(
     what happened to each. Never raises for missing data and never returns a
     fair value it did not compute from ``inputs``."""
 
-    methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower(), ())
+    methods = ordered_methods(asset_class, sector, industry)
     if not methods:
         return (
             MethodAttempt(
@@ -198,6 +262,10 @@ def evaluate_valuations(
         fit = applicability(method, asset_class, sector, industry)
         if not fit.applicable:
             attempts.append(MethodAttempt(method, "not_applicable", fit.reason))
+            continue
+        violation = data_condition_violation(method, inputs)
+        if violation is not None:
+            attempts.append(MethodAttempt(method, "not_applicable", violation))
             continue
         calculator = CALCULATORS.get(method)
         if calculator is None:

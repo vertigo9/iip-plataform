@@ -637,6 +637,13 @@ def analyze_portfolio_command(
         raise SystemExit(1)
 
 
+def _lead_method(attempts) -> str:
+    from iip.portfolio_data.valuation_methods import first_valuation
+
+    snapshot = first_valuation(attempts)
+    return snapshot.method.value if snapshot else "—"
+
+
 def _valuation_cell(attempts, method) -> str:
     attempt = next((a for a in attempts if a.method is method), None)
     if attempt is None or attempt.snapshot is None:
@@ -704,6 +711,7 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
     table.add_column("Preço", justify="right")
     table.add_column("Graham", justify="right")
     table.add_column("Bazin (NTN-B)", justify="right")
+    table.add_column("Principal")
     table.add_column("Status")
     table.add_column("Detalhe")
 
@@ -724,11 +732,18 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
             f"{outcome.price:.2f}" if outcome.price is not None else "—",
             _valuation_cell(outcome.attempts, ValuationMethod.GRAHAM),
             _valuation_cell(outcome.attempts, ValuationMethod.BAZIN),
+            _lead_method(outcome.attempts),
             f"[{cor}]{outcome.status}[/]",
             outcome.detail[:70],
         )
 
     console.print(table)
+    for outcome in shown:
+        for attempt in outcome.attempts:
+            if attempt.status in ("not_applicable", "insufficient_data"):
+                console.print(
+                    f"[dim]{outcome.ticker} · {attempt.method.value} sem valor: {attempt.reason}[/]"
+                )
     for detail, tickers in class_skips.items():
         console.print(f"[yellow]pulado[/] ({len(tickers)}): {detail} — {', '.join(tickers)}")
     console.print(
