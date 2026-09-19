@@ -11,12 +11,15 @@ from urllib.request import Request, urlopen
 from . import btg_mziq, hsi_mziq, xp_mziq
 from .fii_vacancia import (
     VacanciaReading,
+    latest_alianza_url,
     latest_hedge_url,
     latest_knri_url,
     latest_rbva_url,
     latest_trx_url,
     profile_for_ticker,
 )
+
+ALIANZA_HOME = "https://alzr11.alianza.com.br/"
 
 # gestoras cujos relatórios estão numa plataforma MZIQ: o módulo com a configuração
 # do fundo e o nome interno da categoria do relatório gerencial (a BTG escreve com
@@ -57,6 +60,8 @@ class FiiVacanciaHTTPHarvester:
 
         if ticker in _MZIQ_REPORT_SOURCES:
             return self._latest_mziq_url(ticker)
+        if ticker == "ALZR11":
+            return self._latest_alianza_url()
         documents = StaticPdfListingHTTPHarvester(
             self._opener, timeout=self.timeout, user_agent=self.user_agent
         ).collect(ticker)
@@ -70,6 +75,11 @@ class FiiVacanciaHTTPHarvester:
         if ticker == "KNRI11":
             return latest_knri_url(urls)
         return None
+
+    def _latest_alianza_url(self) -> str | None:
+        # a home do fundo lista os documentos mais recentes (CMS legado, Download.aspx)
+        page = self._download(ALIANZA_HOME).decode("utf-8", errors="replace")
+        return latest_alianza_url(page, ALIANZA_HOME)
 
     def _latest_mziq_url(self, ticker: str) -> str | None:
         from .mziq_harvester import MziqHTTPHarvester

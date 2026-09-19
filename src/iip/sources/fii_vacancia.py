@@ -5,7 +5,7 @@ Primeiro extrator de PDF de FII de tijolo fora da Pátria (item 6 do roadmap,
 e PVBI11 (planilha da Pátria); nos demais fundos de tijolo ficava no valor-padrão
 do ``FIIAnalyzer``.
 
-Cada gestora escreve a vacância de um jeito, e os sete layouts abaixo foram
+Cada gestora escreve a vacância de um jeito, e os oito layouts abaixo foram
 lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
 
   - TRXF11 (Investor Report, em inglês): ``Vacancy Physical 0.67% and Financial
@@ -38,6 +38,17 @@ lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
     primeira), o mesmo número do texto corrido ("a vacância ... encerrou o período em
     4,7%"). O glossário do relatório define vacância como "ABL próprio total vago
     dividido pela ABL próprio total": é FÍSICA, com a base declarada.
+  - ALZR11 (Relatório Gerencial da Alianza, contratos atípicos): NÃO traz nenhum total
+    do fundo, só ``Ocupação do Imóvel`` em cada um dos 26 blocos do anexo (cada bloco
+    tem ``Participação no Imóvel``, ``Área Bruta Locável`` -- ou ``Área BOMA`` -- e a
+    ocupação). Aqui o número é CALCULADO por nós, não lido: média da ocupação por ABL
+    própria (ABL x participação do fundo), a ocupação física por definição (a mesma do
+    glossário da XP). Portões: a quantidade de blocos tem de bater com o ``Número de
+    Ativos`` do resumo (26) e todo bloco tem de ser lido por completo, senão nada. A
+    soma das ABL do anexo (265 mil m2) NÃO fecha com o ``ABL Total`` declarado (288,7
+    mil m2, que "considera" ativos da 8ª emissão) -- a diferença vai no ``note`` da
+    leitura, e o chamador a mostra. O valor de agosto/2026 é 99,8%: só o Pueri Domus
+    (97%) não está cheio.
 
 Base da medida. A Pátria usa ``1 - vacância financeira`` (ponderada por receita)
 como ``occupancy_rate``. Aqui a financeira também vem primeiro; só quando o
@@ -52,10 +63,12 @@ valor fora de 0-100% também é recusado.
 
 from __future__ import annotations
 
+import html as _html
 import re
 import unicodedata
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from urllib.parse import urljoin
 
 
 @dataclass(frozen=True)
@@ -65,6 +78,9 @@ class VacanciaReading:
     physical_vacancy_pct: float | None = None
     # mês de referência quando o próprio texto o traz (ex.: "jul/26"), senão None
     reference: str | None = None
+    # quando o número é CALCULADO em vez de lido (ver o ALZR11), o que foi feito e o que
+    # não pôde ser conferido; o chamador mostra isso como aviso
+    note: str | None = None
 
     @property
     def basis(self) -> str | None:
@@ -159,6 +175,76 @@ def parse_xp(text: str) -> VacanciaReading | None:
     )
 
 
+_ALZR_ASSETS = re.compile(r"numero de ativos\d? (\d+)")
+_ALZR_ABL_TOTAL = re.compile(r"abl total\d? ([\d.]+) ?m2")
+_ALZR_PARTICIPATION = re.compile(r"participacao no imovel (\d+(?:,\d+)?)%")
+_ALZR_AREA = re.compile(r"area (?:bruta locavel|boma) ([\d.]+) ?m2")
+_ALZR_OCCUPANCY = re.compile(r"ocupacao do imovel (\d+(?:,\d+)?)%")
+
+
+def _br_number(raw: str) -> float:
+    return float(raw.replace(".", "").replace(",", "."))
+
+
+def _pt_int(value: float) -> str:
+    return f"{value:,.0f}".replace(",", ".")
+
+
+def parse_alzr(text: str) -> VacanciaReading | None:
+    normalized = _normalize(text)
+    declared_assets = _ALZR_ASSETS.search(normalized)
+    if declared_assets is None:
+        return None
+    starts = [m.start() for m in re.finditer("classe do imovel", normalized)]
+    blocks = [normalized[a:b] for a, b in zip(starts, [*starts[1:], len(normalized)])]
+    blocks = [b for b in blocks if "ocupacao do imovel" in b]
+    if len(blocks) != int(declared_assets.group(1)):
+        # o anexo não tem todos os imóveis (ou o layout mudou): melhor nada
+        return None
+
+    total_abl = own_abl = leased_abl = 0.0
+    for block in blocks:
+        participation = _ALZR_PARTICIPATION.search(block)
+        area = _ALZR_AREA.search(block)
+        occupancy = _ALZR_OCCUPANCY.search(block)
+        if not (participation and area and occupancy):
+            return None
+        share = _pct(participation.group(1), decimal_comma=True)
+        occ = _pct(occupancy.group(1), decimal_comma=True)
+        abl = _br_number(area.group(1))
+        if share is None or occ is None:
+            return None
+        total_abl += abl
+        own_abl += abl * share / 100.0
+        leased_abl += abl * share / 100.0 * occ / 100.0
+    if own_abl <= 0:
+        return None
+
+    occupancy_pct = leased_abl / own_abl * 100.0
+    declared_abl = _ALZR_ABL_TOTAL.search(normalized)
+    reconciliation = "o relatório não traz o ABL Total para conferir"
+    if declared_abl is not None:
+        declared = _br_number(declared_abl.group(1))
+        gap = (declared - total_abl) / declared * 100.0
+        if abs(gap) < 0.5:
+            reconciliation = "a soma das ABL confere com o ABL Total declarado"
+        else:
+            reconciliation = (
+                f"a soma das ABL do anexo ({_pt_int(total_abl)} m2) fica {gap:.1f}% "
+                f"abaixo do ABL Total declarado ({_pt_int(declared)} m2), que considera "
+                "ativos da 8ª emissão: não foi possível conferir o restante"
+            )
+    return VacanciaReading(
+        "alianza_relatorio_gerencial",
+        physical_vacancy_pct=round(100.0 - occupancy_pct, 4),
+        note=(
+            "ocupação CALCULADA pelo IIP, não lida do relatório (que só informa a "
+            f"ocupação de cada imóvel): média por ABL própria dos {len(blocks)} imóveis "
+            f"do anexo; {reconciliation}."
+        ),
+    )
+
+
 def parse_rbva(text: str) -> VacanciaReading | None:
     match = _RBVA.search(_normalize(text))
     if match is None:
@@ -244,6 +330,7 @@ PROFILES: dict[str, VacanciaProfile] = {
     "KNRI11": VacanciaProfile("kinea_carta_do_gestor", parse_knri, max_pages=6),
     "HSML11": VacanciaProfile("hsi_relatorio_gerencial", parse_hsi, max_pages=15),
     "XPML11": VacanciaProfile("xp_relatorio_gerencial", parse_xp, max_pages=21),
+    "ALZR11": VacanciaProfile("alianza_relatorio_gerencial", parse_alzr, max_pages=40),
 }
 
 
@@ -300,4 +387,26 @@ def latest_knri_url(urls: Iterable[str]) -> str | None:
         match = _KNRI_CARTA.search(url)
         if match:
             candidates.append(((int(match.group(2)), int(match.group(1))), url))
+    return max(candidates)[1] if candidates else None
+
+
+_ALIANZA_LINK = re.compile(
+    r"""<a\b[^>]*\bhref=["']([^"']*Download\.aspx[^"']*)["'][^>]*>(.*?)</a>""",
+    re.I | re.S,
+)
+_ALIANZA_TITLE = re.compile(r"(\d{2})/(\d{2})/(\d{4}) - relatorio gerencial")
+
+
+def latest_alianza_url(page_html: str, base_url: str) -> str | None:
+    """Relatório gerencial mais recente na home do ALZR11: um link ``Download.aspx``
+    cujo texto é ``18/09/2026 - Relatório Gerencial - Ago/26`` (vale a data do texto).
+    """
+    candidates = []
+    for href, label in _ALIANZA_LINK.findall(page_html):
+        text = _normalize(_html.unescape(re.sub(r"<[^>]+>", " ", label)))
+        match = _ALIANZA_TITLE.search(text)
+        if match:
+            day, month, year = (int(g) for g in match.groups())
+            url = urljoin(base_url, _html.unescape(href))
+            candidates.append(((year, month, day), url))
     return max(candidates)[1] if candidates else None

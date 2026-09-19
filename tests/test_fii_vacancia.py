@@ -10,10 +10,12 @@ from iip.cli.fetch_template import _enrich_fii_with_vacancia_report
 from iip.sources import hsi_mziq, xp_mziq
 from iip.sources.fii_vacancia import (
     VacanciaReading,
+    latest_alianza_url,
     latest_hedge_url,
     latest_knri_url,
     latest_rbva_url,
     latest_trx_url,
+    parse_alzr,
     parse_btg,
     parse_hedge,
     parse_hsi,
@@ -108,6 +110,43 @@ Vacância (% ABL) média 4,7% 4,0% 3,9%
 Inadimplência Líquida (%) 2,2% 2,5% 2,0%"""
 
 
+# trechos reais do Relatório Gerencial do ALZR11 (agosto/2026): o bloco padrão, o
+# Pueri Domus (participação via TSER11, "Área BOMA", 97%) e o de Sumaré (área de
+# expansão). O resumo foi adaptado ao recorte: 3 ativos e a ABL somada.
+ALZR_BLOCKS = """Classe do Imóvel Edifício Comercial Monousuário
+Localização Del Castilho - Rio de Janeiro/RJ
+Participação no Imóvel 100%
+Área Bruta Locável 8.178m²
+Área do Terreno 2.662m²
+Contrato de Locação Atípico
+Ocupação do Imóvel 100%
+Valor do Aluguel Vigente R$ 350.000
+Vencimento Julho/2026
+Classe do Imóvel Edifício Comercial
+Localização Alphaville - Barueri/SP
+Participação no Imóvel 99,98% (através do fundo TSER11)
+Área BOMA 19.026 m²
+Contrato de Locação Atípico
+Ocupação do Imóvel 97%
+Valor do Aluguel Vigente R$ 2.067.044
+Vencimento Setembro/2035
+Classe do Imóvel Centro de Distribuição Logístico
+Localização Sumaré/SP
+Participação no Imóvel 100%
+Área Bruta Locável 33.795m² + área de expansão de até 14.116m²
+Área do Terreno 90.602m²
+Contrato de Locação Atípico
+Ocupação do Imóvel 100%
+Valor do Aluguel Vigente R$ 918.676
+Vencimento Julho/2039"""
+
+ALZR_SUMMARY_FITS = "Indicadores Imobiliários Agosto 2026\nABL Total¹ 60.999 m²\nNúmero de Ativos¹ 3\nWALE 9,5 anos\n"
+ALZR_TEXT = ALZR_SUMMARY_FITS + ALZR_BLOCKS
+# ABL própria e ABL alugada dos 3 blocos acima, feitas à mão
+ALZR_OWN_ABL = 8178 + 19026 * 0.9998 + 33795
+ALZR_LEASED_ABL = 8178 + 19026 * 0.9998 * 0.97 + 33795
+
+
 def test_trx_reads_both_measures_and_prefers_financial():
     reading = parse_trx(TRX_TEXT)
     assert reading.physical_vacancy_pct == 0.67
@@ -196,9 +235,102 @@ def test_xp_ignores_a_vacancy_row_that_comes_before_the_header():
     assert parse_xp(" ".join([row, header])) is None
 
 
+def test_alzr_averages_the_property_occupancy_by_own_abl():
+    reading = parse_alzr(ALZR_TEXT)
+    expected_occupancy = ALZR_LEASED_ABL / ALZR_OWN_ABL
+    assert reading.occupancy_rate == pytest.approx(expected_occupancy, abs=1e-5)
+    assert reading.physical_vacancy_pct == pytest.approx(
+        100 * (1 - expected_occupancy), abs=1e-3
+    )
+    assert reading.financial_vacancy_pct is None
+    assert reading.basis == "física"
+    assert reading.layout == "alianza_relatorio_gerencial"
+
+
+def test_alzr_says_the_number_is_calculated_and_that_the_abl_does_not_add_up():
+    text = ALZR_TEXT.replace("ABL Total¹ 60.999 m²", "ABL Total¹ 288.677 m²")
+    note = parse_alzr(text).note
+    assert "CALCULADA" in note and "3 imóveis" in note
+    assert "60.999 m2" in note and "288.677 m2" in note
+    assert "78.9% abaixo" in note  # (288.677 - 60.999) / 288.677
+
+
+def test_alzr_note_says_so_when_the_abl_adds_up_with_the_declared_total():
+    assert "confere com o ABL Total" in parse_alzr(ALZR_TEXT).note
+
+
+def test_alzr_note_admits_when_the_report_gives_no_abl_total_to_check():
+    text = ALZR_TEXT.replace("ABL Total¹ 60.999 m²\n", "")
+    assert "não traz o ABL Total" in parse_alzr(text).note
+
+
+def test_alzr_refuses_when_the_annex_does_not_have_every_declared_asset():
+    assert (
+        parse_alzr(ALZR_TEXT.replace("Número de Ativos¹ 3", "Número de Ativos¹ 4"))
+        is None
+    )
+
+
+def test_alzr_refuses_when_the_summary_has_no_asset_count():
+    assert parse_alzr(ALZR_TEXT.replace("Número de Ativos¹ 3\n", "")) is None
+
+
+def test_alzr_refuses_a_block_it_cannot_read_completely():
+    # sem a área, o bloco do Pueri Domus não pode entrar na média: nada, e não uma
+    # média dos outros dois (que daria 100%)
+    assert parse_alzr(ALZR_TEXT.replace("Área BOMA 19.026 m²\n", "")) is None
+
+
+def test_alzr_refuses_an_occupancy_outside_0_to_100():
+    assert (
+        parse_alzr(
+            ALZR_TEXT.replace("Ocupação do Imóvel 97%", "Ocupação do Imóvel 197%")
+        )
+        is None
+    )
+
+
+ALZR_HOME = """
+<li><a href="https://fnet.bmfbovespa.com.br/fnet/publico/visualizarDocumento?id=1324003&amp;cvm=true">18/09/2026 - Divulgação de Rendimentos - Ago/26</a></li>
+<li><a href="Download.aspx?Arquivo=B2TQ5L8Ciu82/qFuvgdWow==">18/09/2026 - Relatório Gerencial - Ago/26</a></li>
+<li><a href="Download.aspx?Arquivo=DikPe2j4ygJkucvmZVSmjA==">17/09/2026 - Carta aos Cotistas - Rebalanceamento</a></li>
+<li><a href="Download.aspx?Arquivo=ANTIGO12345==">18/08/2026 - Relatório Gerencial - Jul/26</a></li>
+"""
+
+
+def test_latest_alianza_url_takes_the_newest_management_report_link():
+    url = latest_alianza_url(ALZR_HOME, "https://alzr11.alianza.com.br/")
+    assert (
+        url
+        == "https://alzr11.alianza.com.br/Download.aspx?Arquivo=B2TQ5L8Ciu82/qFuvgdWow=="
+    )
+
+
+def test_latest_alianza_url_ignores_other_documents_and_pages_without_a_report():
+    assert (
+        latest_alianza_url(
+            "<a href='x.pdf'>18/09/2026 - Relatório Gerencial</a>", "https://a/"
+        )
+        is None
+    )
+    only_letter = (
+        '<a href="Download.aspx?Arquivo=Z==">17/09/2026 - Carta aos Cotistas</a>'
+    )
+    assert latest_alianza_url(only_letter, "https://a/") is None
+
+
 @pytest.mark.parametrize(
     "parser",
-    [parse_trx, parse_btg, parse_hedge, parse_rbva, parse_knri, parse_hsi, parse_xp],
+    [
+        parse_trx,
+        parse_btg,
+        parse_hedge,
+        parse_rbva,
+        parse_knri,
+        parse_hsi,
+        parse_xp,
+        parse_alzr,
+    ],
 )
 def test_parsers_return_none_when_layout_does_not_match(parser):
     assert parser("Relatório sem a seção de vacância") is None
@@ -277,9 +409,19 @@ def test_only_verified_layouts_have_a_profile():
             "HSML11",
             "XPML11",
             "ALZR11",
+            "HGRU11",
         )
         if profile_for_ticker(t)
-    } == {"TRXF11", "BTLG11", "HGBS11", "RBVA11", "KNRI11", "HSML11", "XPML11"}
+    } == {
+        "TRXF11",
+        "BTLG11",
+        "HGBS11",
+        "RBVA11",
+        "KNRI11",
+        "HSML11",
+        "XPML11",
+        "ALZR11",
+    }
     assert profile_for_ticker(" btlg11 ") is not None
 
 
@@ -290,7 +432,7 @@ def test_harvester_returns_none_without_a_profile_and_never_downloads(monkeypatc
     def opener(*args, **kwargs):
         raise AssertionError("no network for a ticker without a profile")
 
-    assert FiiVacanciaHTTPHarvester(opener).fetch("ALZR11") is None
+    assert FiiVacanciaHTTPHarvester(opener).fetch("HGRU11") is None
 
 
 def _stub_fetch(monkeypatch, result):
@@ -341,7 +483,7 @@ def test_enrichment_never_raises_when_the_download_fails(monkeypatch):
 
 
 def test_enrichment_is_a_silent_no_op_for_a_ticker_without_a_profile():
-    assert _enrich_fii_with_vacancia_report({"a": 1}, "ALZR11") == ({"a": 1}, [], [])
+    assert _enrich_fii_with_vacancia_report({"a": 1}, "HGRU11") == ({"a": 1}, [], [])
 
 
 def test_hsi_mziq_config_is_registered_for_hsml11_only():
@@ -438,3 +580,13 @@ def test_xp_mziq_config_is_registered_for_xpml11_only():
     assert xp_mziq.fund_for_ticker("HSML11") is None
     with pytest.raises(ValueError):
         xp_mziq.build_documents_target("HSML11", 2026)
+
+
+def test_enrichment_shows_the_note_of_a_calculated_occupancy(monkeypatch):
+    reading = parse_alzr(ALZR_TEXT)
+    _stub_fetch(monkeypatch, FetchedVacancia("ALZR11", "https://r.pdf", reading))
+    financials, fetched, warnings = _enrich_fii_with_vacancia_report({}, "ALZR11")
+    assert financials["occupancy_rate"] == pytest.approx(reading.occupancy_rate)
+    assert fetched == ["occupancy_rate"]
+    assert any("vacância física" in w for w in warnings)  # a base
+    assert any("occupancy_rate: ocupação CALCULADA" in w for w in warnings)  # o método
