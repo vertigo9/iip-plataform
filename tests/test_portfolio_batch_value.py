@@ -139,10 +139,10 @@ def test_technology_equity_is_valued_only_by_the_methods_that_fit():
 
 
 def test_classes_without_an_implemented_method_and_missing_sector_are_skipped_without_fetching():
-    fund = PortfolioAsset("BTLG11", "fund", cnpj="1")
+    etf = PortfolioAsset("LFTB11", "etf", cnpj="1")  # a class with no implemented method
     no_sector = PortfolioAsset("XXXX3", "equity", cnpj="1")  # no sector/industry in the registry
 
-    result, fetch = _run([fund, no_sector], {})
+    result, fetch = _run([etf, no_sector], {})
 
     assert [o.status for o in result.outcomes] == ["pulado", "pulado"]
     assert "classe" in result.outcomes[0].detail
@@ -211,7 +211,7 @@ def test_value_portfolio_command_prints_side_by_side_table(monkeypatch):
     monkeypatch.setattr(
         bv, "assets_refreshable_now",
         lambda: (_equity("CXSE3", sector="Financeiro", industry="Seguros"), _equity("BTLG11x"),
-                 PortfolioAsset("BTLG11", "fund", cnpj="1")),
+                 PortfolioAsset("LFTB11", "etf", cnpj="1")),
     )
     monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
     monkeypatch.setattr(
@@ -228,7 +228,9 @@ def test_value_portfolio_command_prints_side_by_side_table(monkeypatch):
     assert "17.26" in result.output  # Bazin at 7.30%
     # the fund is summarized per class in one line, not as a table row
     assert "pulado (1)" in result.output  # not wrapped-line sensitive
-    assert "BTLG11" in result.output
+    assert "LFTB11" in result.output
+    assert "principal" in result.output  # header may wrap in a narrow table
+    assert "Bazin" in result.output  # lead for the insurer, with Graham among the others
     assert "não é recomendação" in result.output
 
 

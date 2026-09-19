@@ -43,6 +43,18 @@ its reason:
     first; elsewhere Graham does. The lead method is the one the batch persists
     and, later, the one that can feed a decision.
 
+FIIs have two methods. NAV: the fund's net asset value per share is the anchor
+(``nav_per_share``; P/VP below 1 is a margin of safety). Yield: the SAME income
+capitalization as Bazin (distributed income per share over the NTN-B real
+yield), which is only meaningful where distributions follow inflation --
+"Tijolo" funds, whose leases are indexed. "Papel" funds pay CDI/credit-spread
+income and "Multiestratégia" funds mix both, so the real-yield comparison would
+overstate their ceiling and Yield is not applicable to them. The yield used is
+the 12-month trailing one, computed on the fund's net asset value per share
+(that is the basis provider data uses), so ``dividend_per_share`` is
+``dividend_yield_ttm * nav_per_share``; above ``FII_MAX_SUSTAINABLE_YIELD_PCT``
+it is treated as not recurring (extraordinary distributions).
+
 Graham's fair value is ``sqrt(22.5 * LPA * VPA)`` (LPA = earnings per share,
 VPA = book value per share). It needs both to be positive -- the square root
 of a negative product is undefined, and a company with negative earnings or
@@ -83,6 +95,18 @@ SECTOR_EXCLUSIONS: dict[ValuationMethod, tuple[tuple[str, str], ...]] = {
             "de tecnologia (ativos majoritariamente intangíveis)",
         ),
     ),
+    ValuationMethod.YIELD: (
+        (
+            "papel",
+            "renda de FII de papel segue CDI/spreads de crédito (nominal): "
+            "compará-la à NTN-B real superestimaria o teto — o NAV é a âncora",
+        ),
+        (
+            "multiestratégia",
+            "renda de FII multiestratégia mistura indexadores — não dá para "
+            "tratá-la como renda real; o NAV é a âncora",
+        ),
+    ),
 }
 
 # Businesses whose value is mostly their dividend stream: Bazin leads the order.
@@ -98,6 +122,10 @@ DIVIDEND_LED_KEYWORDS: tuple[str, ...] = (
 
 BAZIN_MIN_CONSISTENCY_YEARS = 3
 BAZIN_MAX_PAYOUT_PCT = 100.0
+
+# A trailing FII yield above this is not a recurring income stream (special
+# distributions / amortizations), so it must not be capitalized.
+FII_MAX_SUSTAINABLE_YIELD_PCT = 20.0
 
 AttemptStatus = Literal["ok", "not_applicable", "not_implemented", "insufficient_data"]
 
@@ -158,6 +186,14 @@ def data_condition_violation(
 ) -> str | None:
     """Why the asset's OWN data breaks the method's premise, or ``None``.
     Absent fields are unknown, not violations."""
+    if method is ValuationMethod.YIELD:
+        dy = inputs.get("dividend_yield_ttm")
+        if dy is not None and dy > FII_MAX_SUSTAINABLE_YIELD_PCT:
+            return (
+                f"yield de {dy:.1f}% nos últimos 12 meses (acima de "
+                f"{FII_MAX_SUSTAINABLE_YIELD_PCT:.0f}%): provável distribuição "
+                "extraordinária, não renda recorrente para capitalizar"
+            )
     if method is ValuationMethod.BAZIN:
         years = inputs.get("dividend_consistency_years")
         if years is not None and years < BAZIN_MIN_CONSISTENCY_YEARS:
@@ -225,12 +261,35 @@ def _bazin(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
     return ceiling, f"DPS={dps}, taxa real NTN-B={rate:.2%}"
 
 
+def _nav(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
+    nav = inputs.get("nav_per_share")
+    if nav is None:
+        return None, "patrimônio por cota (VP/cota) indisponível"
+    if nav <= 0:
+        return None, f"VP/cota={nav}: patrimônio por cota não positivo"
+    return round(nav, 2), f"VP/cota={nav:.2f}"
+
+
+def _yield_income(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
+    dps = inputs.get("dividend_per_share")
+    rate = inputs.get("ntnb_real_yield")
+    if rate is None or rate <= 0:
+        return None, "taxa real da NTN-B longa indisponível (sem taxa fixa de reserva)"
+    if dps is None:
+        return None, "rendimento por cota dos últimos 12 meses indisponível"
+    if dps <= 0:
+        return None, f"rendimento por cota={dps}: sem distribuição, Yield não se aplica"
+    return bazin_ceiling_price(dps, rate), f"renda/cota={dps:.2f}, taxa real NTN-B={rate:.2%}"
+
+
 # method -> calculator returning (fair_value or None, detail/reason)
 CALCULATORS: dict[
     ValuationMethod, Callable[[Mapping[str, float | None]], tuple[float | None, str]]
 ] = {
     ValuationMethod.GRAHAM: _graham,
     ValuationMethod.BAZIN: _bazin,
+    ValuationMethod.NAV: _nav,
+    ValuationMethod.YIELD: _yield_income,
 }
 
 

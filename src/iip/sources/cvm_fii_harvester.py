@@ -7,8 +7,10 @@ harvesters, so tests never download a real file.
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
+from dataclasses import dataclass, replace
 from urllib.request import Request, urlopen
 
 from .cvm_fii import (
@@ -82,3 +84,39 @@ class CvmFiiHTTPHarvester:
             body=body,
             final_url=final_url,
         )
+
+
+class CachedCvmFiiHarvester:
+    """Memoizes ``CvmFiiHTTPHarvester.fetch`` per year for the life of the
+    instance. One CVM FII ZIP covers EVERY fund, so a portfolio run would
+    otherwise download the same file once per fund. The raw ``body`` is dropped
+    from the cached copy; only the parsed rows are needed."""
+
+    def __init__(self, inner: CvmFiiHTTPHarvester | None = None) -> None:
+        self._inner = inner or CvmFiiHTTPHarvester()
+        self._cache: dict[int, FetchedFiiReport] = {}
+
+    def fetch(self, target: CvmFiiTarget) -> FetchedFiiReport:
+        key = target.ano
+        if key not in self._cache:
+            self._cache[key] = replace(self._inner.fetch(target), body=b"")
+        return self._cache[key]
+
+
+_ACTIVE_FII_CACHE: ContextVar[CachedCvmFiiHarvester | None] = ContextVar(
+    "iip_active_fii_cache", default=None
+)
+
+
+def active_fii_cache() -> CachedCvmFiiHarvester | None:
+    return _ACTIVE_FII_CACHE.get()
+
+
+@contextmanager
+def shared_fii_cache() -> Iterator[CachedCvmFiiHarvester]:
+    cache = CachedCvmFiiHarvester()
+    token = _ACTIVE_FII_CACHE.set(cache)
+    try:
+        yield cache
+    finally:
+        _ACTIVE_FII_CACHE.reset(token)

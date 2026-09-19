@@ -144,14 +144,15 @@ def test_class_without_catalog_reports_not_applicable():
     assert first_valuation(attempts) is None
 
 
-def test_fii_gets_no_graham_and_no_value_yet():
+def test_fii_never_gets_graham_and_lacks_data_without_nav_and_income():
     attempts = evaluate_valuations(
-        ticker="BTLG11", asset_class="fii", price=100.0, inputs={"lpa": 1.0, "vpa": 1.0}
+        ticker="BTLG11", asset_class="fii", sector="Tijolo", industry="Logístico",
+        price=100.0, inputs={"lpa": 1.0, "vpa": 1.0},  # equity inputs are irrelevant here
     )
 
     assert _statuses(attempts) == {
-        ValuationMethod.NAV: "not_implemented",
-        ValuationMethod.YIELD: "not_implemented",
+        ValuationMethod.NAV: "insufficient_data",
+        ValuationMethod.YIELD: "insufficient_data",
     }
     assert first_valuation(attempts) is None
 

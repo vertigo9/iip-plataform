@@ -268,6 +268,52 @@ def _enrich_fii_with_patria_fundamentos(
     return financials, fetched, warnings
 
 
+def _fii_valuation_inputs(
+    financials: dict[str, Any], fii: Any
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Inputs for the FII valuation catalog (``iip.portfolio_data.valuation_methods``)
+    from bolsai's FII record: ``nav_per_share`` (patrimônio por cota),
+    ``dividend_yield_ttm`` (12 months, percent) and ``dividend_per_share``.
+
+    Why not the ``dividend_yield`` this template already carries: that one is
+    summed from CVM's monthly field over the months of the current year only
+    (7 in September, not 12) and the field itself is unreliable (checked live:
+    0.0 for funds that distribute -- BTCI11, VGIP11, AFHI11 -- and negative for
+    XPML11). bolsai's 12-month figure matches independent numbers (HGCR11:
+    12.31% vs 12 x R$ 1.00 / R$ 97.40 from the manager's own sheet).
+
+    Its BASIS is the fund's net asset value per share, not the market price,
+    so the income per share is ``dividend_yield_ttm * nav_per_share``.
+    ``dividend_yield`` (the analyzer input) is deliberately left untouched.
+    """
+    fetched: list[str] = []
+    warnings: list[str] = []
+    if fii is None:
+        return financials, fetched, warnings
+
+    financials = dict(financials)
+    nav = fii.book_value_per_share
+    dy_ttm = fii.dividend_yield_ttm
+    if nav is not None and nav > 0:
+        financials["nav_per_share"] = round(nav, 4)
+        fetched.append("nav_per_share")
+    if dy_ttm is not None:
+        financials["dividend_yield_ttm"] = dy_ttm
+        fetched.append("dividend_yield_ttm")
+    if nav is not None and nav > 0 and dy_ttm is not None:
+        financials["dividend_per_share"] = round(dy_ttm / 100 * nav, 4)
+        fetched.append("dividend_per_share")
+    if fetched:
+        warnings.append(
+            "nav_per_share/dividend_yield_ttm/dividend_per_share vêm do bolsai "
+            f"(ref. {fii.reference_date}); o yield de 12 meses é sobre o patrimônio "
+            "por cota, então dividend_per_share = yield × VP/cota. O "
+            "`dividend_yield` do analisador (CVM, só meses do ano corrente) "
+            "não é alterado."
+        )
+    return financials, fetched, warnings
+
+
 def fetch_fii_template_live(
     symbol: str,
     cnpj: str,
@@ -295,10 +341,14 @@ def fetch_fii_template_live(
     from iip.sources.cvm_fii_harvester import (
         CvmFiiHTTPHarvester as _CvmFiiHTTPHarvester,
     )
+    from iip.sources.cvm_fii_harvester import active_fii_cache as _active_fii_cache
 
-    cvm_result = _CvmFiiHTTPHarvester().fetch(_build_cvm_fii_target(ano))
+    cvm_result = (_active_fii_cache() or _CvmFiiHTTPHarvester()).fetch(
+        _build_cvm_fii_target(ano)
+    )
 
     price = None
+    bolsai_fii = None
     bolsai_warning = None
     if bolsai_api_key:
         try:
@@ -306,6 +356,7 @@ def fetch_fii_template_live(
                 _build_bolsai_fii_target(symbol)
             )
             price = bolsai_result.fii.close_price
+            bolsai_fii = bolsai_result.fii
         except Exception as exc:  # noqa: BLE001 — preço é opcional; qualquer falha aqui (rede, JSON, o que for) não deve derrubar os dados da CVM já obtidos
             bolsai_warning = f"não consegui buscar preço via bolsai: {exc}"
 
@@ -323,10 +374,17 @@ def fetch_fii_template_live(
     )
     template["financials"] = enriched_financials
 
+    valuation_financials, valuation_fetched, valuation_warnings = (
+        _fii_valuation_inputs(template["financials"], bolsai_fii)
+    )
+    template["financials"] = valuation_financials
+
     extra_warnings = (
         *([bolsai_warning] if bolsai_warning else []),
         *patria_warnings,
+        *valuation_warnings,
     )
+    patria_fetched = [*patria_fetched, *valuation_fetched]
     if patria_fetched or extra_warnings:
         resultado = FetchResult(
             fetched_fields=(*resultado.fetched_fields, *patria_fetched),

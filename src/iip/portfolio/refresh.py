@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
-from iip.sources.cvm_dfp_harvester import with_shared_dfp_cache
+from iip.sources.shared_caches import with_shared_fetch_caches
 
 
 @dataclass(frozen=True)
@@ -90,7 +90,7 @@ def _refreshable_positions(
     return tuple(p for p in positions if _template_type_for(p) is not None)
 
 
-@with_shared_dfp_cache
+@with_shared_fetch_caches
 def refresh_portfolio(
     output_dir: Path,
     *,

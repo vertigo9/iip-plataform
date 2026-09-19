@@ -33,7 +33,7 @@ from iip.portfolio_data.valuation_methods import (
     first_valuation,
     has_calculator,
 )
-from iip.sources.cvm_dfp_harvester import with_shared_dfp_cache
+from iip.sources.shared_caches import with_shared_fetch_caches
 from iip.sources.tesouro_direto import NtnbRate
 
 NO_METHOD_PREFIX = "nenhum método de valuation implementado para a classe"
@@ -73,7 +73,7 @@ def _default_fetch_rate() -> NtnbRate | None:
     return TesouroDiretoHTTPHarvester().fetch_long_ntnb_rate()
 
 
-@with_shared_dfp_cache
+@with_shared_fetch_caches
 def value_portfolio(
     *,
     bolsai_api_key: str | None,
@@ -83,12 +83,17 @@ def value_portfolio(
     ano: int | None = None,
     positions: tuple[PortfolioAsset, ...] | None = None,
     fetch_equity: Callable[..., tuple[dict, object]] | None = None,
+    fetch_fii: Callable[..., tuple[dict, object]] | None = None,
     fetch_rate: Callable[[], NtnbRate | None] | None = None,
     bridge_cls: Callable[[str], object] | None = None,
 ) -> ValuationRunResult:
-    from iip.cli.fetch_template import fetch_equity_template_live
+    from iip.cli.fetch_template import (
+        fetch_equity_template_live,
+        fetch_fii_template_live,
+    )
 
     fetch_equity = fetch_equity or fetch_equity_template_live
+    fetch_fii = fetch_fii or fetch_fii_template_live
     fetch_rate = fetch_rate or _default_fetch_rate
 
     rate: NtnbRate | None = None
@@ -117,6 +122,9 @@ def value_portfolio(
 
     hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (ano fiscal da DFP), não timestamp
     ano_dfp = ano or (hoje.year - 1)
+    # FII monthly reports are filed for the CURRENT year (unlike the annual DFP),
+    # so ``ano`` (a fiscal year) does not apply to them.
+    ano_fii = hoje.year
 
     market_inputs = {"ntnb_real_yield": rate.real_yield if rate else None}
     all_positions = positions if positions is not None else assets_refreshable_now()
@@ -147,9 +155,12 @@ def value_portfolio(
             continue
 
         try:
-            template, _ = fetch_equity(
-                position.ticker, position.cnpj, ano_dfp, bolsai_api_key, brapi_token
-            )
+            if template_type == "fii":
+                template, _ = fetch_fii(position.ticker, position.cnpj, ano_fii, bolsai_api_key)
+            else:
+                template, _ = fetch_equity(
+                    position.ticker, position.cnpj, ano_dfp, bolsai_api_key, brapi_token
+                )
             price = template.get("price")
             attempts = evaluate_valuations(
                 ticker=position.ticker,

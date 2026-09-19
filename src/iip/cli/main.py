@@ -673,21 +673,24 @@ def _auto_valuation_score(
     return result.score
 
 
-def _lead_method(attempts) -> str:
-    from iip.portfolio_data.valuation_methods import first_valuation
-
-    snapshot = first_valuation(attempts)
-    return snapshot.method.value if snapshot else "—"
-
-
-def _valuation_cell(attempts, method) -> str:
-    attempt = next((a for a in attempts if a.method is method), None)
-    if attempt is None or attempt.snapshot is None:
-        return "—"
-    snapshot = attempt.snapshot
+def _format_snapshot(snapshot) -> str:
     if snapshot.margin_of_safety is None:
         return f"{snapshot.fair_value:.2f}"
     return f"{snapshot.fair_value:.2f} ({snapshot.margin_of_safety:+.0%})"
+
+
+def _lead_and_others(attempts) -> tuple[str, str, str]:
+    """(lead method, its value and margin, the other methods that also gave a
+    value) -- the lead is the first in the sector's order."""
+    snapshots = [a.snapshot for a in attempts if a.snapshot is not None]
+    if not snapshots:
+        return "—", "—", "—"
+    lead, *others = snapshots
+    return (
+        lead.method.value,
+        _format_snapshot(lead),
+        "; ".join(f"{s.method.value} {_format_snapshot(s)}" for s in others) or "—",
+    )
 
 
 @cli.command("value-portfolio")
@@ -718,12 +721,12 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
     Transparente), buscado uma vez por rodada — nunca os 6% fixos. Sem a
     taxa, Bazin fica sem valor e o motivo é mostrado.
 
-    Só avalia classes com método implementado (hoje ações); o resto aparece
-    como "pulado" com o motivo. Nunca inventa valor: onde nenhum método
+    Só avalia classes com método implementado (ações: Graham/Bazin; FIIs:
+    NAV/Yield); o resto aparece como "pulado" com o motivo. O ano dos FIIs é
+    sempre o corrente; --ano vale só para a DFP das ações. Nunca inventa valor: onde nenhum método
     produz, a linha diz por quê.
     """
     from iip.portfolio.batch_value import NO_METHOD_PREFIX, value_portfolio
-    from iip.portfolio_data.valuation import ValuationMethod
 
     bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
     brapi_token = _unwrap_secret(get_settings().brapi_token)
@@ -745,11 +748,10 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
     table = Table(title="Valuation da carteira — valor justo/teto (margem de segurança)")
     table.add_column("Ticker")
     table.add_column("Preço", justify="right")
-    table.add_column("Graham", justify="right")
-    table.add_column("Bazin (NTN-B)", justify="right")
-    table.add_column("Principal")
+    table.add_column("Método principal")
+    table.add_column("Valor (margem)", justify="right")
+    table.add_column("Demais métodos")
     table.add_column("Status")
-    table.add_column("Detalhe")
 
     # Positions of a class with no implemented method would be N identical
     # "pulado" rows; summarize them per class in one line instead.
@@ -766,11 +768,8 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
         table.add_row(
             outcome.ticker,
             f"{outcome.price:.2f}" if outcome.price is not None else "—",
-            _valuation_cell(outcome.attempts, ValuationMethod.GRAHAM),
-            _valuation_cell(outcome.attempts, ValuationMethod.BAZIN),
-            _lead_method(outcome.attempts),
+            *_lead_and_others(outcome.attempts),
             f"[{cor}]{outcome.status}[/]",
-            outcome.detail[:70],
         )
 
     console.print(table)
@@ -788,7 +787,9 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
     )
     console.print(
         "[dim]Valor justo não é recomendação: Graham parte do patrimônio (fraco para "
-        "tecnologia e ativos intangíveis); Bazin usa o caixa pago no ano fiscal.[/]"
+        "tecnologia e ativos intangíveis); Bazin usa o caixa pago no ano fiscal; "
+        "NAV é o patrimônio por cota; Yield capitaliza a renda de 12 meses pela "
+        "NTN-B real (só FIIs de tijolo).[/]"
     )
 
     if resultado.failed:
