@@ -24,9 +24,7 @@ def compose(
     for asset in assets:
         ticker = asset.ticker.upper()
         if ticker in asset_by_ticker:
-            raise PortfolioCompositionError(
-                f"duplicate_portfolio_asset:{ticker}"
-            )
+            raise PortfolioCompositionError(f"duplicate_portfolio_asset:{ticker}")
         asset_by_ticker[ticker] = asset
 
     seen_decisions: set[str] = set()
@@ -40,9 +38,7 @@ def compose(
 
         asset = asset_by_ticker.get(ticker)
         if asset is None:
-            raise PortfolioCompositionError(
-                f"portfolio_asset_not_found:{ticker}"
-            )
+            raise PortfolioCompositionError(f"portfolio_asset_not_found:{ticker}")
 
         signals.append(decision_to_asset_signal(decision, asset))
 

@@ -24,9 +24,11 @@ def build_provider_roadmap():
             manifests[name].status,
             True,
             manifests[name].implementation,
-            "maintain_and_expand_tests"
-            if manifests[name].status == ProviderStatus.READY
-            else "validate_institutional_source_then_implement",
+            (
+                "maintain_and_expand_tests"
+                if manifests[name].status == ProviderStatus.READY
+                else "validate_institutional_source_then_implement"
+            ),
         )
         for name in FUND_MANAGERS
     )

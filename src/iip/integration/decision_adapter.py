@@ -51,28 +51,18 @@ def decision_to_asset_signal(
         evidence_count=len(evidence_ids),
         evidence_ids=evidence_ids,
         thesis_exit_state=(
-            thesis_exit.state.value
-            if thesis_exit is not None
-            else None
+            thesis_exit.state.value if thesis_exit is not None else None
         ),
         thesis_exit_failed_gates=(
-            tuple(thesis_exit.failed_gates)
-            if thesis_exit is not None
-            else ()
+            tuple(thesis_exit.failed_gates) if thesis_exit is not None else ()
         ),
         thesis_exit_attention_gates=(
-            tuple(thesis_exit.attention_gates)
-            if thesis_exit is not None
-            else ()
+            tuple(thesis_exit.attention_gates) if thesis_exit is not None else ()
         ),
         thesis_exit_unknown_gates=(
-            tuple(thesis_exit.unknown_gates)
-            if thesis_exit is not None
-            else ()
+            tuple(thesis_exit.unknown_gates) if thesis_exit is not None else ()
         ),
         thesis_exit_critical_failure=(
-            thesis_exit.critical_failure
-            if thesis_exit is not None
-            else None
+            thesis_exit.critical_failure if thesis_exit is not None else None
         ),
     )

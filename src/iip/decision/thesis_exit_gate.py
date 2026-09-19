@@ -72,9 +72,8 @@ class ThesisExitAssessment:
     @property
     def should_reduce(self) -> bool:
         """Informational flag for REVIEW; it does not force a sale."""
-        return (
-            self.state is ThesisExitState.REVIEW
-            and bool(self.attention_gates or self.failed_gates)
+        return self.state is ThesisExitState.REVIEW and bool(
+            self.attention_gates or self.failed_gates
         )
 
 
@@ -96,15 +95,11 @@ def assess_thesis_exit(
         "opportunity_cost": opportunity_cost,
     }
 
-    failed = tuple(
-        name for name in _GATE_NAMES if values[name] is GateStatus.FAIL
-    )
+    failed = tuple(name for name in _GATE_NAMES if values[name] is GateStatus.FAIL)
     attention = tuple(
         name for name in _GATE_NAMES if values[name] is GateStatus.ATTENTION
     )
-    unknown = tuple(
-        name for name in _GATE_NAMES if values[name] is GateStatus.UNKNOWN
-    )
+    unknown = tuple(name for name in _GATE_NAMES if values[name] is GateStatus.UNKNOWN)
 
     critical_failure = any(name in _CRITICAL_GATES for name in failed)
 

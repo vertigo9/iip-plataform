@@ -55,7 +55,7 @@ def update_asset_note(
 
     if note_path.exists():
         existing_content = note_path.read_text(encoding="utf-8")
-        
+
         if existing_content.startswith("---"):
             parts = existing_content.split("---", 2)
             body = parts[2].lstrip("\n") if len(parts) >= 3 else existing_content

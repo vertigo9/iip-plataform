@@ -125,7 +125,9 @@ def run_portfolio_cycle(
             raw_metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
 
             if spot_data["currency"] != "BRL":
-                fx_rate = quote_gateway.fetch_exchange_rate(spot_data["currency"], "BRL")
+                fx_rate = quote_gateway.fetch_exchange_rate(
+                    spot_data["currency"], "BRL"
+                )
                 raw_metrics["FX_RATE"] = float(fx_rate)
                 raw_metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"] * fx_rate)
             else:

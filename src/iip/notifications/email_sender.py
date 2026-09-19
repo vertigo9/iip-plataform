@@ -55,7 +55,9 @@ def send_html_report_email(
                     server.login(username, password)
                 server.send_message(msg)
 
-        logger.info("E-mail com relatório enviado com sucesso para: %s", recipient_email)
+        logger.info(
+            "E-mail com relatório enviado com sucesso para: %s", recipient_email
+        )
         return True
     # isolamento de falha de envio, não deve derrubar o chamador
     except Exception as exc:  # noqa: BLE001

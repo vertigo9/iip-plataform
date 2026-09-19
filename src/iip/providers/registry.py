@@ -86,17 +86,17 @@ def default_provider_manifests() -> tuple[ProviderManifest, ...]:
             ProviderManifest(
                 name=name,
                 kind=ProviderKind.INSTITUTIONAL,
-                status=ProviderStatus.READY
-                if name in {"xp_asset", "patria"}
-                else ProviderStatus.PENDING,
+                status=(
+                    ProviderStatus.READY
+                    if name in {"xp_asset", "patria"}
+                    else ProviderStatus.PENDING
+                ),
                 asset_classes=("fund",),
                 source_roles=("institutional_primary",),
                 implementation=(
                     "iip.sources.xp_asset.XPAssetProvider"
                     if name == "xp_asset"
-                    else "iip.harvest.patria"
-                    if name == "patria"
-                    else None
+                    else "iip.harvest.patria" if name == "patria" else None
                 ),
             )
         )

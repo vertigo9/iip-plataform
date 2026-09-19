@@ -452,7 +452,9 @@ def to_knowledge_evidence(metric_evidence: KnowledgeMetricEvidence):
         title=metric_evidence.title,
         document_hash=metric_evidence.document_hash,
         relevant_facts=tuple(
-            f"{key}={value}" for key, value in metric_evidence.relevant_facts.items() if value
+            f"{key}={value}"
+            for key, value in metric_evidence.relevant_facts.items()
+            if value
         ),
     )
 

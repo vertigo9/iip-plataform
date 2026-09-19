@@ -168,9 +168,7 @@ def aggregate_positions(trades: list[TradeRecord]) -> AggregationResult:
         if trade.buy_sell == "C":
             new_qty = qty + trade.quantity
             new_avg = (
-                (qty * avg + trade.quantity * trade.price) / new_qty
-                if new_qty
-                else 0.0
+                (qty * avg + trade.quantity * trade.price) / new_qty if new_qty else 0.0
             )
             running[trade.ticker] = (new_qty, new_avg)
         else:  # "V" -- venda

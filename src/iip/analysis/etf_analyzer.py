@@ -87,9 +87,7 @@ class ETFAnalyzer(BaseAnalyzer):
         }
         first_mover_bonus = 15 if first_mover else 0
         competition_penalty = min(competitors * 8, 60)
-        score = min(
-            max(0, uniqueness + first_mover_bonus - competition_penalty), 100.0
-        )
+        score = min(max(0, uniqueness + first_mover_bonus - competition_penalty), 100.0)
         return PillarScore(
             pillar=Pillar.MOAT,
             score=round(score, 2),
@@ -110,7 +108,11 @@ class ETFAnalyzer(BaseAnalyzer):
             "AUM Growth 3y %": aum_growth_3y,
         }
         score = min(
-            (min(aum, 100) + min(max(net_inflows_ytd, 0) * 2, 100) + min(max(aum_growth_3y, 0) * 2, 100))
+            (
+                min(aum, 100)
+                + min(max(net_inflows_ytd, 0) * 2, 100)
+                + min(max(aum_growth_3y, 0) * 2, 100)
+            )
             / 3,
             100.0,
         )
@@ -162,7 +164,9 @@ class ETFAnalyzer(BaseAnalyzer):
         }
         volume_score = min(avg_daily_volume / 50_000, 100)
         spread_score = max(0, 100 - bid_ask_spread_bps * 2)
-        score = min((volume_score + spread_score + min(market_makers * 25, 100)) / 3, 100.0)
+        score = min(
+            (volume_score + spread_score + min(market_makers * 25, 100)) / 3, 100.0
+        )
         return PillarScore(
             pillar=Pillar.CASH_FLOW,
             score=round(score, 2),
@@ -259,9 +263,7 @@ class ETFAnalyzer(BaseAnalyzer):
         it claims to."""
         tracking_error = fin.get("tracking_error_pct", 0.5)
         tracking_difference = fin.get("tracking_difference_pct", 0.3)
-        premium_discount_volatility = fin.get(
-            "premium_discount_volatility_pct", 0.2
-        )
+        premium_discount_volatility = fin.get("premium_discount_volatility_pct", 0.2)
 
         indicators = {
             "Tracking Error %": tracking_error,

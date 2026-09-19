@@ -234,9 +234,7 @@ class DataSourceReachabilityCheck:
         try:
             response = self._opener(request, timeout=self._timeout)
             status = getattr(response, "status", 200)
-            return HealthResult(
-                name=self.name, healthy=True, message=f"HTTP {status}"
-            )
+            return HealthResult(name=self.name, healthy=True, message=f"HTTP {status}")
         except HTTPError as exc:
             # The server answered — just not with 2xx/3xx to a bare
             # HEAD. That still means it's reachable.

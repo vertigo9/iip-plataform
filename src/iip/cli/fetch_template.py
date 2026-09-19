@@ -166,7 +166,9 @@ def build_fii_template(
     if price is not None:
         fetched.append("price")
     else:
-        warnings.append("Preço não informado/buscado — reit_premium_discount e market_cap ficam vazios.")
+        warnings.append(
+            "Preço não informado/buscado — reit_premium_discount e market_cap ficam vazios."
+        )
 
     sector = "REPLACE_WITH_SECTOR"
     if geral:
@@ -174,7 +176,8 @@ def build_fii_template(
         geral_matches = [
             g
             for g in geral
-            if "".join(ch for ch in g.cnpj_fundo_classe if ch.isdigit()) == cnpj_normalizado
+            if "".join(ch for ch in g.cnpj_fundo_classe if ch.isdigit())
+            == cnpj_normalizado
         ]
         if geral_matches:
             mais_recente = max(geral_matches, key=lambda g: g.data_referencia)
@@ -342,10 +345,19 @@ def nav_change_12m_pct(
     year, month = int(latest[:4]), int(latest[5:7])
     earlier = f"{year - 1:04d}-{month:02d}-01"
     if earlier not in by_month:
-        return None, f"sem o mês {earlier[:7]} para comparar (12 meses antes de {latest[:7]})"
+        return (
+            None,
+            f"sem o mês {earlier[:7]} para comparar (12 meses antes de {latest[:7]})",
+        )
     window = [m for m in months if earlier < m <= latest]
-    if any((by_month[m].valores.get("Percentual_Amortizacao_Cotas_Mes") or 0) > 0 for m in window):
-        return None, "houve amortização de cotas na janela (capital devolvido, não erosão)"
+    if any(
+        (by_month[m].valores.get("Percentual_Amortizacao_Cotas_Mes") or 0) > 0
+        for m in window
+    ):
+        return (
+            None,
+            "houve amortização de cotas na janela (capital devolvido, não erosão)",
+        )
     now = by_month[latest].valores.get("Valor_Patrimonial_Cotas")
     ago = by_month[earlier].valores.get("Valor_Patrimonial_Cotas")
     if not now or not ago or ago <= 0:
@@ -509,8 +521,8 @@ def fetch_fii_template_live(
     else:
         patria_fetched, patria_warnings = [], []
 
-    valuation_financials, valuation_fetched, valuation_warnings = (
-        _fii_valuation_inputs(template["financials"], bolsai_fii)
+    valuation_financials, valuation_fetched, valuation_warnings = _fii_valuation_inputs(
+        template["financials"], bolsai_fii
     )
     template["financials"] = valuation_financials
 
@@ -525,7 +537,9 @@ def fetch_fii_template_live(
     months_used = resultado.dividend_yield_months_used
     if ttm_used:
         base_warnings = tuple(
-            w for w in base_warnings if not w.startswith("dividend_yield calculado com apenas")
+            w
+            for w in base_warnings
+            if not w.startswith("dividend_yield calculado com apenas")
         )
         if "dividend_yield" not in base_fetched:
             base_fetched = (*base_fetched, "dividend_yield")
@@ -535,11 +549,13 @@ def fetch_fii_template_live(
     # FIIAnalyzer._analyze_fii_dividends). Both best-effort: failures degrade
     # the pillar to its previous calibration and say so.
     if analysis_inputs:
-        pillar_financials, pillar_fetched, pillar_warnings = _fii_dividend_pillar_inputs(
-            template["financials"],
-            cnpj,
-            list(cvm_result.complemento),
-            lambda: fii_harvester.fetch(_build_cvm_fii_target(ano - 1)).complemento,
+        pillar_financials, pillar_fetched, pillar_warnings = (
+            _fii_dividend_pillar_inputs(
+                template["financials"],
+                cnpj,
+                list(cvm_result.complemento),
+                lambda: fii_harvester.fetch(_build_cvm_fii_target(ano - 1)).complemento,
+            )
         )
         template["financials"] = pillar_financials
     else:
@@ -786,7 +802,10 @@ def fetch_equity_template_live(
                 "resultado financeiro do restante da operação; ebit e ROIC "
                 "continuam no valor-padrão."
             )
-        if current.patrimonio_liquido is not None and current.passivo_nao_circulante is not None:
+        if (
+            current.patrimonio_liquido is not None
+            and current.passivo_nao_circulante is not None
+        ):
             financials["invested_capital"] = round(
                 current.patrimonio_liquido + current.passivo_nao_circulante, 2
             )
@@ -927,7 +946,9 @@ def fetch_equity_template_live(
             if (
                 streak < 5
                 and history.get(broken_year) == 0.0
-                and any(history.get(y, 0.0) > 0 for y in range(broken_year - 1, ano - 5, -1))
+                and any(
+                    history.get(y, 0.0) > 0 for y in range(broken_year - 1, ano - 5, -1)
+                )
             ):
                 warnings.append(
                     f"dividend_consistency_years parou em {broken_year}, ano com "
@@ -989,7 +1010,9 @@ def _fetch_month_with_fallback(
         except HTTPError as exc:
             if exc.code != 404 or attempt == max_months_back:
                 raise
-            ano_try, mes_try = (ano_try - 1, 12) if mes_try == 1 else (ano_try, mes_try - 1)
+            ano_try, mes_try = (
+                (ano_try - 1, 12) if mes_try == 1 else (ano_try, mes_try - 1)
+            )
             continue
         break
     warning = (
@@ -1105,9 +1128,7 @@ def fetch_fiagro_template_live(
         except Exception as exc:  # noqa: BLE001
             warnings.append(f"não consegui buscar preço via brapi.dev: {exc}")
     else:
-        warnings.append(
-            "IIP_BRAPI_TOKEN não definida — pulando busca de preço."
-        )
+        warnings.append("IIP_BRAPI_TOKEN não definida — pulando busca de preço.")
 
     # Valuation inputs (NAV per share, 12-month yield) -- bolsai serves FIAGROs from
     # its FII endpoint, so this is the same lookup the FII valuation uses (CRAA11 is
@@ -1415,9 +1436,7 @@ def build_etf_template(
     if price is not None:
         fetched.append("price")
     else:
-        warnings.append(
-            "Preço não informado/buscado — market_cap fica vazio."
-        )
+        warnings.append("Preço não informado/buscado — market_cap fica vazio.")
 
     warnings.append(
         "assets_under_management_millions vem de um único mês de Informe "

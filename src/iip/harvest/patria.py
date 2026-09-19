@@ -308,9 +308,7 @@ def _find_year_select(page):
                     "(opts) => opts.map(o => o.value || '')"
                 )
             ]
-            years = {
-                x for x in labels + values if re.fullmatch(r"(?:19|20)\d{2}", x)
-            }
+            years = {x for x in labels + values if re.fullmatch(r"(?:19|20)\d{2}", x)}
             if years:
                 candidates.append((len(years), i, sel, sorted(years)))
         # scraper best-effort: opcao de ano invalida e pulada, nao trava a busca

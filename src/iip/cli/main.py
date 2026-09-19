@@ -46,6 +46,7 @@ def _unwrap_secret(value: Any) -> str | None:
         return value.get_secret_value()
     return value
 
+
 ANALYZERS: dict[str, type] = {
     "equity": EquityAnalyzer,
     "fii": FIIAnalyzer,
@@ -76,18 +77,20 @@ def knowledge_status() -> None:
     settings = get_settings()
     vault = settings.obsidian_vault
     counts = {
-        "decisions": len(list((vault / "03_Decisions").glob("*.md")))
-        if vault.exists()
-        else 0,
-        "evidence": len(list((vault / "04_Evidence").glob("*.md")))
-        if vault.exists()
-        else 0,
-        "snapshots": len(list((vault / "02_Portfolio" / "Snapshots").glob("*.md")))
-        if vault.exists()
-        else 0,
-        "exposures": len(list((vault / "06_Exposures").glob("*.md")))
-        if vault.exists()
-        else 0,
+        "decisions": (
+            len(list((vault / "03_Decisions").glob("*.md"))) if vault.exists() else 0
+        ),
+        "evidence": (
+            len(list((vault / "04_Evidence").glob("*.md"))) if vault.exists() else 0
+        ),
+        "snapshots": (
+            len(list((vault / "02_Portfolio" / "Snapshots").glob("*.md")))
+            if vault.exists()
+            else 0
+        ),
+        "exposures": (
+            len(list((vault / "06_Exposures").glob("*.md"))) if vault.exists() else 0
+        ),
     }
     console.print(
         json.dumps({"vault": str(vault), "exists": vault.exists(), **counts}, indent=2),
@@ -216,12 +219,12 @@ def config():
             "log_level": ctx.settings.log_level,
             "base_dir": str(ctx.settings.base_dir),
             "credentials": {
-                "bolsai_api_key": "configurada"
-                if ctx.settings.bolsai_api_key
-                else "não configurada",
-                "brapi_token": "configurada"
-                if ctx.settings.brapi_token
-                else "não configurada",
+                "bolsai_api_key": (
+                    "configurada" if ctx.settings.bolsai_api_key else "não configurada"
+                ),
+                "brapi_token": (
+                    "configurada" if ctx.settings.brapi_token else "não configurada"
+                ),
             },
         }
         console.print(json.dumps(info, indent=2, ensure_ascii=False), soft_wrap=True)
@@ -465,7 +468,11 @@ def fetch_template(
             )
         try:
             template, resultado = fetch_fiagro_template_live(
-                symbol, cnpj, ano_efetivo, mes_efetivo, brapi_token,
+                symbol,
+                cnpj,
+                ano_efetivo,
+                mes_efetivo,
+                brapi_token,
                 bolsai_api_key=_unwrap_secret(get_settings().bolsai_api_key),
             )
         except Exception as exc:
@@ -492,7 +499,9 @@ def fetch_template(
             console.print(f"[bold red]Erro ao buscar DFP da CVM:[/] {exc}")
             raise SystemExit(1) from exc
 
-    console.print(f"\n[bold]Campos preenchidos com dado real:[/] {', '.join(resultado.fetched_fields) or '(nenhum)'}")
+    console.print(
+        f"\n[bold]Campos preenchidos com dado real:[/] {', '.join(resultado.fetched_fields) or '(nenhum)'}"
+    )
     for warning in resultado.warnings:
         console.print(f"[yellow]Aviso: {warning}[/]")
 
@@ -695,7 +704,9 @@ def _auto_valuation_score(
         ntnb_real_yield=rate,
     )
     if result.score is None:
-        console.print(f"[yellow]Aviso: valuation automático sem valor — {result.explanation}[/]")
+        console.print(
+            f"[yellow]Aviso: valuation automático sem valor — {result.explanation}[/]"
+        )
         return None
     console.print(f"[dim]Valuation automático: {result.explanation}[/]")
     return result.score
@@ -772,7 +783,9 @@ def value_portfolio_command(
     vault_path = vault or str(get_settings().obsidian_vault)
 
     if not bolsai_key:
-        console.print("[dim]IIP_BOLSAI_API_KEY não definida — sem preço/LPA/VPA, Graham não calcula.[/]")
+        console.print(
+            "[dim]IIP_BOLSAI_API_KEY não definida — sem preço/LPA/VPA, Graham não calcula.[/]"
+        )
 
     console.print("[dim]Avaliando carteira...[/]\n")
     resultado = value_portfolio(
@@ -784,7 +797,9 @@ def value_portfolio_command(
     )
     console.print(f"[dim]{resultado.ntnb_note}[/]\n")
 
-    table = Table(title="Valuation da carteira — valor justo/teto (margem de segurança)")
+    table = Table(
+        title="Valuation da carteira — valor justo/teto (margem de segurança)"
+    )
     table.add_column("Ticker")
     table.add_column("Preço", justify="right")
     table.add_column("Método principal")
@@ -819,7 +834,9 @@ def value_portfolio_command(
                     f"[dim]{outcome.ticker} · {attempt.method.value} sem valor: {attempt.reason}[/]"
                 )
     for detail, tickers in class_skips.items():
-        console.print(f"[yellow]pulado[/] ({len(tickers)}): {detail} — {', '.join(tickers)}")
+        console.print(
+            f"[yellow]pulado[/] ({len(tickers)}): {detail} — {', '.join(tickers)}"
+        )
     console.print(
         f"\n[bold]Resumo:[/] {len(resultado.succeeded)} ok, "
         f"{len(resultado.failed)} erro, {len(resultado.skipped)} pulado"
@@ -1117,7 +1134,9 @@ def analyze(
 
 @cli.command("persist-evidence")
 @click.argument("evidence_id")
-@click.option("--ticker", required=True, help="Ticker do ativo que essa evidência sustenta.")
+@click.option(
+    "--ticker", required=True, help="Ticker do ativo que essa evidência sustenta."
+)
 @click.option(
     "--source-type",
     required=True,
@@ -1616,11 +1635,15 @@ def _collect_mziq_manager_documents(
     if ano_efetivo is None:
         anos = harvester.fetch_years(fund_module.build_years_target(normalized_ticker))
         if not anos:
-            console.print(f"[bold red]Nenhum ano disponível via MZIQ para {normalized_ticker}.[/]")
+            console.print(
+                f"[bold red]Nenhum ano disponível via MZIQ para {normalized_ticker}.[/]"
+            )
             raise SystemExit(1)
         ano_efetivo = max(anos)
 
-    console.print(f"[dim]Buscando documentos de {normalized_ticker} ({ano_efetivo})...[/]\n")
+    console.print(
+        f"[dim]Buscando documentos de {normalized_ticker} ({ano_efetivo})...[/]\n"
+    )
 
     documents = harvester.fetch_documents(
         fund_module.build_documents_target(normalized_ticker, ano_efetivo)
@@ -1633,11 +1656,15 @@ def _collect_mziq_manager_documents(
 
     vault_path = vault or str(get_settings().obsidian_vault)
     bridge = None if sem_evidencia else KnowledgeBridge(vault_path)
-    out_dir = Path(output_dir) / normalized_ticker / str(ano_efetivo) if output_dir else None
+    out_dir = (
+        Path(output_dir) / normalized_ticker / str(ano_efetivo) if output_dir else None
+    )
     if out_dir is not None:
         out_dir.mkdir(parents=True, exist_ok=True)
 
-    table = Table(title=f"Documentos {manager_label}/MZIQ — {normalized_ticker} ({ano_efetivo})")
+    table = Table(
+        title=f"Documentos {manager_label}/MZIQ — {normalized_ticker} ({ano_efetivo})"
+    )
     table.add_column("Categoria")
     table.add_column("Título")
     table.add_column("Status")
@@ -1645,25 +1672,43 @@ def _collect_mziq_manager_documents(
     baixados = 0
     for document in documents:
         if not document.url:
-            table.add_row(document.category or "-", document.file_title or "-", "[yellow]sem URL[/]")
+            table.add_row(
+                document.category or "-",
+                document.file_title or "-",
+                "[yellow]sem URL[/]",
+            )
             continue
         try:
-            request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
+            request = Request(
+                document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"}
+            )
             # URL vem da própria API MZIQ, não de entrada externa
             with urlopen(request, timeout=30.0) as response:  # noqa: S310
                 body = response.read()
-                content_type = response.headers.get("Content-Type", "application/octet-stream")
+                content_type = response.headers.get(
+                    "Content-Type", "application/octet-stream"
+                )
         except HTTPError as exc:
-            table.add_row(document.category or "-", document.file_title or "-", f"[red]HTTP {exc.code}[/]")
+            table.add_row(
+                document.category or "-",
+                document.file_title or "-",
+                f"[red]HTTP {exc.code}[/]",
+            )
             continue
         # hospedagens variadas (arquivo truncado, timeout, SSL); um documento ruim não deve abortar a coleta inteira
         except Exception as exc:  # noqa: BLE001
-            table.add_row(document.category or "-", document.file_title or "-", f"[red]{type(exc).__name__}[/]")
+            table.add_row(
+                document.category or "-",
+                document.file_title or "-",
+                f"[red]{type(exc).__name__}[/]",
+            )
             continue
 
         if out_dir is not None:
             suffix = Path(document.url.split("?", 1)[0]).suffix or ".bin"
-            filename = f"{document.id}{suffix}" if document.id else f"{baixados}{suffix}"
+            filename = (
+                f"{document.id}{suffix}" if document.id else f"{baixados}{suffix}"
+            )
             (out_dir / filename).write_bytes(body)
 
         if bridge is not None:
@@ -1686,10 +1731,14 @@ def _collect_mziq_manager_documents(
                 pass
 
         baixados += 1
-        table.add_row(document.category or "-", document.file_title or "-", "[green]ok[/]")
+        table.add_row(
+            document.category or "-", document.file_title or "-", "[green]ok[/]"
+        )
 
     console.print(table)
-    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    console.print(
+        f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso."
+    )
     if out_dir is not None:
         console.print(f"[dim]Cópias salvas em {out_dir}[/]")
     if bridge is not None:
@@ -1814,7 +1863,9 @@ def collect_static_documents_command(
     baixados = 0
     for document in documents:
         try:
-            request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
+            request = Request(
+                document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"}
+            )
             # URL vem da própria página do fundo, não de entrada externa
             with urlopen(request, timeout=30.0) as response:  # noqa: S310
                 body = response.read()
@@ -1855,7 +1906,9 @@ def collect_static_documents_command(
         table.add_row(document.title, "[green]ok[/]")
 
     console.print(table)
-    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    console.print(
+        f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso."
+    )
     if out_dir is not None:
         console.print(f"[dim]Cópias salvas em {out_dir}[/]")
     if bridge is not None:
@@ -1966,7 +2019,9 @@ def collect_solutions_ir_documents_command(
         )
         raise SystemExit(1)
 
-    console.print(f"[dim]Buscando documentos de {normalized_ticker} via Solutions IR...[/]\n")
+    console.print(
+        f"[dim]Buscando documentos de {normalized_ticker} via Solutions IR...[/]\n"
+    )
 
     import datetime as _dt
 
@@ -1979,7 +2034,9 @@ def collect_solutions_ir_documents_command(
     if not incluir_midia:
         media = {".mp3", ".mp4", ".wav", ".m4a", ".mov", ".avi"}
         documents = tuple(
-            d for d in documents if Path(d.url.split("?", 1)[0]).suffix.lower() not in media
+            d
+            for d in documents
+            if Path(d.url.split("?", 1)[0]).suffix.lower() not in media
         )
     if categoria:
         wanted = set(categoria)
@@ -2004,17 +2061,29 @@ def collect_solutions_ir_documents_command(
     baixados = 0
     for document in documents:
         try:
-            request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
+            request = Request(
+                document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"}
+            )
             # URL vem da própria API Solutions IR, não de entrada externa
             with urlopen(request, timeout=30.0) as response:  # noqa: S310
                 body = response.read()
                 content_type = response.headers.get("Content-Type", "application/pdf")
         except HTTPError as exc:
-            table.add_row(document.category_sigla, document.year, document.title, f"[red]HTTP {exc.code}[/]")
+            table.add_row(
+                document.category_sigla,
+                document.year,
+                document.title,
+                f"[red]HTTP {exc.code}[/]",
+            )
             continue
         # hospedagem estática de terceiro (static.btgpactual.com); um documento ruim não deve abortar a coleta inteira
         except Exception as exc:  # noqa: BLE001
-            table.add_row(document.category_sigla, document.year, document.title, f"[red]{type(exc).__name__}[/]")
+            table.add_row(
+                document.category_sigla,
+                document.year,
+                document.title,
+                f"[red]{type(exc).__name__}[/]",
+            )
             continue
 
         if out_dir is not None:
@@ -2042,10 +2111,14 @@ def collect_solutions_ir_documents_command(
                 pass
 
         baixados += 1
-        table.add_row(document.category_sigla, document.year, document.title, "[green]ok[/]")
+        table.add_row(
+            document.category_sigla, document.year, document.title, "[green]ok[/]"
+        )
 
     console.print(table)
-    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    console.print(
+        f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso."
+    )
     if out_dir is not None:
         console.print(f"[dim]Cópias salvas em {out_dir}[/]")
     if bridge is not None:
@@ -2107,7 +2180,9 @@ def collect_cpfl_documents_command(
     from iip.knowledge.bridge import KnowledgeBridge
     from iip.sources.cpfl_ri_harvester import CpflRiHTTPHarvester
 
-    console.print("[dim]Buscando a Central de Resultados de CPFE3 (ri.cpfl.com.br)...[/]\n")
+    console.print(
+        "[dim]Buscando a Central de Resultados de CPFE3 (ri.cpfl.com.br)...[/]\n"
+    )
     documents = CpflRiHTTPHarvester().fetch().documents
     # ano de calendário (histórico de documentos), não timestamp
     first_year = _dt.date.today().year - max(anos_historico, 1) + 1  # noqa: DTZ011
@@ -2127,7 +2202,10 @@ def collect_cpfl_documents_command(
     baixados = 0
     for document in documents:
         try:
-            request = Request(document.url, headers={"User-Agent": "Mozilla/5.0 (compatible; IIP-D-OBSIDIAN/1.0)"})
+            request = Request(
+                document.url,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; IIP-D-OBSIDIAN/1.0)"},
+            )
             # URL vem da própria Central de Resultados do RI, não de entrada externa
             with urlopen(request, timeout=60.0) as response:  # noqa: S310
                 body = response.read()
@@ -2163,7 +2241,9 @@ def collect_cpfl_documents_command(
         table.add_row(document.title, "[green]ok[/]")
 
     console.print(table)
-    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
+    console.print(
+        f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso."
+    )
     if bridge is not None:
         console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
 
