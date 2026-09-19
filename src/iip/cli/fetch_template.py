@@ -204,14 +204,16 @@ def build_fii_template(
 def _enrich_fii_with_vacancia_report(
     financials: dict[str, Any], symbol: str
 ) -> tuple[dict[str, Any], list[str], list[str]]:
-    """Best-effort ``occupancy_rate`` from the manager's own latest report PDF
-    (see ``iip.sources.fii_vacancia``: TRXF11, BTLG11, HGBS11). Silent no-op for a
-    ticker without a verified layout, like the Pátria enrichment -- this runs for
-    every FII. ``avg_lease_term_years`` is NOT read (no layout confirmed for it).
+    """Best-effort ``occupancy_rate`` and ``avg_lease_term_years`` from the manager's
+    own latest report PDF (see ``iip.sources.fii_vacancia`` for the layouts and the
+    criterion). Silent no-op for a ticker without a verified layout, like the Pátria
+    enrichment -- this runs for every FII.
 
-    The base is the financial vacancy when the report gives it (same as the
-    Pátria path); when only the physical one exists (HGBS11, a shopping) it is
-    used but flagged, never swapped silently.
+    Occupancy: the base is the financial vacancy when the report gives it (same as the
+    Pátria path); when only the physical one exists it is used but flagged, and a
+    number that was calculated instead of read says so. The lease term is filled only
+    where the report declares a WALE/WAULT/remaining term (never a total contract
+    duration), independent of whether the occupancy layout was recognised.
     """
     from iip.sources.fii_vacancia import profile_for_ticker
     from iip.sources.fii_vacancia_harvester import FiiVacanciaHTTPHarvester
@@ -238,29 +240,40 @@ def _enrich_fii_with_vacancia_report(
                 "occupancy_rate continua no valor-padrão."
             ],
         )
-    reading = fetched_report.reading
-    if reading is None or reading.occupancy_rate is None:
-        return (
-            financials,
-            [],
-            [
-                f"o relatório gerencial ({fetched_report.source_url}) não tem o "
-                "layout de vacância esperado — occupancy_rate continua no "
-                "valor-padrão (layout mudou?)."
-            ],
-        )
 
     financials = dict(financials)
-    financials["occupancy_rate"] = reading.occupancy_rate
-    warnings = []
-    if reading.basis != "financeira":
+    fetched: list[str] = []
+    warnings: list[str] = []
+
+    reading = fetched_report.reading
+    if reading is None or reading.occupancy_rate is None:
         warnings.append(
-            f"occupancy_rate vem da vacância {reading.basis} do relatório gerencial "
-            "(o relatório não informa a financeira, base usada nos fundos da Pátria)."
+            f"o relatório gerencial ({fetched_report.source_url}) não tem o "
+            "layout de vacância esperado — occupancy_rate continua no "
+            "valor-padrão (layout mudou?)."
         )
-    if reading.note:
-        warnings.append(f"occupancy_rate: {reading.note}")
-    return financials, ["occupancy_rate"], warnings
+    else:
+        financials["occupancy_rate"] = reading.occupancy_rate
+        fetched.append("occupancy_rate")
+        if reading.basis != "financeira":
+            warnings.append(
+                f"occupancy_rate vem da vacância {reading.basis} do relatório gerencial "
+                "(o relatório não informa a financeira, base usada nos fundos da Pátria)."
+            )
+        if reading.note:
+            warnings.append(f"occupancy_rate: {reading.note}")
+
+    lease = fetched_report.lease_term
+    if lease is not None:
+        financials["avg_lease_term_years"] = lease.years
+        fetched.append("avg_lease_term_years")
+        warnings.append(
+            f'avg_lease_term_years = {lease.years:g} anos, o "{lease.label}" do '
+            "relatório gerencial, tratado como WALE (prazo médio remanescente dos "
+            "contratos); cada gestora pondera por receita ou por área e a Pátria usa o "
+            "WALE dela."
+        )
+    return financials, fetched, warnings
 
 
 def _enrich_fii_with_patria_fundamentos(
