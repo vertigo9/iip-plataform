@@ -87,7 +87,9 @@ def _parse_percent(raw: str) -> float | None:
         return None
 
 
-def parse_rates(text: str, *, drop_last_line: bool = False) -> tuple[TesouroRateRow, ...]:
+def parse_rates(
+    text: str, *, drop_last_line: bool = False
+) -> tuple[TesouroRateRow, ...]:
     """Parse the CSV body. ``drop_last_line`` discards a possibly truncated
     final line -- set it when the body came from a partial (ranged) read."""
     lines = text.splitlines()
@@ -134,5 +136,7 @@ def long_ntnb_rate(
     if not low < real_yield < high:
         return None
     return NtnbRate(
-        reference_date=latest, maturity=longest.vencimento, real_yield=round(real_yield, 6)
+        reference_date=latest,
+        maturity=longest.vencimento,
+        real_yield=round(real_yield, 6),
     )

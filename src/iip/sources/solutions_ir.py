@@ -112,7 +112,9 @@ def build_site_targets(
     if company is None:
         raise ValueError(f"no Solutions IR config registered for ticker {ticker!r}")
     if not company.is_site:
-        raise ValueError(f"{ticker!r} is registered with the fund endpoint, not a site id")
+        raise ValueError(
+            f"{ticker!r} is registered with the fund endpoint, not a site id"
+        )
     return tuple(
         SolutionsIrTarget(
             ticker=company.ticker,
@@ -134,7 +136,9 @@ def build_documents_target(ticker: str) -> SolutionsIrTarget:
             f"{ticker!r} is a company site: use build_site_targets (one request per year)"
         )
     normalized_cnpj = "".join(ch for ch in company.cnpj if ch.isdigit())
-    url = f"{company.api_base_url}/v2/asset/{company.fund_id}/documents/{normalized_cnpj}"
+    url = (
+        f"{company.api_base_url}/v2/asset/{company.fund_id}/documents/{normalized_cnpj}"
+    )
     return SolutionsIrTarget(ticker=company.ticker, url=url)
 
 
@@ -162,15 +166,21 @@ def _parse_site_response(payload: dict, ticker: str) -> tuple[SolutionsIrDocumen
                     category_name=(titles.get(key) or key).strip(),
                     year=(ref or delivered)[:4],
                     date=(delivered or ref)[:10],
-                    title=(item.get("title") or item.get("name") or "documento").strip(),
+                    title=(
+                        item.get("title") or item.get("name") or "documento"
+                    ).strip(),
                     url=url,
                 )
             )
-    documents.sort(key=lambda d: (_as_int_year(d.year), d.date, d.category_sigla), reverse=True)
+    documents.sort(
+        key=lambda d: (_as_int_year(d.year), d.date, d.category_sigla), reverse=True
+    )
     return tuple(documents)
 
 
-def parse_documents_response(body: bytes, ticker: str) -> tuple[SolutionsIrDocument, ...]:
+def parse_documents_response(
+    body: bytes, ticker: str
+) -> tuple[SolutionsIrDocument, ...]:
     import json
 
     payload = json.loads(body.decode("utf-8"))
@@ -193,7 +203,9 @@ def parse_documents_response(body: bytes, ticker: str) -> tuple[SolutionsIrDocum
                         category_name=nome_tipo,
                         year=year,
                         date=item.get("data_descricao") or item.get("date") or "",
-                        title=item.get("nome") or item.get("data_descricao") or "documento",
+                        title=item.get("nome")
+                        or item.get("data_descricao")
+                        or "documento",
                         url=url,
                     )
                 )

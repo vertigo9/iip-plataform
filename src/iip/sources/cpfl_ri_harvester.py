@@ -31,12 +31,15 @@ class CpflRiHTTPHarvester:
 
     def fetch(self, target: CpflTarget | None = None) -> FetchedCpflDocuments:
         target = target or build_results_target("CPFE3")
-        request = Request(target.url, headers={"User-Agent": self.user_agent}, method="GET")
+        request = Request(
+            target.url, headers={"User-Agent": self.user_agent}, method="GET"
+        )
         response = self._opener(request, timeout=self.timeout)
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
         html = response.read().decode("utf-8", errors="replace")
         return FetchedCpflDocuments(
-            target=target, status_code=status_code,
+            target=target,
+            status_code=status_code,
             documents=parse_results_page(html, target.ticker),
         )

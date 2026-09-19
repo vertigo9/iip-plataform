@@ -62,16 +62,14 @@ class CvmFiiHTTPHarvester:
         status_code = 200 if raw_status is None else int(raw_status)
 
         headers = getattr(response, "headers", {})
-        content_type = str(
-            headers.get("Content-Type", "")
-        ).split(";", 1)[0].strip().lower()
+        content_type = (
+            str(headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+        )
 
         body = response.read()
 
         final_url = str(
-            response.geturl()
-            if hasattr(response, "geturl")
-            else target.url
+            response.geturl() if hasattr(response, "geturl") else target.url
         )
 
         return FetchedFiiReport(

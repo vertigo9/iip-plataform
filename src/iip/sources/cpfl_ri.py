@@ -31,9 +31,7 @@ from dataclasses import dataclass
 from urllib.parse import urljoin
 
 BASE_URL = "https://ri.cpfl.com.br/"
-RESULTS_PATH = (
-    "listresultados.aspx?idCanal=UBKZ7EE26ff9gbUxPlf7PA==&Center=42oT3/ifbpalbl7BWgdJvg=="
-)
+RESULTS_PATH = "listresultados.aspx?idCanal=UBKZ7EE26ff9gbUxPlf7PA==&Center=42oT3/ifbpalbl7BWgdJvg=="
 RESULTS_URL = BASE_URL + RESULTS_PATH
 
 # Categories whose files are audio/video: kept in the listing, skipped by default when
@@ -44,7 +42,9 @@ _YEAR_BLOCK_RE = re.compile(r'ulAno_\d+"[^>]*?\bano="(\d{4})"')
 _ROW_RE = re.compile(r"<tr[^>]*>(.*?)</tr>", re.DOTALL | re.IGNORECASE)
 # The label cell carries extra classes on some rows ("tituloCentral tituloDF" on the
 # financial-statements row), so match the class prefix, not the whole attribute.
-_LABEL_RE = re.compile(r'<td class="tituloCentral[^"]*">(.*?)</td>', re.DOTALL | re.IGNORECASE)
+_LABEL_RE = re.compile(
+    r'<td class="tituloCentral[^"]*">(.*?)</td>', re.DOTALL | re.IGNORECASE
+)
 _LINK_RE = re.compile(
     r'<a[^>]*href="(Download\.aspx\?Arquivo=[^"]+)"[^>]*?id="[^"]*linkArq_[A-Za-z]+?(?:(\d)T)?_\d+"',
     re.IGNORECASE,
@@ -102,10 +102,18 @@ def parse_results_page(html: str, ticker: str = "CPFE3") -> tuple[CpflDocument, 
                     continue
                 seen.add(url)
                 q = int(quarter) if quarter else None
-                title = f"{category} {q}T{year % 100:02d}" if q else f"{category} {year}"
+                title = (
+                    f"{category} {q}T{year % 100:02d}" if q else f"{category} {year}"
+                )
                 documents.append(
-                    CpflDocument(ticker=ticker, year=year, quarter=q, category=category,
-                                 title=title, url=url)
+                    CpflDocument(
+                        ticker=ticker,
+                        year=year,
+                        quarter=q,
+                        category=category,
+                        title=title,
+                        url=url,
+                    )
                 )
     documents.sort(key=lambda d: (d.year, d.quarter or 0), reverse=True)
     return tuple(documents)

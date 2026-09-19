@@ -33,36 +33,57 @@ class AdapterDescriptor:
 
 ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
     AdapterDescriptor(
-        "xp_asset", ("fund",), AdapterKind.DOCUMENT,
-        AdapterReadiness.READY, "XPAssetProvider", "XP Asset document discovery and HTTP transport.",
+        "xp_asset",
+        ("fund",),
+        AdapterKind.DOCUMENT,
+        AdapterReadiness.READY,
+        "XPAssetProvider",
+        "XP Asset document discovery and HTTP transport.",
     ),
     AdapterDescriptor(
-        "b3", ("equity", "etf", "bdr", "adr"), AdapterKind.DOCUMENT,
+        "b3",
+        ("equity", "etf", "bdr", "adr"),
+        AdapterKind.DOCUMENT,
         AdapterReadiness.CONFIGURATION_REQUIRED,
-        "BolsaiEquityProvider", "Requires IIP_BOLSAI_API_KEY.",
+        "BolsaiEquityProvider",
+        "Requires IIP_BOLSAI_API_KEY.",
     ),
-        AdapterDescriptor(
-            "b3_brapi", ("equity", "etf", "bdr", "adr"), AdapterKind.DOCUMENT,
-            AdapterReadiness.CONFIGURATION_REQUIRED,
-            "BrapiMarketProvider", "Requires IIP_BRAPI_TOKEN.",
-        ),
     AdapterDescriptor(
-        "cvm", ("fund",), AdapterKind.BULK,
-        AdapterReadiness.READY, "CvmFiiProvider",
+        "b3_brapi",
+        ("equity", "etf", "bdr", "adr"),
+        AdapterKind.DOCUMENT,
+        AdapterReadiness.CONFIGURATION_REQUIRED,
+        "BrapiMarketProvider",
+        "Requires IIP_BRAPI_TOKEN.",
+    ),
+    AdapterDescriptor(
+        "cvm",
+        ("fund",),
+        AdapterKind.BULK,
+        AdapterReadiness.READY,
+        "CvmFiiProvider",
         "Bulk annual ZIP is filtered by verified CNPJ before evidence is emitted.",
     ),
     AdapterDescriptor(
-        "cvm_renda_fixa", ("fixed_income",), AdapterKind.METRIC,
-        AdapterReadiness.CONTRACT_REQUIRED, "CvmRendaFixaHTTPHarvester",
+        "cvm_renda_fixa",
+        ("fixed_income",),
+        AdapterKind.METRIC,
+        AdapterReadiness.CONTRACT_REQUIRED,
+        "CvmRendaFixaHTTPHarvester",
         "Produces structured series/profile data, not one document per asset.",
     ),
     AdapterDescriptor(
-        "patria", ("fund",), AdapterKind.LEGACY_FILE,
-        AdapterReadiness.CONTRACT_REQUIRED, "iip.harvest.patria.harvest",
+        "patria",
+        ("fund",),
+        AdapterKind.LEGACY_FILE,
+        AdapterReadiness.CONTRACT_REQUIRED,
+        "iip.harvest.patria.harvest",
         "Legacy browser harvester writes files and needs an Atlas file adapter.",
     ),
     AdapterDescriptor(
-        "patria_mziq", ("fund",), AdapterKind.DOCUMENT,
+        "patria_mziq",
+        ("fund",),
+        AdapterKind.DOCUMENT,
         AdapterReadiness.READY,
         "iip.sources.patria_mziq + iip.sources.mziq_harvester.MziqHTTPHarvester",
         "Lightweight HTTP-only alternative to 'patria' (no Playwright) -- "
@@ -73,7 +94,9 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "Anexo 39-I filing 'cvm' already covers from structured CSV.",
     ),
     AdapterDescriptor(
-        "sparta", ("fund",), AdapterKind.METRIC,
+        "sparta",
+        ("fund",),
+        AdapterKind.METRIC,
         AdapterReadiness.READY,
         "iip.sources.sparta_reports + iip.sources.sparta_reports_harvester.SpartaReportsHTTPHarvester",
         "PDF-parsed cota patrimonial (NAV per quota), wired to `iip "
@@ -88,7 +111,9 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "those two.",
     ),
     AdapterDescriptor(
-        "btg_mziq", ("fund",), AdapterKind.DOCUMENT,
+        "btg_mziq",
+        ("fund",),
+        AdapterKind.DOCUMENT,
         AdapterReadiness.READY,
         "iip.sources.btg_mziq + iip.sources.mziq_harvester.MziqHTTPHarvester",
         "Lightweight HTTP-only MZIQ document provider, confirmed live "
@@ -100,7 +125,9 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "than guessing.",
     ),
     AdapterDescriptor(
-        "solutions_ir", ("fund",), AdapterKind.DOCUMENT,
+        "solutions_ir",
+        ("fund",),
+        AdapterKind.DOCUMENT,
         AdapterReadiness.READY,
         "iip.sources.solutions_ir + "
         "iip.sources.solutions_ir_harvester.SolutionsIrHTTPHarvester",
@@ -121,21 +148,26 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "not yet registered here.",
     ),
     AdapterDescriptor(
-        "btg", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "btg",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "BTCI11 is now covered by 'solutions_ir' above; BTLG11 by "
         "'btg_mziq'. This entry itself still has no validated transport "
         "adapter of its own -- kept as a placeholder pointing to both.",
     ),
     AdapterDescriptor(
-        "static_pdf_listing", ("fund",), AdapterKind.DOCUMENT,
+        "static_pdf_listing",
+        ("fund",),
+        AdapterKind.DOCUMENT,
         AdapterReadiness.READY,
         "iip.sources.static_pdf_listing + "
         "iip.sources.static_pdf_listing_harvester.StaticPdfListingHTTPHarvester",
         "Lightweight HTTP-only document provider covering the 7 managers "
         "below (Kinea, Capitânia, Valora, Manati, TRX, Hedge, Rio Bravo) "
         "-- confirmed live (18/09/2026) that every one of them lists its "
-        "reports as plain <a href=\"*.pdf\"> links directly in static "
+        'reports as plain <a href="*.pdf"> links directly in static '
         "HTML (mostly WordPress uploads), simpler than even the MZIQ "
         "platform: no API, no company_id, just a GET on the fund's own "
         "documents page. KNRI11 and RBVA11's registry source_url values "
@@ -143,38 +175,59 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "search and are registered in the module, not the registry.",
     ),
     AdapterDescriptor(
-        "kinea", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "kinea",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- KNRI11 is covered there.",
     ),
     AdapterDescriptor(
-        "capitania", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "capitania",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- CPTI11 is covered there.",
     ),
     AdapterDescriptor(
-        "valora", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "valora",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- VGIP11 is covered there.",
     ),
     AdapterDescriptor(
-        "manati", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "manati",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- MANA11 is covered there.",
     ),
     AdapterDescriptor(
-        "trx", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "trx",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- TRXF11 is covered there.",
     ),
     AdapterDescriptor(
-        "hedge", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "hedge",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- HGBS11 is covered there.",
     ),
     AdapterDescriptor(
-        "rio_bravo", ("fund",), AdapterKind.MAPPED,
-        AdapterReadiness.MAPPED, None,
+        "rio_bravo",
+        ("fund",),
+        AdapterKind.MAPPED,
+        AdapterReadiness.MAPPED,
+        None,
         "See 'static_pdf_listing' -- RBVA11 is covered there.",
     ),
 )
@@ -187,8 +240,10 @@ def adapter_descriptor(provider: str) -> AdapterDescriptor | None:
 
 def ready_adapters() -> tuple[AdapterDescriptor, ...]:
     return tuple(
-        item for item in ADAPTER_CATALOG
-        if item.readiness in {
+        item
+        for item in ADAPTER_CATALOG
+        if item.readiness
+        in {
             AdapterReadiness.READY,
             AdapterReadiness.CONFIGURATION_REQUIRED,
         }

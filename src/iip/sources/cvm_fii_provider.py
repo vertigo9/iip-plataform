@@ -44,11 +44,7 @@ def adapt_fii_report(report) -> AtlasDocument:
     if not expected:
         raise ValueError("CVM report target has no CNPJ")
 
-    rows = (
-        tuple(report.geral)
-        + tuple(report.ativo_passivo)
-        + tuple(report.complemento)
-    )
+    rows = tuple(report.geral) + tuple(report.ativo_passivo) + tuple(report.complemento)
     if not any(normalize_cnpj(row.cnpj_fundo_classe) == expected for row in rows):
         raise ValueError(f"{target.ticker}: CNPJ not found in CVM report")
 

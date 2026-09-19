@@ -49,7 +49,9 @@ class B3CotahistHTTPHarvester:
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
         body = response.read()
-        final_url = str(response.geturl() if hasattr(response, "geturl") else target.url)
+        final_url = str(
+            response.geturl() if hasattr(response, "geturl") else target.url
+        )
 
         with zipfile.ZipFile(io.BytesIO(body)) as archive:
             name = archive.namelist()[0]
