@@ -245,7 +245,8 @@ trabalho (buscar por "audit finding" no código).
   precisa de `analyze-template` + preenchimento manual completo.
 - **FIAGRO (ex: CRAA11) busca `dividend_yield_pct` via CVM e `price` via
   brapi.dev** (o ZIP da CVM é mensal: se o mês corrente ainda não saiu, o
-  fetch recua até 2 meses e avisa qual usou) — correção real: a suposição inicial de que esses fundos não
+  fetch recua até 2 meses e avisa qual usou — o mesmo vale para o Informe
+  Diário de ETF e `fixed_income`) — correção real: a suposição inicial de que esses fundos não
   negociam na B3 estava errada (confirmado com cotação real de várias
   fontes públicas). O que continua sem explicação: o CNPJ do CRAA11
   (confirmado correto em 6 fontes independentes) genuinamente não aparece

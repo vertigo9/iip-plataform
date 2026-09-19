@@ -958,6 +958,41 @@ def _equity_defaults() -> dict[str, Any]:
     return _template_financials(EquityAnalyzer)
 
 
+def _fetch_month_with_fallback(
+    fetch: Any,
+    build_target: Any,
+    ano: int,
+    mes: int,
+    label: str,
+    *,
+    max_months_back: int = 2,
+) -> tuple[Any, str | None]:
+    """Fetch a CVM dataset published monthly, stepping back up to
+    ``max_months_back`` months while the requested one is not published yet
+    (HTTP 404 -- CVM lags at the start of every month). Any other HTTP error, or a
+    404 on the last attempt, propagates. Returns the result and a warning naming the
+    month actually used (``None`` when the requested month was available)."""
+    from urllib.error import HTTPError
+
+    ano_try, mes_try = ano, mes
+    for attempt in range(max_months_back + 1):
+        try:
+            result = fetch(build_target(ano_try, mes_try))
+        except HTTPError as exc:
+            if exc.code != 404 or attempt == max_months_back:
+                raise
+            ano_try, mes_try = (ano_try - 1, 12) if mes_try == 1 else (ano_try, mes_try - 1)
+            continue
+        break
+    warning = (
+        f"{label} de {ano}-{mes:02d} ainda não publicado pela CVM; "
+        f"usando {ano_try}-{mes_try:02d}."
+        if (ano_try, mes_try) != (ano, mes)
+        else None
+    )
+    return result, warning
+
+
 def fetch_fiagro_template_live(
     symbol: str,
     cnpj: str,
@@ -996,8 +1031,6 @@ def fetch_fiagro_template_live(
     error — the command still succeeds with whatever price data brapi
     provides.
     """
-    from urllib.error import HTTPError
-
     from iip.sources.b3_brapi import build_target as _build_brapi_target
     from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
     from iip.sources.cvm_fiagro import build_target as _build_cvm_fiagro_target
@@ -1005,28 +1038,12 @@ def fetch_fiagro_template_live(
         CvmFiagroHTTPHarvester as _CvmFiagroHTTPHarvester,
     )
 
-    # O ZIP do FIAGRO e mensal e o do mes corrente ainda nao existe (404 por
-    # atraso de publicacao) -- recua ate 2 meses antes de desistir. Qualquer
-    # outro erro HTTP continua propagando.
-    harvester = _CvmFiagroHTTPHarvester()
-    result = None
-    ano_try, mes_try = ano, mes
-    for tentativa in range(3):
-        try:
-            result = harvester.fetch(_build_cvm_fiagro_target(ano_try, mes_try))
-            break
-        except HTTPError as exc:
-            if exc.code != 404 or tentativa == 2:
-                raise
-            mes_try -= 1
-            if mes_try == 0:
-                ano_try, mes_try = ano_try - 1, 12
-    assert result is not None
-    fallback_warning = (
-        f"Informe FIAGRO de {ano}-{mes:02d} ainda não publicado pela CVM; "
-        f"usando {ano_try}-{mes_try:02d}."
-        if (ano_try, mes_try) != (ano, mes)
-        else None
+    result, fallback_warning = _fetch_month_with_fallback(
+        _CvmFiagroHTTPHarvester().fetch,
+        _build_cvm_fiagro_target,
+        ano,
+        mes,
+        "Informe FIAGRO",
     )
 
     normalized_cnpj = "".join(ch for ch in cnpj if ch.isdigit())
@@ -1164,8 +1181,12 @@ def fetch_fixed_income_template_live(
         CvmRendaFixaHTTPHarvester as _CvmRendaFixaHTTPHarvester,
     )
 
-    diario_result = _CvmRendaFixaHTTPHarvester().fetch_diario(
-        _build_cvm_diario_target(ano, mes)
+    diario_result, diario_warning = _fetch_month_with_fallback(
+        _CvmRendaFixaHTTPHarvester().fetch_diario,
+        _build_cvm_diario_target,
+        ano,
+        mes,
+        "Informe Diário",
     )
 
     default_financials = _fixed_income_defaults()
@@ -1181,6 +1202,7 @@ def fetch_fixed_income_template_live(
         dividend_yield_months_used=resultado.dividend_yield_months_used,
         warnings=(
             *resultado.warnings,
+            *((diario_warning,) if diario_warning else ()),
             (
                 "Preço de mercado não buscado de propósito para este ativo "
                 "(fixed_income) — o ticker de referência pode não corresponder "
@@ -1210,8 +1232,12 @@ def fetch_etf_template_live(
         CvmRendaFixaHTTPHarvester as _CvmRendaFixaHTTPHarvester,
     )
 
-    diario_result = _CvmRendaFixaHTTPHarvester().fetch_diario(
-        _build_cvm_diario_target(ano, mes)
+    diario_result, diario_warning = _fetch_month_with_fallback(
+        _CvmRendaFixaHTTPHarvester().fetch_diario,
+        _build_cvm_diario_target,
+        ano,
+        mes,
+        "Informe Diário",
     )
 
     price = None
@@ -1234,11 +1260,12 @@ def fetch_etf_template_live(
         default_financials=default_financials,
         price=price,
     )
-    if brapi_warning:
+    extra_warnings = tuple(w for w in (diario_warning, brapi_warning) if w)
+    if extra_warnings:
         resultado = FetchResult(
             fetched_fields=resultado.fetched_fields,
             dividend_yield_months_used=resultado.dividend_yield_months_used,
-            warnings=(*resultado.warnings, brapi_warning),
+            warnings=(*resultado.warnings, *extra_warnings),
         )
     return template, resultado
 
