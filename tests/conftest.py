@@ -32,3 +32,15 @@ def _no_real_ntnb_rate_in_fii_template(monkeypatch):
     import iip.sources.tesouro_direto_harvester as harvester_module
 
     monkeypatch.setattr(harvester_module, "long_ntnb_rate_cached", lambda: None)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_fii_vacancia_report_download(monkeypatch):
+    """``fetch_fii_template_live`` also tries to read the vacancy from the
+    manager's latest report PDF (TRXF11, BTLG11, HGBS11: a listing page or the
+    MZIQ API plus a multi-MB PDF download). Tests must not touch the network, so
+    the harvester finds no report. Tests of the enrichment itself replace the
+    harvester's ``fetch`` explicitly, which takes precedence over this."""
+    from iip.sources.fii_vacancia_harvester import FiiVacanciaHTTPHarvester
+
+    monkeypatch.setattr(FiiVacanciaHTTPHarvester, "fetch", lambda self, ticker: None)

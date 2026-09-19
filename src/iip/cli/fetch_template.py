@@ -201,6 +201,66 @@ def build_fii_template(
     )
 
 
+def _enrich_fii_with_vacancia_report(
+    financials: dict[str, Any], symbol: str
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Best-effort ``occupancy_rate`` from the manager's own latest report PDF
+    (see ``iip.sources.fii_vacancia``: TRXF11, BTLG11, HGBS11). Silent no-op for a
+    ticker without a verified layout, like the Pátria enrichment -- this runs for
+    every FII. ``avg_lease_term_years`` is NOT read (no layout confirmed for it).
+
+    The base is the financial vacancy when the report gives it (same as the
+    Pátria path); when only the physical one exists (HGBS11, a shopping) it is
+    used but flagged, never swapped silently.
+    """
+    from iip.sources.fii_vacancia import profile_for_ticker
+    from iip.sources.fii_vacancia_harvester import FiiVacanciaHTTPHarvester
+
+    if profile_for_ticker(symbol) is None:
+        return financials, [], []
+
+    try:
+        fetched_report = FiiVacanciaHTTPHarvester().fetch(symbol)
+    # enriquecimento é best-effort, nunca deve derrubar o template CVM já montado
+    except Exception as exc:  # noqa: BLE001
+        return (
+            financials,
+            [],
+            [f"não consegui ler o relatório gerencial de {symbol}: {exc}"],
+        )
+
+    if fetched_report is None:
+        return (
+            financials,
+            [],
+            [
+                "relatório gerencial mais recente não encontrado — "
+                "occupancy_rate continua no valor-padrão."
+            ],
+        )
+    reading = fetched_report.reading
+    if reading is None or reading.occupancy_rate is None:
+        return (
+            financials,
+            [],
+            [
+                f"o relatório gerencial ({fetched_report.source_url}) não tem o "
+                "layout de vacância esperado — occupancy_rate continua no "
+                "valor-padrão (layout mudou?)."
+            ],
+        )
+
+    financials = dict(financials)
+    financials["occupancy_rate"] = reading.occupancy_rate
+    warnings = []
+    if reading.basis != "financeira":
+        warnings.append(
+            f"occupancy_rate vem da vacância {reading.basis} do relatório gerencial "
+            "(o relatório não informa a financeira, base usada nos fundos da Pátria)."
+        )
+    return financials, ["occupancy_rate"], warnings
+
+
 def _enrich_fii_with_patria_fundamentos(
     financials: dict[str, Any], symbol: str
 ) -> tuple[dict[str, Any], list[str], list[str]]:
@@ -518,6 +578,13 @@ def fetch_fii_template_live(
             _enrich_fii_with_patria_fundamentos(template["financials"], symbol)
         )
         template["financials"] = enriched_financials
+        if "occupancy_rate" not in patria_fetched:
+            vacancia_financials, vacancia_fetched, vacancia_warnings = (
+                _enrich_fii_with_vacancia_report(template["financials"], symbol)
+            )
+            template["financials"] = vacancia_financials
+            patria_fetched = [*patria_fetched, *vacancia_fetched]
+            patria_warnings = [*patria_warnings, *vacancia_warnings]
     else:
         patria_fetched, patria_warnings = [], []
 
