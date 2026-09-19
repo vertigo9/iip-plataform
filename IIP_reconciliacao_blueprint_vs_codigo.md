@@ -66,7 +66,7 @@ Legenda: 🟢 Real e funcional | 🟡 Existe parcialmente / difere do diagrama |
 | Pátria (gestora) | 🟢 | `patria_mziq.py` — 5 fundos (HGRU11, LVBI11, HGCR11, PVBI11, PCIP11) via API MZIQ real, sem Playwright em runtime. |
 | BTG Pactual (gestora) | 🟢 | `btg_mziq.py` (BTLG11, via MZIQ) + `solutions_ir.py` (BTCI11, plataforma "Solutions IR" — API descoberta por leitura estática de bundle JS, sem executar navegador). |
 | 7 gestoras FII restantes | 🟢 | `static_pdf_listing.py` — TRX, Valora, Capitânia, Manati, Rio Bravo, Hedge, Kinea, todas com listagem de PDF direto em HTML estático. |
-| Ações (equity RI) | 🟡 | `equity_mziq.py` — 10 das 14 ações da carteira confirmadas na MZIQ (ABCB4, BBSE3, CXSE3, SAUD3, ALOS3, VBBR3, KLBN4, FESA4, LEVE3, PASS3); as outras 4 (ISAE4, CPFE3, CMIG4, CSUD3) usam plataformas próprias e têm coletores próprios (ver "Documentos das 4 ações fora da MZIQ" abaixo). |
+| Ações (equity RI) | 🟢 | `equity_mziq.py` — 10 das 14 ações da carteira confirmadas na MZIQ (ABCB4, BBSE3, CXSE3, SAUD3, ALOS3, VBBR3, KLBN4, FESA4, LEVE3, PASS3); as outras 4 (ISAE4, CPFE3, CMIG4, CSUD3) usam plataformas próprias e têm coletores próprios (ver "Documentos das 4 ações fora da MZIQ" abaixo). |
 
 O gap "B3 / IBGE / BACEN / Receita Federal" listado como maior prioridade no resumo executivo abaixo **já foi fechado** — o texto do resumo/roadmap originais (10/09) ficou obsoleto nesse ponto específico.
 

@@ -147,12 +147,55 @@ o que não tiver isso aparece como "pulado" com o motivo exato, nunca como
 ```
 
 Isso registra `executar_atualizacao_diaria.ps1` no Agendador de Tarefas do
-Windows. Testar sem esperar o horário:
+Windows. Cada execução faz, em ordem: `health --sources`, `refresh-portfolio`
+e `value-portfolio --report` (veja a próxima seção), e sai com código 1 se
+qualquer um dos três falhar. Testar sem esperar o horário:
 
 ```powershell
 Start-ScheduledTask -TaskName "IIP_AtualizacaoCarteiraDiaria"
 Get-Content (Get-ChildItem logs_atualizacao\*.log | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName
 ```
+
+### Valuation da carteira
+
+```powershell
+python -m iip.cli.main value-portfolio --report
+```
+
+Avalia cada posição por **todos** os métodos que cabem nela, lado a lado,
+com valor justo/teto e margem de segurança contra o preço atual:
+
+| Classe | Métodos |
+|---|---|
+| Ação | Graham; Bazin (taxa exigida = yield real da NTN-B longa, nunca 6% fixos) — Bazin lidera em setores movidos a dividendo (elétricas, bancos, seguros) |
+| FII | NAV (P/VP); Yield (renda 12m capitalizada sobre a NTN-B real + prêmio de risco de 3 p.p. — só FII de tijolo) |
+
+`--report` grava `vault/02_Portfolio/Valuation.md` (todas as posições, motivo de
+cada método sem valor) e o Dashboard mostra os destaques lendo essa nota. Se
+nenhuma posição for avaliada (ex.: cota do bolsai esgotada), a nota anterior é
+mantida. `--persist` grava no vault o primeiro método que produziu valor.
+
+Posições sem método implementado aparecem como "puladas" com o motivo —
+hoje: fundos `fixed_income` (o fetch nunca busca preço de propósito: alguns,
+como AXIA3, são rótulos de fundos que não negociam), CRAA11 (fora do dataset
+FIAGRO da CVM, sem NAV) e LFTB11 (ETF sem método catalogado). Valor justo
+não é recomendação de compra.
+
+### Coletar documentos de RI e gestoras
+
+Cada comando lista e baixa documentos reais e grava evidência no vault
+(`--sem-evidencia` só lista/baixa; `--limite N` serve para prévia):
+
+| Comando | Cobre |
+|---|---|
+| `collect-equity-documents --ticker T` | 10 ações na plataforma MZIQ (ABCB4, BBSE3, CXSE3, SAUD3, ALOS3, VBBR3, KLBN4, FESA4, LEVE3, PASS3) |
+| `collect-solutions-ir-documents --ticker T` | BTCI11 e CSUD3 (plataforma Solutions IR) |
+| `collect-static-documents --ticker T` | TRXF11, VGIP11, CPTI11, MANA11, RBVA11, HGBS11, KNRI11 e as ações ISAE4 e CMIG4 (`--anos-historico`) |
+| `collect-cpfl-documents` | CPFE3 (RI legado da CPFL) |
+| `collect-patria-documents`, `collect-btg-documents`, `collect-sparta-history` | Fundos Pátria, BTG (BTLG11) e Sparta |
+
+As 14 ações da carteira têm coletor. Áudio e vídeo são pulados por padrão
+(`--incluir-midia` para baixar).
 
 ## Fontes de dados
 
@@ -198,7 +241,8 @@ trabalho (buscar por "audit finding" no código).
   ação têm busca automática de dado e analisador dedicado.** Infra ainda
   precisa de `analyze-template` + preenchimento manual completo.
 - **FIAGRO (ex: CRAA11) busca `dividend_yield_pct` via CVM e `price` via
-  brapi.dev** — correção real: a suposição inicial de que esses fundos não
+  brapi.dev** (o ZIP da CVM é mensal: se o mês corrente ainda não saiu, o
+  fetch recua até 2 meses e avisa qual usou) — correção real: a suposição inicial de que esses fundos não
   negociam na B3 estava errada (confirmado com cotação real de várias
   fontes públicas). O que continua sem explicação: o CNPJ do CRAA11
   (confirmado correto em 6 fontes independentes) genuinamente não aparece
