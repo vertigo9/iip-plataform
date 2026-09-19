@@ -93,7 +93,9 @@ class BolsaiHTTPHarvester:
         self._clock = clock
         if cache_dir is None and cache_ttl_seconds == 0.0:
             cache_dir, cache_ttl_seconds = self._cache_from_settings()
-        self._cache_dir = Path(cache_dir) if cache_dir and cache_ttl_seconds > 0 else None
+        self._cache_dir = (
+            Path(cache_dir) if cache_dir and cache_ttl_seconds > 0 else None
+        )
         self._cache_ttl = cache_ttl_seconds
         self.cache_hits = 0
         self.cache_misses = 0
@@ -105,13 +107,16 @@ class BolsaiHTTPHarvester:
 
             settings = get_settings()
             return settings.bolsai_cache_dir, settings.bolsai_cache_ttl_minutes * 60.0
-        except Exception:  # noqa: BLE001 — settings are optional here; no cache is the safe default
+        # settings are optional here; no cache is the safe default
+        except Exception:  # noqa: BLE001
             return None, 0.0
 
     def _cache_path(self, url: str) -> Path | None:
         if self._cache_dir is None:
             return None
-        return self._cache_dir / f"{hashlib.sha256(url.encode('utf-8')).hexdigest()}.json"
+        return (
+            self._cache_dir / f"{hashlib.sha256(url.encode('utf-8')).hexdigest()}.json"
+        )
 
     def _cache_read(self, url: str) -> bytes | None:
         path = self._cache_path(url)
@@ -136,11 +141,18 @@ class BolsaiHTTPHarvester:
             path.parent.mkdir(parents=True, exist_ok=True)
             tmp = path.with_suffix(".tmp")
             tmp.write_text(
-                json.dumps({"fetched_at": self._clock(), "url": url, "body": body.decode("utf-8")}),
+                json.dumps(
+                    {
+                        "fetched_at": self._clock(),
+                        "url": url,
+                        "body": body.decode("utf-8"),
+                    }
+                ),
                 encoding="utf-8",
             )
             os.replace(tmp, path)
-        except Exception:  # noqa: BLE001 — caching is best-effort and must never fail a fetch
+        # caching is best-effort and must never fail a fetch
+        except Exception:  # noqa: BLE001
             return
 
     def _request(self, target: BolsaiTarget) -> tuple[int, str, bytes, str]:
@@ -168,9 +180,9 @@ class BolsaiHTTPHarvester:
         status_code = 200 if raw_status is None else int(raw_status)
 
         headers = getattr(response, "headers", {})
-        content_type = str(
-            headers.get("Content-Type", "")
-        ).split(";", 1)[0].strip().lower()
+        content_type = (
+            str(headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+        )
 
         body = response.read()
         final_url = str(

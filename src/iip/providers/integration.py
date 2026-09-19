@@ -34,7 +34,8 @@ class OperationalProviderPlanner:
 
         try:
             handle = self.factory.create(provider_name)
-        except Exception:  # noqa: BLE001 — isola falha de criacao do provider, trata como indisponivel
+        # isola falha de criacao do provider, trata como indisponivel
+        except Exception:  # noqa: BLE001
             handle = None
 
         implemented = bool(handle is not None and handle.provider is not None)
@@ -82,7 +83,8 @@ class OperationalProviderPlanner:
 
         try:
             handle = self.factory.create(name)
-        except Exception:  # noqa: BLE001 — isola falha de criacao do provider, trata como indisponivel
+        # isola falha de criacao do provider, trata como indisponivel
+        except Exception:  # noqa: BLE001
             return False
 
         return bool(handle is not None and handle.provider is not None)

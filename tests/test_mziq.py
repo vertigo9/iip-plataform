@@ -67,9 +67,9 @@ def test_build_documents_target_rejects_empty_categories():
 
 # --- real captured response fragments (ABCB4, confirmed live) ---
 
-YEARS_RESPONSE = json.dumps(
-    {"success": True, "data": [2026, 2025, 2024, 2023]}
-).encode("utf-8")
+YEARS_RESPONSE = json.dumps({"success": True, "data": [2026, 2025, 2024, 2023]}).encode(
+    "utf-8"
+)
 
 YEARS_RESPONSE_FAILURE = json.dumps({"success": False}).encode("utf-8")
 

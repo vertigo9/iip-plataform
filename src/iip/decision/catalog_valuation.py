@@ -54,7 +54,9 @@ def catalog_valuation_for_decision(
     snapshot = first_valuation(attempts)
     if snapshot is None:
         why = "; ".join(
-            f"{a.method.value}: {a.reason}" for a in attempts if a.status != "not_implemented"
+            f"{a.method.value}: {a.reason}"
+            for a in attempts
+            if a.status != "not_implemented"
         )
         return CatalogValuation(
             None, None, None, price, None, why or "nenhum método de valuation aplicável"

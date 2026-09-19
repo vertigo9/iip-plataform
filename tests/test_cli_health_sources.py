@@ -22,7 +22,9 @@ def test_health_with_sources_flag_includes_data_source_checks(monkeypatch):
     monkeypatch.setattr(
         "iip.health.default_data_source_checks",
         lambda: (
-            DataSourceReachabilityCheck("cvm", "https://dados.cvm.gov.br", opener=fake_opener),
+            DataSourceReachabilityCheck(
+                "cvm", "https://dados.cvm.gov.br", opener=fake_opener
+            ),
         ),
     )
 

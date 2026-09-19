@@ -6,7 +6,6 @@ import json
 from collections import Counter, defaultdict
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 REPORTS = ROOT / "reports"
 
@@ -390,22 +389,6 @@ def main() -> int:
     exact_duplicate_groups = {
         row["Observation_Key_R4"]
         for row in exact_duplicate_rows
-    }
-
-    # ------------------------------------------------------------------
-    # Dimension group validation
-    # ------------------------------------------------------------------
-
-    dimension_rows = [
-        row
-        for row in output
-        if row["Canonical_Decision_R2"]
-        == "CANONICAL_WITH_DIMENSION"
-    ]
-
-    dimension_groups = {
-        row["Observation_Key_R4"]
-        for row in dimension_rows
     }
 
     # ------------------------------------------------------------------

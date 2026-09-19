@@ -105,6 +105,8 @@ def test_bridge_ticker_matches_report_symbol():
         report, thesis_signal="reforco", evidence=(EvidenceRef("EV-1"),)
     )
     assert intelligence_input.ticker == report.asset_symbol
+
+
 def test_bridge_populates_thesis_exit():
     report = make_report()
 
@@ -115,7 +117,8 @@ def test_bridge_populates_thesis_exit():
     )
 
     assert intelligence_input.thesis_exit is not None
-    
+
+
 def test_bridge_thesis_exit_is_semantic_assessment():
     from iip.decision.thesis_exit_gate import ThesisExitAssessment
 

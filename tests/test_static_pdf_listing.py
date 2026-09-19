@@ -21,7 +21,15 @@ def test_fund_for_ticker_unknown_returns_none():
 
 def test_all_seven_funds_and_the_isae4_cmig4_companies_registered():
     assert set(STATIC_PDF_LISTING_FUNDS) == {
-        "TRXF11", "VGIP11", "CPTI11", "MANA11", "RBVA11", "HGBS11", "KNRI11", "ISAE4", "CMIG4",
+        "TRXF11",
+        "VGIP11",
+        "CPTI11",
+        "MANA11",
+        "RBVA11",
+        "HGBS11",
+        "KNRI11",
+        "ISAE4",
+        "CMIG4",
     }
 
 
@@ -48,7 +56,10 @@ def test_parse_pdf_links_extracts_and_dedupes():
 
     assert len(docs) == 2
     assert docs[0].ticker == "TICK11"
-    assert docs[0].url == "https://example.com/wp-content/uploads/Relatorio-Gerencial-Agosto-2026.pdf"
+    assert (
+        docs[0].url
+        == "https://example.com/wp-content/uploads/Relatorio-Gerencial-Agosto-2026.pdf"
+    )
     assert docs[0].title == "Relatorio Gerencial Agosto 2026"
     assert docs[1].url == "https://example.com/relatorios/Fato_Relevante_2026.pdf"
     assert docs[1].title == "Fato Relevante 2026"
@@ -62,7 +73,9 @@ def test_parse_pdf_links_resolves_relative_urls_against_base():
 
 
 def test_parse_pdf_links_empty_when_no_pdf_links():
-    docs = parse_pdf_links("<html><body>nada aqui</body></html>", "https://example.com", "TICK11")
+    docs = parse_pdf_links(
+        "<html><body>nada aqui</body></html>", "https://example.com", "TICK11"
+    )
     assert docs == ()
 
 
@@ -73,7 +86,10 @@ def test_parse_pdf_links_percent_encodes_non_ascii_hrefs():
     docs = parse_pdf_links(html, "https://hedgeinvest.com.br/fundos/hgbs", "HGBS11")
 
     assert len(docs) == 1
-    assert docs[0].url == "https://hedgeinvest.com.br/arquivos/HGBS_Laudo_S%C3%A3o_Bernardo.pdf"
+    assert (
+        docs[0].url
+        == "https://hedgeinvest.com.br/arquivos/HGBS_Laudo_S%C3%A3o_Bernardo.pdf"
+    )
     # Title stays human-readable (derived before percent-encoding).
     assert docs[0].title == "HGBS Laudo São Bernardo"
 

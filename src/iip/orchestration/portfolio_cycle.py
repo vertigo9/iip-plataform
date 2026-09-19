@@ -87,7 +87,8 @@ class PortfolioCycleOrchestrator:
                 results.append(
                     OrchestrationResult(ticker.upper(), stage, True, payload=value)
                 )
-            except Exception as exc:  # noqa: BLE001 — isola falha do handler por estagio, nao derruba o ciclo inteiro
+            # isola falha do handler por estagio, nao derruba o ciclo inteiro
+            except Exception as exc:  # noqa: BLE001
                 results.append(
                     OrchestrationResult(
                         ticker.upper(),

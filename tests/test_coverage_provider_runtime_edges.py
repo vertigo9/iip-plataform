@@ -19,7 +19,8 @@ def _construct(cls):
             values[f.name] = "x"
     try:
         return cls(**values)
-    except Exception:  # noqa: BLE001 — adapter best-effort: campos incompativeis viram None, nao erro
+    # adapter best-effort: campos incompativeis viram None, nao erro
+    except Exception:  # noqa: BLE001
         return None
 
 

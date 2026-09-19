@@ -28,7 +28,10 @@ def test_registered_tickers_are_the_fund_and_the_company_site():
 
 def test_build_documents_target_uses_fund_id_and_cnpj():
     target = build_documents_target("BTCI11")
-    assert target.url == "https://api.solutions-ir.com/v2/asset/296809/documents/09552812000114"
+    assert (
+        target.url
+        == "https://api.solutions-ir.com/v2/asset/296809/documents/09552812000114"
+    )
     assert target.ticker == "BTCI11"
 
 

@@ -54,10 +54,14 @@ class BrapiHTTPHarvester:
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
         headers = getattr(response, "headers", {})
-        content_type = str(headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+        content_type = (
+            str(headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+        )
         body = response.read()
         quotes = parse_quote_response(body)
-        final_url = str(response.geturl() if hasattr(response, "geturl") else target.url)
+        final_url = str(
+            response.geturl() if hasattr(response, "geturl") else target.url
+        )
         return FetchedQuotes(
             target=target,
             status_code=status_code,

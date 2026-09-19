@@ -1,5 +1,5 @@
-from pathlib import Path
 import re
+from pathlib import Path
 
 path = Path("tests/test_coverage_knowledge_health.py")
 if not path.exists():

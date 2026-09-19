@@ -67,9 +67,7 @@ class SourceIngestionService:
     ) -> None:
         self.router = router
         self.providers = {key.casefold(): value for key, value in providers.items()}
-        self.transports = {
-            key.casefold(): value for key, value in transports.items()
-        }
+        self.transports = {key.casefold(): value for key, value in transports.items()}
         self.knowledge_adapter = knowledge_adapter
 
     def ingest(self, asset: AssetRef, years: range) -> IngestionResult:
@@ -101,10 +99,11 @@ class SourceIngestionService:
                     errors.append(f"{provider_name}:no_documents_fetched")
                     continue
                 persisted = tuple(
-                    self.knowledge_adapter.persist(document)
-                    for document in documents
+                    self.knowledge_adapter.persist(document) for document in documents
                 )
-                return IngestionResult(asset.ticker, provider_name, documents, persisted)
+                return IngestionResult(
+                    asset.ticker, provider_name, documents, persisted
+                )
             except Exception as exc:  # noqa: BLE001 - isolate one source route
                 errors.append(f"{provider_name}:{type(exc).__name__}:{exc}")
 
@@ -200,11 +199,7 @@ def build_configured_portfolio_ingestion(
     )
 
     bolsai_key = current.bolsai_api_key
-    bolsai_value = (
-        bolsai_key.get_secret_value()
-        if bolsai_key is not None
-        else None
-    )
+    bolsai_value = bolsai_key.get_secret_value() if bolsai_key is not None else None
     if bolsai_value:
         market_provider = BolsaiEquityProvider()
         market_harvester = BolsaiHTTPHarvester(
@@ -222,11 +217,7 @@ def build_configured_portfolio_ingestion(
         )
 
     brapi_key = current.brapi_token
-    brapi_value = (
-        brapi_key.get_secret_value()
-        if brapi_key is not None
-        else None
-    )
+    brapi_value = brapi_key.get_secret_value() if brapi_key is not None else None
     if brapi_value:
         brapi_provider = BrapiMarketProvider()
         brapi_harvester = BrapiHTTPHarvester(

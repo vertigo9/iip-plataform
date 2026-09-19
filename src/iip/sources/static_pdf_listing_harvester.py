@@ -48,12 +48,17 @@ class StaticPdfListingHTTPHarvester:
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
         body = response.read()
-        final_url = str(response.geturl() if hasattr(response, "geturl") else target.url)
+        final_url = str(
+            response.geturl() if hasattr(response, "geturl") else target.url
+        )
 
         html = body.decode("utf-8", errors="replace")
         fund = fund_for_ticker(target.ticker)
         documents = parse_pdf_links(
-            html, final_url, target.ticker, fund.extensions if fund else DEFAULT_EXTENSIONS
+            html,
+            final_url,
+            target.ticker,
+            fund.extensions if fund else DEFAULT_EXTENSIONS,
         )
 
         return FetchedListingPage(
@@ -76,7 +81,8 @@ class StaticPdfListingHTTPHarvester:
         for index, target in enumerate(build_targets(ticker, years)):
             try:
                 page = self.fetch(target)
-            except Exception as exc:  # noqa: BLE001 — see docstring: only the first page is mandatory
+            # see docstring: only the first page is mandatory
+            except Exception as exc:  # noqa: BLE001
                 if index == 0:
                     raise
                 self.last_errors.append(f"{target.url}: {type(exc).__name__}: {exc}")

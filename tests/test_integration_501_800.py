@@ -88,6 +88,7 @@ def test_integrated_pipeline():
     assert result.top.ticker == "HGRU11"
     assert result.contribution_candidates[0].ticker == "HGRU11"
 
+
 def test_asset_signal_preserves_thesis_exit_projection():
     signal = AssetSignal(
         "PCIP11",

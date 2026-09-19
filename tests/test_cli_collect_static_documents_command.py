@@ -35,7 +35,9 @@ class _FakeResponse:
 
 
 def _fake_listing(ticker: str, count: int) -> FetchedListingPage:
-    target = StaticListingTarget(ticker=ticker, url=f"https://example.com/{ticker.lower()}/")
+    target = StaticListingTarget(
+        ticker=ticker, url=f"https://example.com/{ticker.lower()}/"
+    )
     docs = tuple(
         StaticDocument(
             ticker=ticker,
@@ -44,15 +46,22 @@ def _fake_listing(ticker: str, count: int) -> FetchedListingPage:
         )
         for i in range(count)
     )
-    return FetchedListingPage(target=target, status_code=200, documents=docs, final_url=target.url)
+    return FetchedListingPage(
+        target=target, status_code=200, documents=docs, final_url=target.url
+    )
 
 
-def test_collect_static_documents_downloads_and_persists_evidence(monkeypatch, tmp_path):
+def test_collect_static_documents_downloads_and_persists_evidence(
+    monkeypatch, tmp_path
+):
     monkeypatch.setattr(
-        StaticPdfListingHTTPHarvester, "fetch", lambda self, target: _fake_listing("KNRI11", 2)
+        StaticPdfListingHTTPHarvester,
+        "fetch",
+        lambda self, target: _fake_listing("KNRI11", 2),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -83,10 +92,13 @@ def test_collect_static_documents_downloads_and_persists_evidence(monkeypatch, t
 
 def test_collect_static_documents_respects_limite(monkeypatch, tmp_path):
     monkeypatch.setattr(
-        StaticPdfListingHTTPHarvester, "fetch", lambda self, target: _fake_listing("RBVA11", 10)
+        StaticPdfListingHTTPHarvester,
+        "fetch",
+        lambda self, target: _fake_listing("RBVA11", 10),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -125,11 +137,15 @@ def test_collect_static_documents_rejects_unknown_ticker(tmp_path):
     assert "Sem config de listagem estática" in result.output
 
 
-def test_collect_static_documents_handles_download_failure_without_aborting(monkeypatch, tmp_path):
+def test_collect_static_documents_handles_download_failure_without_aborting(
+    monkeypatch, tmp_path
+):
     from urllib.error import HTTPError
 
     monkeypatch.setattr(
-        StaticPdfListingHTTPHarvester, "fetch", lambda self, target: _fake_listing("HGBS11", 2)
+        StaticPdfListingHTTPHarvester,
+        "fetch",
+        lambda self, target: _fake_listing("HGBS11", 2),
     )
 
     calls = {"n": 0}

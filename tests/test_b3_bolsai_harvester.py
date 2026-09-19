@@ -156,6 +156,7 @@ def test_fetch_fii_falls_back_to_target_url_without_geturl():
     assert result.content_type == "application/json"
     assert result.body == b'{"ticker":"HGLG11"}'
 
+
 def test_fetch_fii_uses_the_fii_target_and_parser():
     def opener(request, timeout):
         return FakeFiiResponse()

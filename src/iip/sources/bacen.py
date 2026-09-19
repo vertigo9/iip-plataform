@@ -34,9 +34,9 @@ _MAX_RANGE_DAYS = 3653  # ~10 years, BACEN's documented limit
 
 # Well-known SGS series codes (verified individually against
 # dadosabertos.bcb.gov.br dataset pages).
-SELIC = 11   # Taxa Selic, % ao dia
-CDI = 12     # Taxa DI/CDI, % ao dia
-IPCA = 433   # IPCA, variação mensal %
+SELIC = 11  # Taxa Selic, % ao dia
+CDI = 12  # Taxa DI/CDI, % ao dia
+IPCA = 433  # IPCA, variação mensal %
 
 
 @dataclass(frozen=True)
@@ -67,7 +67,9 @@ def build_target(code: int, start_date: date, end_date: date) -> BacenSeriesTarg
         f"&dataInicial={start_date.strftime('%d/%m/%Y')}"
         f"&dataFinal={end_date.strftime('%d/%m/%Y')}"
     )
-    return BacenSeriesTarget(code=code, start_date=start_date, end_date=end_date, url=url)
+    return BacenSeriesTarget(
+        code=code, start_date=start_date, end_date=end_date, url=url
+    )
 
 
 def parse_series_response(body: bytes) -> tuple[BacenSeriesPoint, ...]:

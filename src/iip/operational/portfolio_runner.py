@@ -125,7 +125,9 @@ def run_portfolio_cycle(
             raw_metrics["SPOT_PRICE"] = float(spot_data["spot_price"])
 
             if spot_data["currency"] != "BRL":
-                fx_rate = quote_gateway.fetch_exchange_rate(spot_data["currency"], "BRL")
+                fx_rate = quote_gateway.fetch_exchange_rate(
+                    spot_data["currency"], "BRL"
+                )
                 raw_metrics["FX_RATE"] = float(fx_rate)
                 raw_metrics["SPOT_PRICE_BRL"] = float(spot_data["spot_price"] * fx_rate)
             else:
@@ -164,7 +166,8 @@ def run_portfolio_cycle(
                         "confidence": raw_metrics.get("RAG_CONFIDENCE", 0.0),
                     },
                 )
-        except Exception as exc:  # noqa: BLE001 -- isolamento por ativo, uma falha nao trava os outros
+        # isolamento por ativo, uma falha nao trava os outros
+        except Exception as exc:  # noqa: BLE001
             logger.error("Falha ao processar ativo %s: %s", ticker, exc)
             results["errors"] += 1
 

@@ -26,16 +26,34 @@ PAGE_2026 = """
 
 def test_the_seven_funds_and_the_isae4_cmig4_companies_are_registered():
     assert set(STATIC_PDF_LISTING_FUNDS) == {
-        "TRXF11", "VGIP11", "CPTI11", "MANA11", "RBVA11", "HGBS11", "KNRI11", "ISAE4", "CMIG4",
+        "TRXF11",
+        "VGIP11",
+        "CPTI11",
+        "MANA11",
+        "RBVA11",
+        "HGBS11",
+        "KNRI11",
+        "ISAE4",
+        "CMIG4",
     }
 
 
 def test_fund_registrations_keep_their_old_behaviour():
-    for ticker in ("TRXF11", "VGIP11", "CPTI11", "MANA11", "RBVA11", "HGBS11", "KNRI11"):
+    for ticker in (
+        "TRXF11",
+        "VGIP11",
+        "CPTI11",
+        "MANA11",
+        "RBVA11",
+        "HGBS11",
+        "KNRI11",
+    ):
         fund = fund_for_ticker(ticker)
         assert fund.year_param is None and fund.extra_page_urls == ()
         assert fund.extensions == (".pdf",)
-        assert build_targets(ticker, (2026, 2025)) == build_targets(ticker)  # years ignored
+        assert build_targets(ticker, (2026, 2025)) == build_targets(
+            ticker
+        )  # years ignored
         assert len(build_targets(ticker)) == 1
 
 
@@ -77,18 +95,26 @@ def test_xlsx_links_are_kept_only_when_the_registration_asks_for_them():
     with_xlsx = parse_pdf_links(PAGE_2026, CENTRAL, "ISAE4", (".pdf", ".xlsx"))
 
     assert [d.url.rsplit(".", 1)[-1] for d in default] == ["pdf"]
-    assert sorted(d.url.rsplit(".", 1)[-1] for d in with_xlsx) == ["pdf", "xlsx"]  # mp3 never
+    assert sorted(d.url.rsplit(".", 1)[-1] for d in with_xlsx) == [
+        "pdf",
+        "xlsx",
+    ]  # mp3 never
 
 
 def test_relative_links_resolve_against_the_page_and_are_deduplicated():
     documents = parse_pdf_links(PAGE_2026, CENTRAL, "ISAE4", (".pdf", ".xlsx"))
 
     assert len(documents) == 2
-    assert documents[0].url == "https://ri.isaenergiabrasil.com.br/pt/documentos/6574-Earnings-Release-1T26.pdf"
+    assert (
+        documents[0].url
+        == "https://ri.isaenergiabrasil.com.br/pt/documentos/6574-Earnings-Release-1T26.pdf"
+    )
 
 
 def test_titles_drop_the_extension_for_both_kinds():
-    titles = {d.title for d in parse_pdf_links(PAGE_2026, CENTRAL, "ISAE4", (".pdf", ".xlsx"))}
+    titles = {
+        d.title for d in parse_pdf_links(PAGE_2026, CENTRAL, "ISAE4", (".pdf", ".xlsx"))
+    }
 
     assert titles == {"6574 Earnings Release 1T26", "6576 Resultados Excel 1T26"}
 
@@ -135,7 +161,9 @@ def test_collect_merges_years_and_pages_deduplicating_by_url():
     for extra in fund_for_ticker("ISAE4").extra_page_urls:
         pages[extra] = _page("REL-" + extra.rsplit("/", 1)[-1]) + _page("SHARED")
 
-    documents = StaticPdfListingHTTPHarvester(_opener(pages)).collect("ISAE4", years=(2026, 2025))
+    documents = StaticPdfListingHTTPHarvester(_opener(pages)).collect(
+        "ISAE4", years=(2026, 2025)
+    )
 
     names = [d.url.rsplit("/", 1)[-1] for d in documents]
     assert names.count("SHARED.pdf") == 1
@@ -144,8 +172,12 @@ def test_collect_merges_years_and_pages_deduplicating_by_url():
 
 def test_a_failing_later_page_is_recorded_and_skipped_but_the_first_page_must_succeed():
     extras = fund_for_ticker("ISAE4").extra_page_urls
-    pages = {f"{CENTRAL}?ano=2026": _page("A"), extras[0]: OSError("timeout"),
-             extras[1]: _page("B"), extras[2]: _page("C")}
+    pages = {
+        f"{CENTRAL}?ano=2026": _page("A"),
+        extras[0]: OSError("timeout"),
+        extras[1]: _page("B"),
+        extras[2]: _page("C"),
+    }
     harvester = StaticPdfListingHTTPHarvester(_opener(pages))
 
     documents = harvester.collect("ISAE4", years=(2026,))
@@ -155,16 +187,18 @@ def test_a_failing_later_page_is_recorded_and_skipped_but_the_first_page_must_su
 
     broken_first = {f"{CENTRAL}?ano=2026": OSError("down")}
     with pytest.raises(OSError, match="down"):
-        StaticPdfListingHTTPHarvester(_opener(broken_first)).collect("ISAE4", years=(2026,))
+        StaticPdfListingHTTPHarvester(_opener(broken_first)).collect(
+            "ISAE4", years=(2026,)
+        )
 
 
 def test_a_fund_is_still_one_request():
     fund = fund_for_ticker("KNRI11")
     calls = []
 
-    StaticPdfListingHTTPHarvester(_opener({fund.page_url: _page("KNRI")}, calls)).collect(
-        "KNRI11", years=(2026, 2025)
-    )
+    StaticPdfListingHTTPHarvester(
+        _opener({fund.page_url: _page("KNRI")}, calls)
+    ).collect("KNRI11", years=(2026, 2025))
 
     assert calls == [fund.page_url]
 
@@ -194,8 +228,16 @@ def test_the_cli_accepts_isae4_and_passes_the_history_window(monkeypatch, tmp_pa
     monkeypatch.setattr(StaticPdfListingHTTPHarvester, "collect", fake_collect)
     result = CliRunner().invoke(
         cli,
-        ["collect-static-documents", "--ticker", "isae4", "--sem-evidencia",
-         "--vault", str(tmp_path), "--anos-historico", "2"],
+        [
+            "collect-static-documents",
+            "--ticker",
+            "isae4",
+            "--sem-evidencia",
+            "--vault",
+            str(tmp_path),
+            "--anos-historico",
+            "2",
+        ],
     )
 
     year = dt.date.today().year  # noqa: DTZ011

@@ -92,14 +92,20 @@ def test_runner_uses_persisted_series_and_blocks_scale_break(tmp_path: Path):
             cnpj="09552812000114",
             provider="cvm",
             observations=(
-                HistoricalObservation("2022-12-01", 1, 90.0, 0.01, 0.0, 1, 1, "doc-a", "hash-a", 2022),
-                HistoricalObservation("2023-01-01", 1, 10.0, 0.01, 0.0, 1, 1, "doc-b", "hash-b", 2023),
+                HistoricalObservation(
+                    "2022-12-01", 1, 90.0, 0.01, 0.0, 1, 1, "doc-a", "hash-a", 2022
+                ),
+                HistoricalObservation(
+                    "2023-01-01", 1, 10.0, 0.01, 0.0, 1, 1, "doc-b", "hash-b", 2023
+                ),
             ),
             source_documents=(),
         )
     )
 
-    result = AssetE2ERunner(vault_path=str(tmp_path / "vault")).run_with_persisted_series(
+    result = AssetE2ERunner(
+        vault_path=str(tmp_path / "vault")
+    ).run_with_persisted_series(
         ticker="BTCI11",
         fetch_template=template,
         series_store=store,

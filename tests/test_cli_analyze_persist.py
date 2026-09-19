@@ -64,7 +64,9 @@ def test_analyze_with_persist_writes_to_the_vault(monkeypatch, tmp_path):
     )
 
     assert result.exit_code == 0
-    note_path = vault_dir / "01_Assets" / "FIIs" / "BTLG11" / "BTLG11 - Score e Ranking.md"
+    note_path = (
+        vault_dir / "01_Assets" / "FIIs" / "BTLG11" / "BTLG11 - Score e Ranking.md"
+    )
     assert note_path.exists()
     assert "IIP:analysis" in note_path.read_text(encoding="utf-8")
 
@@ -89,7 +91,9 @@ def test_analyze_with_persist_works_for_etf(monkeypatch, tmp_path):
     )
 
     assert result.exit_code == 0
-    note_path = vault_dir / "01_Assets" / "ETFs" / "BOVA11" / "BOVA11 - Score e Ranking.md"
+    note_path = (
+        vault_dir / "01_Assets" / "ETFs" / "BOVA11" / "BOVA11 - Score e Ranking.md"
+    )
     assert note_path.exists()
 
 

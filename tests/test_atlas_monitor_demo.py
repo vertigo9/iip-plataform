@@ -63,7 +63,8 @@ try:
         print(f"  - {ps.pillar.value}: {ps.score:.1f} (weight: {ps.weight})")
     print()
 
-except Exception as e:  # noqa: BLE001 — script de diagnostico manual: captura qualquer erro pra imprimir detalhes de debug
+# script de diagnostico manual: captura qualquer erro pra imprimir detalhes de debug
+except Exception as e:  # noqa: BLE001
     print("ERROR in Equity Analyzer:")
     print(f"  Type: {type(e).__name__}")
     print(f"  Message: {e!s}")
@@ -127,7 +128,8 @@ try:
         print(f"  - {ps.pillar.value}: {ps.score:.1f} (weight: {ps.weight})")
     print()
 
-except Exception as e:  # noqa: BLE001 — script de diagnostico manual: captura qualquer erro pra imprimir detalhes de debug
+# script de diagnostico manual: captura qualquer erro pra imprimir detalhes de debug
+except Exception as e:  # noqa: BLE001
     print("ERROR in FII Analyzer:")
     print(f"  Type: {type(e).__name__}")
     print(f"  Message: {e!s}")
@@ -156,7 +158,8 @@ try:
     print("Report exported as dictionary:")
     print(json.dumps(report_dict, indent=2))
 
-except Exception as e:  # noqa: BLE001 — script de diagnostico manual: captura qualquer erro pra imprimir detalhes de debug
+# script de diagnostico manual: captura qualquer erro pra imprimir detalhes de debug
+except Exception as e:  # noqa: BLE001
     print("ERROR in JSON export:")
     print(f"  Type: {type(e).__name__}")
     print(f"  Message: {e!s}")

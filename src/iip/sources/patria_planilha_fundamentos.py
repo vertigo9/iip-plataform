@@ -192,7 +192,9 @@ def parse_resumo_tijolo(workbook, ticker: str) -> FundamentosPlanilha | None:
     return FundamentosPlanilha(
         ticker=ticker.strip().upper(),
         competencia=competencia,
-        patrimonio_liquido=_normalized_brl(_find_value_below_label(ws, "patrimonio liquido")),
+        patrimonio_liquido=_normalized_brl(
+            _find_value_below_label(ws, "patrimonio liquido")
+        ),
         valor_mercado=_normalized_brl(_find_value_below_label(ws, "valor de mercado")),
         n_ativos=_int(_find_value_below_label(ws, *_N_ATIVOS_LABELS)),
         n_locatarios=_int(_find_value_below_label(ws, "no de locatarios")),
@@ -333,9 +335,7 @@ def parse_resumo_credito(workbook, ticker: str) -> CreditoPlanilha | None:
         vp_cota=_num(_cell_at(ws, pl, 0, 2)),
         preco_cota=_num(_cell_at(ws, vm, 0, 2)),
         rendimento_cota=_num(_find_value_below_label(ws, "rendimento por cota")),
-        reserva_acumulada_cota=_num(
-            _find_value_below_label(ws, "reserva acumulada")
-        ),
+        reserva_acumulada_cota=_num(_find_value_below_label(ws, "reserva acumulada")),
         n_cotistas=_int(_find_value_below_label(ws, "numero de cotistas")),
         pct_pl_cri=cri.get("% pl"),
         pct_pl_fii=fii.get("% pl"),

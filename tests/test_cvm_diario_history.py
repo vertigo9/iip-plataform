@@ -24,7 +24,9 @@ class FakeDiarioHarvester:
         return _FetchedDiario(self._informes_by_month.get((target.ano, target.mes), []))
 
 
-def _informe(cnpj: str, data: str, valor_cota: float, pl: float = 1_000_000.0) -> InformeDiario:
+def _informe(
+    cnpj: str, data: str, valor_cota: float, pl: float = 1_000_000.0
+) -> InformeDiario:
     return InformeDiario(
         tipo_fundo_classe="CLASSES - FIF",
         cnpj_fundo_classe=cnpj,
@@ -75,7 +77,9 @@ def test_collect_cvm_diario_history_filters_by_cnpj_and_persists(tmp_path: Path)
 
 def test_collect_cvm_diario_history_skips_months_without_a_match(tmp_path: Path):
     cnpj = "45.121.022/0001-48"
-    harvester = FakeDiarioHarvester({(2026, 8): [_informe("00000000000000", "2026-08-14", 1.0)]})
+    harvester = FakeDiarioHarvester(
+        {(2026, 8): [_informe("00000000000000", "2026-08-14", 1.0)]}
+    )
     store = HistoricalSeriesStore(tmp_path)
 
     series = collect_cvm_diario_history(
@@ -95,7 +99,9 @@ class FakeBridge:
         return evidence
 
 
-def test_collect_cvm_diario_history_persists_atlas_evidence_when_bridge_given(tmp_path: Path):
+def test_collect_cvm_diario_history_persists_atlas_evidence_when_bridge_given(
+    tmp_path: Path,
+):
     cnpj = "45.121.022/0001-48"
     harvester = FakeDiarioHarvester(
         {(2026, 8): [_informe("45121022000148", "2026-08-14", 1.85)]}

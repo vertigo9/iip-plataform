@@ -28,7 +28,8 @@ def run(
         try:
             ok = bool(executor(case))
             results.append(ScenarioResult(case.name, ok))
-        except Exception as exc:  # noqa: BLE001 — isola falha do executor num ScenarioResult, nao deixa propagar
+        # isola falha do executor num ScenarioResult, nao deixa propagar
+        except Exception as exc:  # noqa: BLE001
             results.append(
                 ScenarioResult(case.name, False, f"{type(exc).__name__}:{exc}")
             )

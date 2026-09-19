@@ -48,7 +48,9 @@ def test_picks_the_column_aligned_value_not_just_the_first_one():
 
 def test_build_target_matches_confirmed_live_url_pattern():
     target = build_target("craa11", 2026, 3)
-    assert target.url == "https://sparta.com.br/uploads/CRAA11_RelatorioMensal_2026_03.pdf"
+    assert (
+        target.url == "https://sparta.com.br/uploads/CRAA11_RelatorioMensal_2026_03.pdf"
+    )
     assert target.ticker == "CRAA11"
 
 

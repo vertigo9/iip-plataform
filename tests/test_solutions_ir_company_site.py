@@ -21,21 +21,41 @@ SITE = "cda8bfad-7383-4b57-bede-6ce1af8a28ba"
 def _payload(year, *, extra=None):
     docs = {
         "press_release": [
-            {"id": f"pr-{year}", "title": f"Release 2T{year % 100}", "name": "",
-             "url": f"https://cdn.example/{year}/release.pdf",
-             "refDate": f"{year}-06-30T03:00:00Z", "deliveryDate": f"{year}-08-07T03:00:00Z"},
+            {
+                "id": f"pr-{year}",
+                "title": f"Release 2T{year % 100}",
+                "name": "",
+                "url": f"https://cdn.example/{year}/release.pdf",
+                "refDate": f"{year}-06-30T03:00:00Z",
+                "deliveryDate": f"{year}-08-07T03:00:00Z",
+            },
         ],
         "audio": [
-            {"id": f"au-{year}", "title": "Áudio do webcast", "name": "",
-             "url": f"https://cdn.example/{year}/webcast.mp3",
-             "refDate": f"{year}-06-30T03:00:00Z", "deliveryDate": f"{year}-08-08T03:00:00Z"},
+            {
+                "id": f"au-{year}",
+                "title": "Áudio do webcast",
+                "name": "",
+                "url": f"https://cdn.example/{year}/webcast.mp3",
+                "refDate": f"{year}-06-30T03:00:00Z",
+                "deliveryDate": f"{year}-08-08T03:00:00Z",
+            },
         ],
-        "assembleia": [{"id": "x", "title": "sem link", "url": "", "refDate": f"{year}-01-01T00:00:00Z"}],
+        "assembleia": [
+            {
+                "id": "x",
+                "title": "sem link",
+                "url": "",
+                "refDate": f"{year}-01-01T00:00:00Z",
+            }
+        ],
     }
     docs.update(extra or {})
     return {
         "years": [f"{year}-01-02T00:00:00Z"],
-        "categoriesTitle": {"press_release": "Release de Resultados ", "audio": "Áudio"},
+        "categoriesTitle": {
+            "press_release": "Release de Resultados ",
+            "audio": "Áudio",
+        },
         "categories": docs,
     }
 
@@ -91,22 +111,56 @@ def test_documents_without_a_link_are_dropped():
 
 
 def test_a_category_without_a_title_falls_back_to_its_key():
-    payload = _payload(2026, extra={"politicas": [
-        {"id": "p", "title": "Política X", "url": "https://cdn.example/p.pdf",
-         "refDate": "2026-03-01T00:00:00Z", "deliveryDate": "2026-03-01T00:00:00Z"}]})
+    payload = _payload(
+        2026,
+        extra={
+            "politicas": [
+                {
+                    "id": "p",
+                    "title": "Política X",
+                    "url": "https://cdn.example/p.pdf",
+                    "refDate": "2026-03-01T00:00:00Z",
+                    "deliveryDate": "2026-03-01T00:00:00Z",
+                }
+            ]
+        },
+    )
 
     documents = parse_documents_response(json.dumps(payload).encode(), "CSUD3")
 
-    assert next(d for d in documents if d.category_sigla == "politicas").category_name == "politicas"
+    assert (
+        next(d for d in documents if d.category_sigla == "politicas").category_name
+        == "politicas"
+    )
 
 
 def test_the_fund_response_shape_still_parses_as_before():
-    fund = {"files": [{"sigla": "RM", "nome_tipo": "RELATORIO MENSAL", "ano_historico": [
-        {"ano": "2026", "historico": [{"link": "https://x/a.pdf", "nome": "Jul", "data_descricao": "jul"}]}]}]}
+    fund = {
+        "files": [
+            {
+                "sigla": "RM",
+                "nome_tipo": "RELATORIO MENSAL",
+                "ano_historico": [
+                    {
+                        "ano": "2026",
+                        "historico": [
+                            {
+                                "link": "https://x/a.pdf",
+                                "nome": "Jul",
+                                "data_descricao": "jul",
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
 
     documents = parse_documents_response(json.dumps(fund).encode(), "BTCI11")
 
-    assert [(d.category_sigla, d.year, d.title) for d in documents] == [("RM", "2026", "Jul")]
+    assert [(d.category_sigla, d.year, d.title) for d in documents] == [
+        ("RM", "2026", "Jul")
+    ]
 
 
 # --- harvesting -----------------------------------------------------------------------------
@@ -155,8 +209,20 @@ def test_collect_for_a_company_requires_years_and_for_a_fund_ignores_them():
     with pytest.raises(ValueError, match="years is required"):
         _harvester([]).collect("CSUD3")
 
-    fund = {"files": [{"sigla": "RM", "nome_tipo": "R", "ano_historico": [
-        {"ano": "2026", "historico": [{"link": "https://x/a.pdf", "nome": "Jul"}]}]}]}
+    fund = {
+        "files": [
+            {
+                "sigla": "RM",
+                "nome_tipo": "R",
+                "ano_historico": [
+                    {
+                        "ano": "2026",
+                        "historico": [{"link": "https://x/a.pdf", "nome": "Jul"}],
+                    }
+                ],
+            }
+        ]
+    }
     calls = []
 
     def opener(request, timeout):
@@ -185,7 +251,9 @@ def _run_cli(monkeypatch, tmp_path, *extra):
     import urllib.request
 
     docs = parse_documents_response(json.dumps(_payload(2026)).encode(), "CSUD3")
-    monkeypatch.setattr(SolutionsIrHTTPHarvester, "collect", lambda self, ticker, years: docs)
+    monkeypatch.setattr(
+        SolutionsIrHTTPHarvester, "collect", lambda self, ticker, years: docs
+    )
     downloaded = []
 
     class _Resp:
@@ -210,8 +278,15 @@ def _run_cli(monkeypatch, tmp_path, *extra):
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     result = CliRunner().invoke(
         cli,
-        ["collect-solutions-ir-documents", "--ticker", "CSUD3", "--sem-evidencia",
-         "--vault", str(tmp_path), *extra],
+        [
+            "collect-solutions-ir-documents",
+            "--ticker",
+            "CSUD3",
+            "--sem-evidencia",
+            "--vault",
+            str(tmp_path),
+            *extra,
+        ],
     )
     return result, downloaded
 
@@ -228,7 +303,8 @@ def test_the_cli_includes_media_on_request(monkeypatch, tmp_path):
 
     assert result.exit_code == 0, result.output
     assert sorted(downloaded) == [
-        "https://cdn.example/2026/release.pdf", "https://cdn.example/2026/webcast.mp3",
+        "https://cdn.example/2026/release.pdf",
+        "https://cdn.example/2026/webcast.mp3",
     ]
 
 
@@ -237,13 +313,22 @@ def test_the_cli_passes_the_history_window_as_calendar_years(monkeypatch, tmp_pa
     import datetime as dt
 
     monkeypatch.setattr(
-        SolutionsIrHTTPHarvester, "collect",
+        SolutionsIrHTTPHarvester,
+        "collect",
         lambda self, ticker, years: seen.setdefault("years", years) and (),
     )
     result = CliRunner().invoke(
         cli,
-        ["collect-solutions-ir-documents", "--ticker", "CSUD3", "--sem-evidencia",
-         "--vault", str(tmp_path), "--anos-historico", "2"],
+        [
+            "collect-solutions-ir-documents",
+            "--ticker",
+            "CSUD3",
+            "--sem-evidencia",
+            "--vault",
+            str(tmp_path),
+            "--anos-historico",
+            "2",
+        ],
     )
 
     year = dt.date.today().year  # noqa: DTZ011

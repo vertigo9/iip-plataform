@@ -246,7 +246,9 @@ def collect_cvm_fii_history(
                     patrimonio_liquido=values.get("Patrimonio_Liquido"),
                     valor_patrimonial_cotas=values.get("Valor_Patrimonial_Cotas"),
                     dividend_yield_mes=values.get("Percentual_Dividend_Yield_Mes"),
-                    rentabilidade_patrimonial_mes=values.get("Percentual_Rentabilidade_Patrimonial_Mes"),
+                    rentabilidade_patrimonial_mes=values.get(
+                        "Percentual_Rentabilidade_Patrimonial_Mes"
+                    ),
                     valor_ativo=values.get("Valor_Ativo"),
                     total_numero_cotistas=values.get("Total_Numero_Cotistas"),
                     document_id=document.document_id,

@@ -111,7 +111,11 @@ class FixedIncomeAnalyzer(BaseAnalyzer):
             "Net Flows (Millions)": net_flows,
         }
         score = min(
-            (min(aum, 100) + min(max(cotista_growth, 0) * 2, 100) + min(max(net_flows, 0) * 2, 100))
+            (
+                min(aum, 100)
+                + min(max(cotista_growth, 0) * 2, 100)
+                + min(max(net_flows, 0) * 2, 100)
+            )
             / 3,
             100.0,
         )
@@ -195,7 +199,8 @@ class FixedIncomeAnalyzer(BaseAnalyzer):
             "Distribution Frequency (per year)": distribution_frequency,
         }
         score = min(
-            (min(distribution_yield * 8, 100) + min(distribution_frequency * 20, 100)) / 2,
+            (min(distribution_yield * 8, 100) + min(distribution_frequency * 20, 100))
+            / 2,
             100.0,
         )
         return PillarScore(
@@ -219,7 +224,10 @@ class FixedIncomeAnalyzer(BaseAnalyzer):
             "Rebalancing Frequency (per year)": rebalancing_frequency_per_year,
         }
         score = min(
-            (underlying_management_quality + min(rebalancing_frequency_per_year * 25, 100))
+            (
+                underlying_management_quality
+                + min(rebalancing_frequency_per_year * 25, 100)
+            )
             / 2,
             100.0,
         )

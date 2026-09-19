@@ -82,7 +82,8 @@ def long_ntnb_rate_cached() -> NtnbRate | None:
         return outcome
     try:
         rate = TesouroDiretoHTTPHarvester().fetch_long_ntnb_rate()
-    except Exception as exc:  # noqa: BLE001 -- memoized and re-raised for the caller to handle
+    # memoized and re-raised for the caller to handle
+    except Exception as exc:  # noqa: BLE001
         if memo is not None:
             memo["outcome"] = exc
         raise

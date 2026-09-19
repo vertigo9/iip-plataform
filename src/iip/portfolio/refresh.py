@@ -164,7 +164,8 @@ def refresh_portfolio(
     fetch_equity = fetch_equity or fetch_equity_template_live
     fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
 
-    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (data de referência do snapshot), não timestamp
+    # data de calendário (data de referência do snapshot), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
     ano_efetivo = ano or hoje.year
     mes_efetivo = mes or hoje.month
     # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
@@ -217,7 +218,8 @@ def refresh_portfolio(
                     ano_efetivo,
                     mes_efetivo,
                 )
-        except Exception as exc:  # noqa: BLE001 — isolamento por posição, ver docstring do módulo
+        # isolamento por posição, ver docstring do módulo
+        except Exception as exc:  # noqa: BLE001
             outcomes.append(
                 PositionOutcome(
                     ticker=position.ticker,
@@ -228,11 +230,16 @@ def refresh_portfolio(
             continue
 
         incomplete = missing_required_market_data(
-            template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+            template_type,
+            template,
+            bolsai_api_key=bolsai_api_key,
+            brapi_token=brapi_token,
         )
         if incomplete:
             outcomes.append(
-                PositionOutcome(ticker=position.ticker, status="erro", detail=incomplete)
+                PositionOutcome(
+                    ticker=position.ticker, status="erro", detail=incomplete
+                )
             )
             continue
 
@@ -249,7 +256,9 @@ def refresh_portfolio(
             )
         )
 
-    skipped_tickers = {p.ticker for p in all_positions} - {p.ticker for p in refreshable}
+    skipped_tickers = {p.ticker for p in all_positions} - {
+        p.ticker for p in refreshable
+    }
     for ticker in sorted(skipped_tickers):
         outcomes.append(
             PositionOutcome(

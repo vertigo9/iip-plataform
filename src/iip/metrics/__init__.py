@@ -82,7 +82,8 @@ class MetricsEngine:
                         with open(pyfile, "r", encoding="utf-8") as f:
                             lines = f.readlines()
                             total_lines += len(lines)
-                    except Exception:  # noqa: S110,BLE001 — best-effort: arquivo ilegivel so eh pulado na contagem
+                    # best-effort: arquivo ilegivel so eh pulado na contagem
+                    except Exception:  # noqa: S110,BLE001
                         pass
 
             tests_dir = base / "tests"

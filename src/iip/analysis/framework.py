@@ -287,9 +287,7 @@ class FIIAnalyzer(BaseAnalyzer):
         report.add_pillar(self._analyze_fii_resilience(fin))
         report.calculate_overall()
         report.set_recommendation()
-        report.notes = (
-            f"FII Analysis for {safe_segment(data.industry, placeholder='setor não preenchido')} fund"
-        )
+        report.notes = f"FII Analysis for {safe_segment(data.industry, placeholder='setor não preenchido')} fund"
         return report
 
     def _analyze_fii_business_model(self, fin: dict) -> PillarScore:

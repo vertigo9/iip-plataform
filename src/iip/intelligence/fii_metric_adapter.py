@@ -140,6 +140,7 @@ def check_nav_consistency(
         consistent=diferenca_relativa_pct <= NAV_CONSISTENCY_TOLERANCE_PCT,
     )
 
+
 # Decisão deliberada e documentada, não uma suposição por métrica: o
 # Informe Mensal FII é disclosure regulatório obrigatório de primeira
 # mão (dados.cvm.gov.br), categoricamente diferente de uma página
@@ -387,4 +388,3 @@ def cvm_cotas_emitidas_to_evidence(
         document,
         evidence_id=evidence_id,
     )
-

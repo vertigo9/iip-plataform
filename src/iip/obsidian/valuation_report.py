@@ -32,7 +32,12 @@ REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Valuation.md"
 
 HIGHLIGHT_COUNT = 5
 
-_CLASS_TITLES = {"equity": "Ações", "fii": "FIIs", "fiagro": "FIAGROs", "fi_infra": "FI-Infra"}
+_CLASS_TITLES = {
+    "equity": "Ações",
+    "fii": "FIIs",
+    "fiagro": "FIAGROs",
+    "fi_infra": "FI-Infra",
+}
 
 _READING_GUIDE = """\
 ## Como ler
@@ -91,14 +96,16 @@ def compute_highlights(
         lead = first_valuation(outcome.attempts)
         if lead is None or lead.margin_of_safety is None:
             continue
-        entries.append({
-            "ticker": outcome.ticker,
-            "classe": outcome.asset_class or "equity",
-            "metodo": lead.method.value,
-            "preco": round(outcome.price, 2) if outcome.price is not None else None,
-            "valor": round(lead.fair_value, 2),
-            "margem": round(lead.margin_of_safety, 4),
-        })
+        entries.append(
+            {
+                "ticker": outcome.ticker,
+                "classe": outcome.asset_class or "equity",
+                "metodo": lead.method.value,
+                "preco": round(outcome.price, 2) if outcome.price is not None else None,
+                "valor": round(lead.fair_value, 2),
+                "margem": round(lead.margin_of_safety, 4),
+            }
+        )
     ranked = sorted(entries, key=lambda e: e["margem"], reverse=True)
     top = ranked[:count]
     top_tickers = {e["ticker"] for e in top}
@@ -122,14 +129,25 @@ def _yaml_list(key: str, entries: list[dict]) -> list[str]:
 
 def _highlights_table(entries: list[dict], links: Mapping[str, str]) -> str:
     header = ["Ativo", "Classe", "Método", "Preço", "Valor", "Margem"]
-    lines = ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "|" + "|".join(["---"] * len(header)) + "|",
+    ]
     for e in entries:
         price = f"{e['preco']:.2f}" if e["preco"] is not None else "—"
         lines.append(
-            "| " + " | ".join([
-                _label(e["ticker"], links, in_table=True), _CLASS_TITLES.get(e["classe"], e["classe"]),
-                e["metodo"], price, f"{e['valor']:.2f}", f"{e['margem']:+.0%}",
-            ]) + " |"
+            "| "
+            + " | ".join(
+                [
+                    _label(e["ticker"], links, in_table=True),
+                    _CLASS_TITLES.get(e["classe"], e["classe"]),
+                    e["metodo"],
+                    price,
+                    f"{e['valor']:.2f}",
+                    f"{e['margem']:+.0%}",
+                ]
+            )
+            + " |"
         )
     return "\n".join(lines)
 
@@ -141,11 +159,22 @@ def _class_columns(asset_class: str) -> tuple[ValuationMethod, ...]:
 def _class_table(
     asset_class: str, outcomes: list[ValuationOutcome], links: Mapping[str, str]
 ) -> str:
-    methods = [m for m in _class_columns(asset_class) if any(
-        a.method is m and a.status != "not_implemented" for o in outcomes for a in o.attempts
-    )]
-    header = ["Ticker", "Setor", "Preço", "Principal", "Valor (margem)"] + [m.value for m in methods]
-    lines = ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
+    methods = [
+        m
+        for m in _class_columns(asset_class)
+        if any(
+            a.method is m and a.status != "not_implemented"
+            for o in outcomes
+            for a in o.attempts
+        )
+    ]
+    header = ["Ticker", "Setor", "Preço", "Principal", "Valor (margem)"] + [
+        m.value for m in methods
+    ]
+    lines = [
+        "| " + " | ".join(header) + " |",
+        "|" + "|".join(["---"] * len(header)) + "|",
+    ]
     for outcome in outcomes:
         by_method = {a.method: a for a in outcome.attempts}
         lead = first_valuation(outcome.attempts)
@@ -227,7 +256,12 @@ def render_valuation_report(
         c for c in by_class if c not in ("equity", "fii")
     ):
         title = _CLASS_TITLES.get(asset_class, asset_class)
-        body += [f"## {title}", "", _class_table(asset_class, by_class[asset_class], links), ""]
+        body += [
+            f"## {title}",
+            "",
+            _class_table(asset_class, by_class[asset_class], links),
+            "",
+        ]
 
     reasons: list[str] = []
     for outcome in result.outcomes:
@@ -247,7 +281,8 @@ def render_valuation_report(
         body.append("")
 
     no_value = [
-        o for o in result.outcomes
+        o
+        for o in result.outcomes
         if o.status == "pulado" and not o.detail.startswith(NO_METHOD_PREFIX)
     ]
     class_skips: dict[str, list[str]] = {}
@@ -290,7 +325,9 @@ def write_valuation_report(
     path = Path(vault_path) / REPORT_RELATIVE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        render_valuation_report(result, as_of=as_of, asset_links=links, source_note=source_note),
+        render_valuation_report(
+            result, as_of=as_of, asset_links=links, source_note=source_note
+        ),
         encoding="utf-8",
     )
     return path

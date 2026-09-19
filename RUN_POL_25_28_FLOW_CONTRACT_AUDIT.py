@@ -3,9 +3,8 @@ from __future__ import annotations
 
 import ast
 import datetime as dt
-from pathlib import Path
 import traceback
-
+from pathlib import Path
 
 AUDIT_NAME = "POL_25_28_FLOW_CONTRACT_AUDIT"
 

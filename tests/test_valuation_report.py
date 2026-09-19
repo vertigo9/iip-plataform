@@ -20,7 +20,9 @@ from iip.portfolio.registry import PortfolioAsset
 from iip.portfolio_data.valuation_methods import evaluate_valuations
 from iip.sources.tesouro_direto import NtnbRate
 
-RATE = NtnbRate(reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073)
+RATE = NtnbRate(
+    reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073
+)
 AS_OF = date(2026, 9, 18)
 
 
@@ -36,7 +38,11 @@ def _clear_settings_cache(monkeypatch):
 
 def _outcome(ticker, asset_class, sector, industry, price, **inputs):
     attempts = evaluate_valuations(
-        ticker=ticker, asset_class=asset_class, sector=sector, industry=industry, price=price,
+        ticker=ticker,
+        asset_class=asset_class,
+        sector=sector,
+        industry=industry,
+        price=price,
         inputs={"ntnb_real_yield": 0.073, **inputs},
     )
     return ValuationOutcome(
@@ -49,16 +55,36 @@ def _result(*outcomes, rate=RATE, note="NTN-B longa: IPCA + 7.30%"):
 
 
 EQUITY = _outcome(
-    "CXSE3", "equity", "Financeiro", "Previdência e Seguros", 20.54,
-    lpa=1.43, vpa=4.6, dividend_per_share=1.26, dividend_consistency_years=5, payout_ratio=88.0,
+    "CXSE3",
+    "equity",
+    "Financeiro",
+    "Previdência e Seguros",
+    20.54,
+    lpa=1.43,
+    vpa=4.6,
+    dividend_per_share=1.26,
+    dividend_consistency_years=5,
+    payout_ratio=88.0,
 )
 FII = _outcome(
-    "BTLG11", "fii", "Tijolo", "Logístico", 99.78,
-    nav_per_share=106.86, dividend_per_share=11.56, dividend_yield_ttm=10.82,
+    "BTLG11",
+    "fii",
+    "Tijolo",
+    "Logístico",
+    99.78,
+    nav_per_share=106.86,
+    dividend_per_share=11.56,
+    dividend_yield_ttm=10.82,
 )
 PAPER = _outcome(
-    "HGCR11", "fii", "Papel", "Crédito Imobiliário", 95.45,
-    nav_per_share=97.4, dividend_per_share=11.99, dividend_yield_ttm=12.31,
+    "HGCR11",
+    "fii",
+    "Papel",
+    "Crédito Imobiliário",
+    95.45,
+    nav_per_share=97.4,
+    dividend_per_share=11.99,
+    dividend_yield_ttm=12.31,
 )
 
 
@@ -66,7 +92,11 @@ def _class_row(text, section, ticker):
     """The row of ``ticker`` inside the ``## <section>`` class table (the highlights
     table above it repeats some tickers with other columns)."""
     body = text.split(f"## {section}")[1].split("\n## ")[0]
-    return next(line for line in body.splitlines() if line.startswith(f"| {ticker}") or f"|{ticker}]]" in line)
+    return next(
+        line
+        for line in body.splitlines()
+        if line.startswith(f"| {ticker}") or f"|{ticker}]]" in line
+    )
 
 
 # --- rendering -----------------------------------------------------------------------
@@ -125,7 +155,11 @@ def test_methods_without_value_are_listed_with_their_reason():
 
 
 def test_skipped_and_failed_positions_are_reported():
-    failed = ValuationOutcome("BAD11", "erro", "preço indisponível (bolsai: falha/limite diário) — nada gravado")
+    failed = ValuationOutcome(
+        "BAD11",
+        "erro",
+        "preço indisponível (bolsai: falha/limite diário) — nada gravado",
+    )
     skipped = ValuationOutcome("LFTB11", "pulado", f"{NO_METHOD_PREFIX} 'etf'")
     text = render_valuation_report(_result(EQUITY, failed, skipped), as_of=AS_OF)
 
@@ -145,13 +179,29 @@ def test_the_reading_guide_states_the_limits_and_that_it_is_not_a_recommendation
     text = render_valuation_report(_result(EQUITY), as_of=AS_OF)
 
     guide = text.split("## Como ler")[1]
-    for word in ("Graham", "Bazin", "NAV", "Yield", "prêmio", "calibração", "não é recomendação",
-                 "Método principal"):
+    for word in (
+        "Graham",
+        "Bazin",
+        "NAV",
+        "Yield",
+        "prêmio",
+        "calibração",
+        "não é recomendação",
+        "Método principal",
+    ):
         assert word in guide
 
 
 def test_pipes_in_text_cannot_break_the_table():
-    odd = _outcome("KLBN4", "equity", "Materiais | Básicos", "Madeiras e Papel", 3.88, lpa=0.24, vpa=1.52)
+    odd = _outcome(
+        "KLBN4",
+        "equity",
+        "Materiais | Básicos",
+        "Madeiras e Papel",
+        3.88,
+        lpa=0.24,
+        vpa=1.52,
+    )
 
     text = render_valuation_report(_result(odd), as_of=AS_OF)
 
@@ -164,7 +214,9 @@ def test_pipes_in_text_cannot_break_the_table():
 
 def test_links_are_escaped_in_tables_and_plain_elsewhere():
     links = {"CXSE3": "CXSE3 - Score e Ranking", "HGCR11": "HGCR11 - Score e Ranking"}
-    text = render_valuation_report(_result(EQUITY, PAPER), as_of=AS_OF, asset_links=links)
+    text = render_valuation_report(
+        _result(EQUITY, PAPER), as_of=AS_OF, asset_links=links
+    )
 
     table_row = next(line for line in text.splitlines() if line.startswith("| [[CXSE3"))
     assert "[[CXSE3 - Score e Ranking\\|CXSE3]]" in table_row
@@ -177,7 +229,9 @@ def test_only_existing_asset_notes_are_linked(tmp_path):
     note.parent.mkdir(parents=True)
     note.write_text("x", encoding="utf-8")
 
-    assert find_asset_links(tmp_path, ["BTLG11", "HGRU11"]) == {"BTLG11": "BTLG11 - Score e Ranking"}
+    assert find_asset_links(tmp_path, ["BTLG11", "HGRU11"]) == {
+        "BTLG11": "BTLG11 - Score e Ranking"
+    }
     assert find_asset_links(tmp_path / "missing", ["BTLG11"]) == {}
 
 
@@ -199,7 +253,11 @@ def test_a_new_run_replaces_the_old_content_never_appends(tmp_path):
     path = write_valuation_report(tmp_path, _result(EQUITY), as_of=date(2026, 9, 19))
     text = path.read_text(encoding="utf-8")
 
-    assert "BTLG11" not in text and "as_of: 2026-09-19" in text and text.count("# Valuation da Carteira") == 1
+    assert (
+        "BTLG11" not in text
+        and "as_of: 2026-09-19" in text
+        and text.count("# Valuation da Carteira") == 1
+    )
 
 
 # --- through value_portfolio and the CLI ---------------------------------------------
@@ -207,31 +265,57 @@ def test_a_new_run_replaces_the_old_content_never_appends(tmp_path):
 
 def test_outcomes_from_a_real_batch_carry_class_and_segment():
     position = PortfolioAsset(
-        "KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel", cnpj="1",
+        "KLBN4",
+        "equity",
+        sector="Materiais Básicos",
+        industry="Madeiras e Papel",
+        cnpj="1",
     )
 
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token=None, positions=(position,), ano=2025,
-        fetch_equity=lambda *a: ({"price": 3.88, "financials": {"lpa": 0.24, "vpa": 1.52}}, object()),
+        bolsai_api_key="k",
+        brapi_token=None,
+        positions=(position,),
+        ano=2025,
+        fetch_equity=lambda *a: (
+            {"price": 3.88, "financials": {"lpa": 0.24, "vpa": 1.52}},
+            object(),
+        ),
         fetch_rate=lambda: RATE,
     )
 
     assert result.outcomes[0].asset_class == "equity"
     assert result.outcomes[0].segment == "Materiais Básicos / Madeiras e Papel"
-    assert "Materiais Básicos / Madeiras e Papel" in render_valuation_report(result, as_of=AS_OF)
+    assert "Materiais Básicos / Madeiras e Papel" in render_valuation_report(
+        result, as_of=AS_OF
+    )
 
 
 def test_the_cli_writes_the_report_only_when_asked(tmp_path, monkeypatch):
     import iip.cli.fetch_template as ft
     import iip.portfolio.batch_value as bv
 
-    monkeypatch.setattr(bv, "assets_refreshable_now", lambda: (
-        PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel", cnpj="1"),
-    ))
+    monkeypatch.setattr(
+        bv,
+        "assets_refreshable_now",
+        lambda: (
+            PortfolioAsset(
+                "KLBN4",
+                "equity",
+                sector="Materiais Básicos",
+                industry="Madeiras e Papel",
+                cnpj="1",
+            ),
+        ),
+    )
     monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
     monkeypatch.setattr(
-        ft, "fetch_equity_template_live",
-        lambda *a, **k: ({"price": 3.88, "financials": {"lpa": 0.24, "vpa": 1.52}}, object()),
+        ft,
+        "fetch_equity_template_live",
+        lambda *a, **k: (
+            {"price": 3.88, "financials": {"lpa": 0.24, "vpa": 1.52}},
+            object(),
+        ),
     )
     report = tmp_path / "02_Portfolio" / "Valuation.md"
 
@@ -239,19 +323,35 @@ def test_the_cli_writes_the_report_only_when_asked(tmp_path, monkeypatch):
     assert without.exit_code == 0, without.output
     assert not report.exists()
 
-    with_report = CliRunner().invoke(cli, ["value-portfolio", "--vault", str(tmp_path), "--report"])
+    with_report = CliRunner().invoke(
+        cli, ["value-portfolio", "--vault", str(tmp_path), "--report"]
+    )
     assert with_report.exit_code == 0, with_report.output
-    assert report.is_file() and "Valuation da Carteira" in report.read_text(encoding="utf-8")
+    assert report.is_file() and "Valuation da Carteira" in report.read_text(
+        encoding="utf-8"
+    )
     assert "Relatório de valuation" in with_report.output
 
 
-def test_the_cli_keeps_the_previous_report_when_nothing_was_valued(tmp_path, monkeypatch):
+def test_the_cli_keeps_the_previous_report_when_nothing_was_valued(
+    tmp_path, monkeypatch
+):
     import iip.cli.fetch_template as ft
     import iip.portfolio.batch_value as bv
 
-    monkeypatch.setattr(bv, "assets_refreshable_now", lambda: (
-        PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel", cnpj="1"),
-    ))
+    monkeypatch.setattr(
+        bv,
+        "assets_refreshable_now",
+        lambda: (
+            PortfolioAsset(
+                "KLBN4",
+                "equity",
+                sector="Materiais Básicos",
+                industry="Madeiras e Papel",
+                cnpj="1",
+            ),
+        ),
+    )
     monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
     report = tmp_path / "02_Portfolio" / "Valuation.md"
     report.parent.mkdir(parents=True)
@@ -262,7 +362,9 @@ def test_the_cli_keeps_the_previous_report_when_nothing_was_valued(tmp_path, mon
 
     monkeypatch.setattr(ft, "fetch_equity_template_live", _quota_exhausted)
 
-    result = CliRunner().invoke(cli, ["value-portfolio", "--vault", str(tmp_path), "--report"])
+    result = CliRunner().invoke(
+        cli, ["value-portfolio", "--vault", str(tmp_path), "--report"]
+    )
 
     assert result.exit_code == 1  # the failed position still fails the run
     assert report.read_text(encoding="utf-8") == "nota boa de ontem"

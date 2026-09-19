@@ -27,5 +27,6 @@ class CoreCommandAdapter:
             return CommandResult(command, False, error="unknown_command")
         try:
             return CommandResult(command, True, handler(*args, **kwargs))
-        except Exception as exc:  # noqa: BLE001 — isola falha do handler num CommandResult, nao deixa propagar
+        # isola falha do handler num CommandResult, nao deixa propagar
+        except Exception as exc:  # noqa: BLE001
             return CommandResult(command, False, error=f"{type(exc).__name__}:{exc}")

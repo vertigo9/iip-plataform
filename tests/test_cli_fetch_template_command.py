@@ -28,7 +28,6 @@ def _clear_settings_cache(monkeypatch):
     get_settings.cache_clear()
 
 
-
 def make_fake_cvm_fetch():
     complementos = (
         FiiComplemento(
@@ -46,7 +45,11 @@ def make_fake_cvm_fetch():
 
     def fake_fetch(self, target):
         return FetchedFiiReport(
-            target=target, status_code=200, geral=(), ativo_passivo=(), complemento=complementos
+            target=target,
+            status_code=200,
+            geral=(),
+            ativo_passivo=(),
+            complemento=complementos,
         )
 
     return fake_fetch
@@ -109,7 +112,16 @@ def test_fetch_template_uses_bolsai_price_when_key_present(monkeypatch, tmp_path
     out_file = tmp_path / "btlg11.json"
     result = runner.invoke(
         cli,
-        ["fetch-template", "BTLG11", "--cnpj", CNPJ, "--ano", "2026", "-o", str(out_file)],
+        [
+            "fetch-template",
+            "BTLG11",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2026",
+            "-o",
+            str(out_file),
+        ],
     )
 
     assert result.exit_code == 0
@@ -132,7 +144,16 @@ def test_fetch_template_continues_when_bolsai_fetch_fails(monkeypatch, tmp_path)
     out_file = tmp_path / "btlg11.json"
     result = runner.invoke(
         cli,
-        ["fetch-template", "BTLG11", "--cnpj", CNPJ, "--ano", "2026", "-o", str(out_file)],
+        [
+            "fetch-template",
+            "BTLG11",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2026",
+            "-o",
+            str(out_file),
+        ],
     )
 
     # bolsai failing should not abort the whole command — CVM-only data still gets written
@@ -159,7 +180,9 @@ def test_fetch_template_prints_to_console_without_output_flag(monkeypatch):
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", make_fake_cvm_fetch())
 
     runner = CliRunner()
-    result = runner.invoke(cli, ["fetch-template", "BTLG11", "--cnpj", CNPJ, "--ano", "2026"])
+    result = runner.invoke(
+        cli, ["fetch-template", "BTLG11", "--cnpj", CNPJ, "--ano", "2026"]
+    )
 
     assert result.exit_code == 0
     assert '"symbol": "BTLG11"' in result.output
@@ -175,7 +198,16 @@ def test_fetch_template_output_is_directly_usable_by_analyze(monkeypatch, tmp_pa
     out_file = tmp_path / "btlg11.json"
     fetch_result = runner.invoke(
         cli,
-        ["fetch-template", "BTLG11", "--cnpj", CNPJ, "--ano", "2026", "-o", str(out_file)],
+        [
+            "fetch-template",
+            "BTLG11",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2026",
+            "-o",
+            str(out_file),
+        ],
     )
     assert fetch_result.exit_code == 0
 

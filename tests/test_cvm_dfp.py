@@ -66,18 +66,64 @@ def make_zip() -> bytes:
         bpp_con_rows = [
             _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2", "Passivo Total", "63796777"),
             _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.01", "Passivo Circulante", "8767398"),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.02", "Passivo Não Circulante", "40628278"),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "14401101"),
-            _row(NON_FINANCIAL_CNPJ, "PENÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "13000000"),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "2.02",
+                "Passivo Não Circulante",
+                "40628278",
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "2.03",
+                "Patrimônio Líquido Consolidado",
+                "14401101",
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "PENÚLTIMO",
+                "2.03",
+                "Patrimônio Líquido Consolidado",
+                "13000000",
+            ),
             _row(HOLDING_CNPJ, "ÚLTIMO", "2", "Passivo Total", "23097696"),
-            _row(HOLDING_CNPJ, "ÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "10384393"),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.01.04", "Empréstimos e Financiamentos", "1770665"),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "2.02.01", "Empréstimos e Financiamentos", "34950377"),
+            _row(
+                HOLDING_CNPJ,
+                "ÚLTIMO",
+                "2.03",
+                "Patrimônio Líquido Consolidado",
+                "10384393",
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "2.01.04",
+                "Empréstimos e Financiamentos",
+                "1770665",
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "2.02.01",
+                "Empréstimos e Financiamentos",
+                "34950377",
+            ),
             _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2", "Passivo Total", "30000000"),
             _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.01", "Passivo Circulante", "1284420"),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.01.04", "Empréstimos e Financiamentos", "0"),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.02.01", "Empréstimos e Financiamentos", "0"),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "2.03", "Patrimônio Líquido Consolidado", "18000000"),
+            _row(
+                ZERO_DEBT_CNPJ, "ÚLTIMO", "2.01.04", "Empréstimos e Financiamentos", "0"
+            ),
+            _row(
+                ZERO_DEBT_CNPJ, "ÚLTIMO", "2.02.01", "Empréstimos e Financiamentos", "0"
+            ),
+            _row(
+                ZERO_DEBT_CNPJ,
+                "ÚLTIMO",
+                "2.03",
+                "Patrimônio Líquido Consolidado",
+                "18000000",
+            ),
         ]
         zf.writestr(
             "dfp_cia_aberta_BPP_con_2025.csv",
@@ -96,18 +142,102 @@ def make_zip() -> bytes:
 
         # DRE_con: non-financial with real EBIT line + holding with zeroed revenue
         dre_con_rows = [
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "3.01", "Receita de Venda de Bens e/ou Serviços", "20697507", dre=True),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "3.05", "Resultado Antes do Resultado Financeiro e dos Tributos", "4480349", dre=True),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "1678211", dre=True),
-            _row(NON_FINANCIAL_CNPJ, "PENÚLTIMO", "3.01", "Receita de Venda de Bens e/ou Serviços", "18000000", dre=True),
-            _row(NON_FINANCIAL_CNPJ, "PENÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "1500000", dre=True),
-            _row(HOLDING_CNPJ, "ÚLTIMO", "3.01", "Receitas das Atividades Seguradoras/Resseguradoras", "0", dre=True),
-            _row(HOLDING_CNPJ, "ÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "9017329", dre=True),
-            _row(NON_FINANCIAL_CNPJ, "ÚLTIMO", "3.06.02", "Despesas Financeiras", "-2628543", dre=True),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.01", "Receita de Venda de Bens e/ou Serviços", "5000000", dre=True),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.05", "Resultado Antes do Resultado Financeiro e dos Tributos", "1539360", dre=True),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.06.02", "Despesas Financeiras", "-1010822", dre=True),
-            _row(ZERO_DEBT_CNPJ, "ÚLTIMO", "3.11", "Lucro/Prejuízo Consolidado do Período", "900000", dre=True),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "3.01",
+                "Receita de Venda de Bens e/ou Serviços",
+                "20697507",
+                dre=True,
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "3.05",
+                "Resultado Antes do Resultado Financeiro e dos Tributos",
+                "4480349",
+                dre=True,
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "3.11",
+                "Lucro/Prejuízo Consolidado do Período",
+                "1678211",
+                dre=True,
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "PENÚLTIMO",
+                "3.01",
+                "Receita de Venda de Bens e/ou Serviços",
+                "18000000",
+                dre=True,
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "PENÚLTIMO",
+                "3.11",
+                "Lucro/Prejuízo Consolidado do Período",
+                "1500000",
+                dre=True,
+            ),
+            _row(
+                HOLDING_CNPJ,
+                "ÚLTIMO",
+                "3.01",
+                "Receitas das Atividades Seguradoras/Resseguradoras",
+                "0",
+                dre=True,
+            ),
+            _row(
+                HOLDING_CNPJ,
+                "ÚLTIMO",
+                "3.11",
+                "Lucro/Prejuízo Consolidado do Período",
+                "9017329",
+                dre=True,
+            ),
+            _row(
+                NON_FINANCIAL_CNPJ,
+                "ÚLTIMO",
+                "3.06.02",
+                "Despesas Financeiras",
+                "-2628543",
+                dre=True,
+            ),
+            _row(
+                ZERO_DEBT_CNPJ,
+                "ÚLTIMO",
+                "3.01",
+                "Receita de Venda de Bens e/ou Serviços",
+                "5000000",
+                dre=True,
+            ),
+            _row(
+                ZERO_DEBT_CNPJ,
+                "ÚLTIMO",
+                "3.05",
+                "Resultado Antes do Resultado Financeiro e dos Tributos",
+                "1539360",
+                dre=True,
+            ),
+            _row(
+                ZERO_DEBT_CNPJ,
+                "ÚLTIMO",
+                "3.06.02",
+                "Despesas Financeiras",
+                "-1010822",
+                dre=True,
+            ),
+            _row(
+                ZERO_DEBT_CNPJ,
+                "ÚLTIMO",
+                "3.11",
+                "Lucro/Prejuízo Consolidado do Período",
+                "900000",
+                dre=True,
+            ),
         ]
         zf.writestr(
             "dfp_cia_aberta_DRE_con_2025.csv",
@@ -116,10 +246,33 @@ def make_zip() -> bytes:
 
         # DRE_ind: bank only, no EBIT-equivalent line at all
         dre_ind_rows = [
-            _row(BANK_CNPJ, "ÚLTIMO", "3.01", "Receitas de Intermediação Financeira", "8473673", dre=True),
-            _row(BANK_CNPJ, "ÚLTIMO", "3.05", "Resultado antes dos Tributos sobre o Lucro", "1198995", dre=True),
-            _row(BANK_CNPJ, "ÚLTIMO", "3.11", "Lucro ou Prejuízo Líquido do Período", "1002000", dre=True),
-            _row(BANK_CNPJ, "ÚLTIMO", "3.99", "Lucro por Ação (R$/Ação)", "0", dre=True),
+            _row(
+                BANK_CNPJ,
+                "ÚLTIMO",
+                "3.01",
+                "Receitas de Intermediação Financeira",
+                "8473673",
+                dre=True,
+            ),
+            _row(
+                BANK_CNPJ,
+                "ÚLTIMO",
+                "3.05",
+                "Resultado antes dos Tributos sobre o Lucro",
+                "1198995",
+                dre=True,
+            ),
+            _row(
+                BANK_CNPJ,
+                "ÚLTIMO",
+                "3.11",
+                "Lucro ou Prejuízo Líquido do Período",
+                "1002000",
+                dre=True,
+            ),
+            _row(
+                BANK_CNPJ, "ÚLTIMO", "3.99", "Lucro por Ação (R$/Ação)", "0", dre=True
+            ),
         ]
         zf.writestr(
             "dfp_cia_aberta_DRE_ind_2025.csv",
@@ -148,7 +301,10 @@ def test_build_target_rejects_years_before_cvm_coverage():
 
 def test_build_target_url_shape():
     target = build_target(2025)
-    assert target.url == "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip"
+    assert (
+        target.url
+        == "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_2025.zip"
+    )
     assert target.ticker == "MULTI"
 
 
@@ -180,7 +336,9 @@ def test_bank_falls_back_to_individual_and_has_no_ebit(parsed):
 def test_holding_company_zeroed_revenue_is_treated_as_unavailable(parsed):
     result = extract_fundamentals(2025, HOLDING_CNPJ, **parsed)
     assert result is not None
-    assert result.receita is None  # genuinely 0 in the source -- not reported as a real 0
+    assert (
+        result.receita is None
+    )  # genuinely 0 in the source -- not reported as a real 0
     assert result.lucro_liquido == 9017329.0
 
 
@@ -223,11 +381,19 @@ def test_ratios_guard_non_positive_denominators():
     from iip.sources.cvm_dfp import CompanyFundamentals
 
     base = {
-        "cnpj_cia": "x", "ano_referencia": 2025, "consolidado": True,
-        "ativo_total": 1.0, "patrimonio_liquido": 100.0, "receita": 1.0,
-        "lucro_liquido": 1.0, "ebit": -50.0, "passivo_nao_circulante": 1.0,
-        "ativo_circulante": 10.0, "passivo_circulante": 0.0,
-        "divida_bruta": 40.0, "despesas_financeiras": -10.0,
+        "cnpj_cia": "x",
+        "ano_referencia": 2025,
+        "consolidado": True,
+        "ativo_total": 1.0,
+        "patrimonio_liquido": 100.0,
+        "receita": 1.0,
+        "lucro_liquido": 1.0,
+        "ebit": -50.0,
+        "passivo_nao_circulante": 1.0,
+        "ativo_circulante": 10.0,
+        "passivo_circulante": 0.0,
+        "divida_bruta": 40.0,
+        "despesas_financeiras": -10.0,
     }
     ok = CompanyFundamentals(**base)
     assert ok.current_ratio is None  # zero current liabilities
@@ -242,8 +408,13 @@ def test_ratios_guard_non_positive_denominators():
 
 def _dfc_row(cnpj, cd_conta, ds_conta, valor, *, escala="MIL", ordem="ÚLTIMO"):
     return DfpRow(
-        cnpj_cia=cnpj, ordem_exerc=ordem, dt_fim_exerc="2025-12-31",
-        cd_conta=cd_conta, ds_conta=ds_conta, vl_conta=valor, escala=escala,
+        cnpj_cia=cnpj,
+        ordem_exerc=ordem,
+        dt_fim_exerc="2025-12-31",
+        cd_conta=cd_conta,
+        ds_conta=ds_conta,
+        vl_conta=valor,
+        escala=escala,
     )
 
 
@@ -254,7 +425,11 @@ def _dividends(rows):
 
 
 def test_dividends_paid_from_the_financing_section_in_absolute_brl():
-    rows = [_dfc_row("x", "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0)]
+    rows = [
+        _dfc_row(
+            "x", "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0
+        )
+    ]
 
     assert _dividends(rows) == 957_000_000.0  # scale MIL -> x1000
 
@@ -273,10 +448,22 @@ def test_dividends_paid_matches_label_variants_seen_in_real_filings():
 def test_dividends_paid_excludes_minorities_partnerships_and_inflows():
     rows = [
         _dfc_row("x", "6.03.07", "Pagamento dividendos SCPs e SPEs", -165269.0),
-        _dfc_row("x", "6.03.19", "Dividendos pagos aos acionistas não controladores", -115598.0),
-        _dfc_row("x", "6.03.06", "Participação dos acionistas não controladores nos dividendos", -5.0),
+        _dfc_row(
+            "x",
+            "6.03.19",
+            "Dividendos pagos aos acionistas não controladores",
+            -115598.0,
+        ),
+        _dfc_row(
+            "x",
+            "6.03.06",
+            "Participação dos acionistas não controladores nos dividendos",
+            -5.0,
+        ),
         _dfc_row("x", "6.02.07", "Dividendos recebidos", 158120.0),  # investing inflow
-        _dfc_row("x", "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0),
+        _dfc_row(
+            "x", "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0
+        ),
     ]
 
     assert _dividends(rows) == 957_000_000.0
@@ -285,7 +472,9 @@ def test_dividends_paid_excludes_minorities_partnerships_and_inflows():
 def test_dividends_paid_ignores_operating_receipts_positive_values_and_prior_year():
     rows = [
         _dfc_row("x", "6.01.03.01", "Recebimento de dividendos", -100.0),  # not 6.03.*
-        _dfc_row("x", "6.03.09", "Dividendos a pagar - Atualização monetária", 500.0),  # inflow sign
+        _dfc_row(
+            "x", "6.03.09", "Dividendos a pagar - Atualização monetária", 500.0
+        ),  # inflow sign
         _dfc_row("x", "6.03.01", "Dividendos pagos", -300.0, ordem="PENÚLTIMO"),
     ]
 
@@ -300,17 +489,37 @@ def test_dividends_paid_none_when_no_line_and_zero_when_reported_zero():
 
 
 def test_dividends_paid_handles_unidade_scale_and_refuses_unknown_scale():
-    assert _dividends([_dfc_row("x", "6.03.01", "Dividendos pagos", -2500.0, escala="UNIDADE")]) == 2500.0
-    assert _dividends([_dfc_row("x", "6.03.01", "Dividendos pagos", -2500.0, escala="MILHAO")]) is None
+    assert (
+        _dividends(
+            [_dfc_row("x", "6.03.01", "Dividendos pagos", -2500.0, escala="UNIDADE")]
+        )
+        == 2500.0
+    )
+    assert (
+        _dividends(
+            [_dfc_row("x", "6.03.01", "Dividendos pagos", -2500.0, escala="MILHAO")]
+        )
+        is None
+    )
 
 
 def test_extract_fundamentals_reads_dividends_from_dfc_rows(parsed):
-    dfc = (_dfc_row(NON_FINANCIAL_CNPJ, "6.03.08", "Dividendos/Juros sobre capital próprio pagos", -957000.0),)
+    dfc = (
+        _dfc_row(
+            NON_FINANCIAL_CNPJ,
+            "6.03.08",
+            "Dividendos/Juros sobre capital próprio pagos",
+            -957000.0,
+        ),
+    )
 
     result = extract_fundamentals(2025, NON_FINANCIAL_CNPJ, dfc_con=dfc, **parsed)
 
     assert result.dividendos_pagos == 957_000_000.0
-    assert extract_fundamentals(2025, NON_FINANCIAL_CNPJ, **parsed).dividendos_pagos is None
+    assert (
+        extract_fundamentals(2025, NON_FINANCIAL_CNPJ, **parsed).dividendos_pagos
+        is None
+    )
 
 
 def test_dfc_parsers_read_both_cash_flow_methods_and_the_scale():
@@ -324,12 +533,24 @@ def test_dfc_parsers_read_both_cash_flow_methods_and_the_scale():
 
     buffer = _io.BytesIO()
     with _zip.ZipFile(buffer, "w") as zf:
-        zf.writestr("dfp_cia_aberta_DFC_MD_con_2025.csv",
-                    "\r\n".join([header, row("A", "6.03.01", "Dividendos pagos", "-5", "UNIDADE")]).encode("latin-1"))
-        zf.writestr("dfp_cia_aberta_DFC_MI_con_2025.csv",
-                    "\r\n".join([header, row("B", "6.03.01", "Dividendos pagos", "-7", "MIL")]).encode("latin-1"))
-        zf.writestr("dfp_cia_aberta_DFC_MI_ind_2025.csv",
-                    "\r\n".join([header, row("C", "6.03.01", "Dividendos pagos", "-9", "MIL")]).encode("latin-1"))
+        zf.writestr(
+            "dfp_cia_aberta_DFC_MD_con_2025.csv",
+            "\r\n".join(
+                [header, row("A", "6.03.01", "Dividendos pagos", "-5", "UNIDADE")]
+            ).encode("latin-1"),
+        )
+        zf.writestr(
+            "dfp_cia_aberta_DFC_MI_con_2025.csv",
+            "\r\n".join(
+                [header, row("B", "6.03.01", "Dividendos pagos", "-7", "MIL")]
+            ).encode("latin-1"),
+        )
+        zf.writestr(
+            "dfp_cia_aberta_DFC_MI_ind_2025.csv",
+            "\r\n".join(
+                [header, row("C", "6.03.01", "Dividendos pagos", "-9", "MIL")]
+            ).encode("latin-1"),
+        )
     body = buffer.getvalue()
 
     con = parse_dfc_con(body)

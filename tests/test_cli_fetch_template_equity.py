@@ -165,8 +165,18 @@ def _run_equity_template(monkeypatch, tmp_path, cnpj):
     out_file = tmp_path / "out.json"
     result = CliRunner().invoke(
         cli,
-        ["fetch-template", "KLBN4", "--type", "equity", "--cnpj", cnpj,
-         "--ano", "2025", "-o", str(out_file)],
+        [
+            "fetch-template",
+            "KLBN4",
+            "--type",
+            "equity",
+            "--cnpj",
+            cnpj,
+            "--ano",
+            "2025",
+            "-o",
+            str(out_file),
+        ],
     )
     assert result.exit_code == 0, result.output
     return json.loads(out_file.read_text(encoding="utf-8")), result.output
@@ -213,8 +223,18 @@ def test_fetch_template_equity_carries_bolsai_valuation_inputs(monkeypatch, tmp_
     out_file = tmp_path / "out.json"
     result = CliRunner().invoke(
         cli,
-        ["fetch-template", "CXSE3", "--type", "equity", "--cnpj", CNPJ,
-         "--ano", "2025", "-o", str(out_file)],
+        [
+            "fetch-template",
+            "CXSE3",
+            "--type",
+            "equity",
+            "--cnpj",
+            CNPJ,
+            "--ano",
+            "2025",
+            "-o",
+            str(out_file),
+        ],
     )
     assert result.exit_code == 0, result.output
     fin = json.loads(out_file.read_text(encoding="utf-8"))["financials"]

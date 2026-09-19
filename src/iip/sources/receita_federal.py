@@ -117,9 +117,9 @@ def parse_cnpj_response(body: bytes) -> CnpjRecord:
         porte=raw.get("porte") or raw.get("descricao_porte"),
         capital_social=_as_float(raw.get("capital_social")),
         data_inicio_atividade=raw.get("data_inicio_atividade"),
-        cnae_fiscal=raw.get("cnae_fiscal")
-        if isinstance(raw.get("cnae_fiscal"), int)
-        else None,
+        cnae_fiscal=(
+            raw.get("cnae_fiscal") if isinstance(raw.get("cnae_fiscal"), int) else None
+        ),
         cnae_fiscal_descricao=raw.get("cnae_fiscal_descricao"),
         cnaes_secundarios=secundarios,
         logradouro=raw.get("logradouro"),

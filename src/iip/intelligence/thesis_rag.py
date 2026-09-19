@@ -24,9 +24,7 @@ class ThesisRAGAnalyzer:
     def __init__(self, llm_client: Any = None) -> None:
         self.llm_client = llm_client
 
-    def analyze_report(
-        self, ticker: str, report_text: str
-    ) -> ThesisAnalysisResult:
+    def analyze_report(self, ticker: str, report_text: str) -> ThesisAnalysisResult:
         """Analisa texto não estruturado de relatórios e extrai sinais de tese de investimento."""
         text_lower = report_text.lower()
 

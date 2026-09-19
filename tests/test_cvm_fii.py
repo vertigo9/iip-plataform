@@ -46,7 +46,9 @@ COMP_ROW = (
 )
 
 
-def make_zip(geral_rows=(GERAL_ROW,), ap_rows=(AP_ROW,), comp_rows=(COMP_ROW,)) -> bytes:
+def make_zip(
+    geral_rows=(GERAL_ROW,), ap_rows=(AP_ROW,), comp_rows=(COMP_ROW,)
+) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as zf:
         geral_content = "\r\n".join([GERAL_HEADER, *geral_rows]).encode("latin-1")
@@ -149,5 +151,7 @@ def test_parse_ativo_passivo_treats_garbage_value_as_none():
 def test_parse_geral_returns_empty_tuple_when_file_missing_from_zip():
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as zf:
-        zf.writestr("inf_mensal_fii_ativo_passivo_2026.csv", AP_HEADER + "\r\n" + AP_ROW)
+        zf.writestr(
+            "inf_mensal_fii_ativo_passivo_2026.csv", AP_HEADER + "\r\n" + AP_ROW
+        )
     assert parse_geral(buffer.getvalue()) == ()

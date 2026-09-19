@@ -173,7 +173,8 @@ def applicability(
     methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower())
     if methods is None:
         return Applicability(
-            False, f"nenhum método de valuation catalogado para a classe {asset_class!r}"
+            False,
+            f"nenhum método de valuation catalogado para a classe {asset_class!r}",
         )
     if method not in methods:
         return Applicability(
@@ -193,7 +194,9 @@ def ordered_methods(
     (relative order of the others is kept)."""
     methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower(), ())
     haystack = f"{sector} {industry}".lower()
-    if ValuationMethod.BAZIN in methods and any(k in haystack for k in DIVIDEND_LED_KEYWORDS):
+    if ValuationMethod.BAZIN in methods and any(
+        k in haystack for k in DIVIDEND_LED_KEYWORDS
+    ):
         return (
             ValuationMethod.BAZIN,
             *(m for m in methods if m is not ValuationMethod.BAZIN),
@@ -276,7 +279,10 @@ def _bazin(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
     if dps is None:
         return None, "dividendo por ação indisponível"
     if dps <= 0:
-        return None, f"dividendo por ação={dps}: sem dividendos pagos, Bazin não se aplica"
+        return (
+            None,
+            f"dividendo por ação={dps}: sem dividendos pagos, Bazin não se aplica",
+        )
     ceiling = bazin_ceiling_price(dps, rate)
     return ceiling, f"DPS={dps}, taxa real NTN-B={rate:.2%}"
 

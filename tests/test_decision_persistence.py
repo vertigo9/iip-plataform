@@ -134,7 +134,9 @@ def test_opportunity_is_formatted_automatically_into_scoring_note(tmp_path):
     bridge = make_bridge_with_evidence(tmp_path)
     batch = PersistenceBatch([make_candidate("PCIP11")])
     decision = make_engine_decision()
-    opportunity = build("PCIP11", intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5)
+    opportunity = build(
+        "PCIP11", intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5
+    )
 
     outcome = persist_decision_if_eligible(
         decision,
@@ -155,7 +157,9 @@ def test_explicit_scoring_note_takes_precedence_over_opportunity(tmp_path):
     bridge = make_bridge_with_evidence(tmp_path)
     batch = PersistenceBatch([make_candidate("PCIP11")])
     decision = make_engine_decision()
-    opportunity = build("PCIP11", intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5)
+    opportunity = build(
+        "PCIP11", intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5
+    )
 
     outcome = persist_decision_if_eligible(
         decision,

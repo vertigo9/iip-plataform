@@ -1,9 +1,9 @@
 ﻿#!/usr/bin/env python3
 """Cleanup script for IIP Platform."""
 
-import os
 import shutil
 from pathlib import Path
+
 
 def cleanup():
     root = Path(".")

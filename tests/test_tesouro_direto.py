@@ -27,7 +27,9 @@ LATEST = [
     _line(NTNB_TITLE, "15/05/2045", "17/09/2026", "7,31", "7,43"),
     _line(NTNB_TITLE, "15/08/2060", "17/09/2026", "7,18", "7,30"),
     _line(NTNB_TITLE, "15/05/2035", "17/09/2026", "7,54", "7,66"),
-    _line("Tesouro IPCA+", "15/08/2050", "17/09/2026", "7,19", "7,31"),  # principal, no coupon
+    _line(
+        "Tesouro IPCA+", "15/08/2050", "17/09/2026", "7,19", "7,31"
+    ),  # principal, no coupon
     _line("Tesouro Prefixado", "01/01/2031", "17/09/2026", "14,07", "14,19"),
     _line(NTNB_TITLE, "15/08/2060", "16/09/2026", "9,00", "9,10"),  # older day
 ]
@@ -44,9 +46,14 @@ def test_long_ntnb_rate_takes_longest_maturity_and_the_sale_rate():
 
 
 def test_only_the_coupon_bearing_ntnb_is_considered():
-    only_principal = [_line("Tesouro IPCA+", "15/08/2060", "17/09/2026", "7,19", "7,31")]
+    only_principal = [
+        _line("Tesouro IPCA+", "15/08/2060", "17/09/2026", "7,19", "7,31")
+    ]
 
-    assert long_ntnb_rate(parse_rates(_csv(*only_principal)), today=date(2026, 9, 18)) is None
+    assert (
+        long_ntnb_rate(parse_rates(_csv(*only_principal)), today=date(2026, 9, 18))
+        is None
+    )
 
 
 def test_uses_newest_business_day_regardless_of_row_order():
@@ -61,7 +68,9 @@ def test_uses_newest_business_day_regardless_of_row_order():
 def test_stale_data_is_unavailable_not_used():
     assert long_ntnb_rate(parse_rates(_csv(*LATEST)), today=date(2026, 10, 30)) is None
     assert (
-        long_ntnb_rate(parse_rates(_csv(*LATEST)), today=date(2026, 10, 30), max_age_days=60)
+        long_ntnb_rate(
+            parse_rates(_csv(*LATEST)), today=date(2026, 10, 30), max_age_days=60
+        )
         is not None
     )
 
@@ -114,14 +123,17 @@ def test_harvester_sends_a_range_request_and_handles_partial_content():
         # 206: body cut mid-line, must not break parsing
         return _Response(_csv(*LATEST) + "Tesouro IPCA+ com Juros Sem", 206)
 
-    rate = TesouroDiretoHTTPHarvester(opener).fetch_long_ntnb_rate(today=date(2026, 9, 18))
+    rate = TesouroDiretoHTTPHarvester(opener).fetch_long_ntnb_rate(
+        today=date(2026, 9, 18)
+    )
 
     assert seen["range"].startswith("bytes=0-")
     assert rate.real_yield == 0.073
 
 
 def test_harvester_handles_a_server_that_ignores_range():
-    rate = TesouroDiretoHTTPHarvester(lambda request, timeout: _Response(_csv(*LATEST), 200)) \
-        .fetch_long_ntnb_rate(today=date(2026, 9, 18))
+    rate = TesouroDiretoHTTPHarvester(
+        lambda request, timeout: _Response(_csv(*LATEST), 200)
+    ).fetch_long_ntnb_rate(today=date(2026, 9, 18))
 
     assert rate.maturity == date(2060, 8, 15)

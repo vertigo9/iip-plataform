@@ -57,12 +57,16 @@ def test_collect_sparta_report_history_skips_404_months_without_raising(tmp_path
 
     assert len(series.observations) == 1
     assert series.observations[0].period == "2026-03-01"
-    not_found = next(d for d in series.source_documents if d["ano"] == 2026 and d["mes"] == 4)
+    not_found = next(
+        d for d in series.source_documents if d["ano"] == 2026 and d["mes"] == 4
+    )
     assert not_found["matched"] is False
     assert not_found["error"] == "HTTP 404"
 
 
-def test_collect_sparta_report_history_skips_when_layout_extraction_returns_none(tmp_path: Path):
+def test_collect_sparta_report_history_skips_when_layout_extraction_returns_none(
+    tmp_path: Path,
+):
     harvester = FakeSpartaHarvester({(2026, 3): None})
     store = HistoricalSeriesStore(tmp_path)
 
@@ -83,7 +87,9 @@ class FakeBridge:
         return evidence
 
 
-def test_collect_sparta_report_history_persists_atlas_evidence_when_bridge_given(tmp_path: Path):
+def test_collect_sparta_report_history_persists_atlas_evidence_when_bridge_given(
+    tmp_path: Path,
+):
     harvester = FakeSpartaHarvester({(2026, 3): 101.64})
     store = HistoricalSeriesStore(tmp_path)
     bridge = FakeBridge()

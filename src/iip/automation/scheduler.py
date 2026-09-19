@@ -46,7 +46,9 @@ def execute_scheduled_pipeline(
         )
 
     dashboard_path = generate_portfolio_dashboard(vault_path)
-    logger.info("Esteira automatizada concluída. Dashboard gerado em: %s", dashboard_path)
+    logger.info(
+        "Esteira automatizada concluída. Dashboard gerado em: %s", dashboard_path
+    )
 
     return {
         "processed": cycle_results.get("processed", 0),

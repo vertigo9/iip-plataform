@@ -227,7 +227,9 @@ def _parse_number(raw: str) -> float | None:
         return None
 
 
-def _read_csv_rows(archive: zipfile.ZipFile, filename_fragment: str) -> list[dict[str, str]]:
+def _read_csv_rows(
+    archive: zipfile.ZipFile, filename_fragment: str
+) -> list[dict[str, str]]:
     matches = [name for name in archive.namelist() if filename_fragment in name]
     if not matches:
         return []
@@ -280,11 +282,15 @@ def parse_dre_ind(body: bytes) -> tuple[DfpRow, ...]:
 
 def parse_dfc_con(body: bytes) -> tuple[DfpRow, ...]:
     # A company files the direct (MD) OR the indirect (MI) method, never both.
-    return _parse_statement(body, "_DFC_MD_con_") + _parse_statement(body, "_DFC_MI_con_")
+    return _parse_statement(body, "_DFC_MD_con_") + _parse_statement(
+        body, "_DFC_MI_con_"
+    )
 
 
 def parse_dfc_ind(body: bytes) -> tuple[DfpRow, ...]:
-    return _parse_statement(body, "_DFC_MD_ind_") + _parse_statement(body, "_DFC_MI_ind_")
+    return _parse_statement(body, "_DFC_MD_ind_") + _parse_statement(
+        body, "_DFC_MI_ind_"
+    )
 
 
 def _find_ativo_total(rows: tuple[DfpRow, ...]) -> DfpRow | None:
@@ -316,7 +322,8 @@ def _find_lucro_liquido(rows: tuple[DfpRow, ...]) -> DfpRow | None:
     candidates = [
         r
         for r in rows
-        if r.cd_conta.count(".") <= 1 and _LUCRO_LIQUIDO_RE.search(_normalize_text(r.ds_conta))
+        if r.cd_conta.count(".") <= 1
+        and _LUCRO_LIQUIDO_RE.search(_normalize_text(r.ds_conta))
     ]
     return candidates[0] if candidates else None
 
@@ -325,7 +332,8 @@ def _find_ebit(rows: tuple[DfpRow, ...]) -> DfpRow | None:
     candidates = [
         r
         for r in rows
-        if "resultado antes do resultado financeiro e dos tributos" in _normalize_text(r.ds_conta)
+        if "resultado antes do resultado financeiro e dos tributos"
+        in _normalize_text(r.ds_conta)
     ]
     return candidates[0] if candidates else None
 
@@ -334,7 +342,8 @@ def _find_passivo_nao_circulante(rows: tuple[DfpRow, ...]) -> DfpRow | None:
     candidates = [
         r
         for r in rows
-        if r.cd_conta.count(".") == 1 and _normalize_text(r.ds_conta) == "passivo nao circulante"
+        if r.cd_conta.count(".") == 1
+        and _normalize_text(r.ds_conta) == "passivo nao circulante"
     ]
     return candidates[0] if candidates else None
 

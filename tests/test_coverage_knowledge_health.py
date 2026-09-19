@@ -79,7 +79,9 @@ def test_decision_auditor_missing_and_invalid(tmp_path):
     issues = auditor.audit(invalid)
     assert {i.code for i in issues} == {"MISSING_EVIDENCE", "INVALID_CONFIDENCE"}
 
-    valid = Decision("D-2", "CPFE3", datetime.now(tz=UTC).date(), Verdict.MANTER, confidence=0.5)
+    valid = Decision(
+        "D-2", "CPFE3", datetime.now(tz=UTC).date(), Verdict.MANTER, confidence=0.5
+    )
     assert auditor.audit(valid) == []
 
 

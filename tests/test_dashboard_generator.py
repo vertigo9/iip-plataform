@@ -17,7 +17,7 @@ def test_generate_portfolio_dashboard():
         assert "Dashboard Consolidado" in content
         assert "<!-- IIP:BEGIN:METRICS_SUMMARY -->" in content
         assert "dataviewjs" in content
-        assert 'dv.pages(\'"01_Assets"\')' in content
+        assert "dv.pages('\"01_Assets\"')" in content
 
 
 def test_generate_portfolio_dashboard_is_idempotent():

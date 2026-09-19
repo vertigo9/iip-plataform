@@ -18,9 +18,7 @@ DIARIO_ROW = (
     "CLASSES - FIF;00.017.024/0001-53;;2026-08-03;1095646.22;44.275588000000;"
     "1207786.03;0.00;0.00;1"
 )
-DIARIO_ROW_MISSING_QUOTA = (
-    "CLASSES - FIF;00.017.024/0001-53;;2026-08-04;;;;0.00;0.00;1"
-)
+DIARIO_ROW_MISSING_QUOTA = "CLASSES - FIF;00.017.024/0001-53;;2026-08-04;;;;0.00;0.00;1"
 
 
 def make_diario_zip(rows=(DIARIO_ROW,)) -> bytes:
@@ -96,7 +94,9 @@ def test_parse_diario_response_treats_empty_cells_as_none():
 
 
 def test_parse_diario_response_treats_empty_cotistas_as_none():
-    linha_sem_cotistas = "CLASSES - FIF;00.017.024/0001-53;;2026-08-06;1.0;1.0;1.0;0.00;0.00;"
+    linha_sem_cotistas = (
+        "CLASSES - FIF;00.017.024/0001-53;;2026-08-06;1.0;1.0;1.0;0.00;0.00;"
+    )
     resultado = parse_diario_response(make_diario_zip(rows=(linha_sem_cotistas,)))
     assert resultado[0].numero_cotistas is None
 

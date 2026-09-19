@@ -53,7 +53,8 @@ class ProviderAdapter:
                 AdapterExecutionStatus.READY,
                 tuple(docs),
             )
-        except Exception as exc:  # noqa: BLE001 — isola falha do provider num AdapterResult, nao deixa propagar
+        # isola falha do provider num AdapterResult, nao deixa propagar
+        except Exception as exc:  # noqa: BLE001
             return AdapterResult(
                 self.provider,
                 AdapterExecutionStatus.FAILED,

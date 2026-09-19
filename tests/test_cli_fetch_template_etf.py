@@ -4,7 +4,9 @@ from iip.sources.cvm_renda_fixa import InformeDiario
 CNPJ = "04.828.276/0001-00"  # BOVA11 (exemplo)
 
 
-def make_informe(data_competencia, patrimonio=None, valor_total=None, valor_cota=None, cnpj=CNPJ):
+def make_informe(
+    data_competencia, patrimonio=None, valor_total=None, valor_cota=None, cnpj=CNPJ
+):
     return InformeDiario(
         tipo_fundo_classe="FUNDO DE INDICE",
         cnpj_fundo_classe=cnpj,
@@ -20,9 +22,24 @@ def make_informe(data_competencia, patrimonio=None, valor_total=None, valor_cota
 
 
 INFORMES_AGOSTO = [
-    make_informe("2026-08-03", patrimonio=15_000_000_000, valor_total=15_050_000_000, valor_cota=110.5),
-    make_informe("2026-08-04", patrimonio=15_020_000_000, valor_total=15_070_000_000, valor_cota=110.7),
-    make_informe("2026-08-05", patrimonio=15_100_000_000, valor_total=15_150_000_000, valor_cota=111.0),
+    make_informe(
+        "2026-08-03",
+        patrimonio=15_000_000_000,
+        valor_total=15_050_000_000,
+        valor_cota=110.5,
+    ),
+    make_informe(
+        "2026-08-04",
+        patrimonio=15_020_000_000,
+        valor_total=15_070_000_000,
+        valor_cota=110.7,
+    ),
+    make_informe(
+        "2026-08-05",
+        patrimonio=15_100_000_000,
+        valor_total=15_150_000_000,
+        valor_cota=111.0,
+    ),
 ]
 
 DEFAULT_FINANCIALS = {

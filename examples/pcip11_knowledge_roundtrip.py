@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from datetime import date
 from pathlib import Path
-import os
 
 from iip.events import Event, EventBus
 from iip.knowledge import KnowledgeBridge

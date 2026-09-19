@@ -65,7 +65,9 @@ def test_parse_quote_response_extracts_expected_fields():
 
 
 def test_parse_quote_response_extracts_bdr_quote():
-    body = make_response(symbol="AAPL34", shortName="APPLE DRN", regularMarketPrice=68.42)
+    body = make_response(
+        symbol="AAPL34", shortName="APPLE DRN", regularMarketPrice=68.42
+    )
     quotes = parse_quote_response(body)
     assert quotes[0].symbol == "AAPL34"
     assert quotes[0].regular_market_price == 68.42

@@ -6,7 +6,7 @@ from iip.data.quotes import YFinanceGateway
 def test_yfinance_gateway_spot_price_brl():
     gateway = YFinanceGateway()
     result = gateway.fetch_spot_price("PETR4")
-    
+
     assert result["ticker"] == "PETR4"
     assert result["currency"] == "BRL"
     assert result["spot_price"] > 0
@@ -15,7 +15,7 @@ def test_yfinance_gateway_spot_price_brl():
 def test_yfinance_gateway_spot_price_usd():
     gateway = YFinanceGateway()
     result = gateway.fetch_spot_price("AAPL")
-    
+
     assert result["ticker"] == "AAPL"
     assert result["currency"] == "USD"
     assert result["source"] == "yfinance_gateway"
@@ -28,7 +28,8 @@ def test_yfinance_gateway_exchange_rate():
 
     rate_same = gateway.fetch_exchange_rate("BRL", "BRL")
     assert rate_same == 1.0
-    
+
+
 def test_yfinance_gateway_dividends():
     gateway = YFinanceGateway()
     result = gateway.fetch_dividends("HGLG11")

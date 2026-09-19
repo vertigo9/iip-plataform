@@ -31,7 +31,11 @@ class _FakeResponse:
         return False
 
 
-def _fake_document(category="relatorios_gerenciais", doc_id="doc-1", url="https://filemanager-cdn.mziq.com/published/x/y.pdf"):
+def _fake_document(
+    category="relatorios_gerenciais",
+    doc_id="doc-1",
+    url="https://filemanager-cdn.mziq.com/published/x/y.pdf",
+):
     return MziqDocument(
         id=doc_id,
         company_id="41be6346-c17f-47f5-88be-58b333a14261",
@@ -48,12 +52,15 @@ def _fake_document(category="relatorios_gerenciais", doc_id="doc-1", url="https:
 
 
 def test_collect_btg_documents_downloads_and_persists_evidence(monkeypatch, tmp_path):
-    monkeypatch.setattr(MziqHTTPHarvester, "fetch_years", lambda self, target: (2026, 2025))
+    monkeypatch.setattr(
+        MziqHTTPHarvester, "fetch_years", lambda self, target: (2026, 2025)
+    )
     monkeypatch.setattr(
         MziqHTTPHarvester, "fetch_documents", lambda self, target: (_fake_document(),)
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -112,7 +119,8 @@ def test_collect_btg_documents_filters_by_categoria(monkeypatch, tmp_path):
         ),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()

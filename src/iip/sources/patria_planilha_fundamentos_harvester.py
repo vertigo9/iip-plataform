@@ -100,12 +100,13 @@ class PatriaPlanilhaFundamentosHTTPHarvester:
                 f"no 'planilha de fundamentos' category registered for {ticker!r}"
             )
 
-        years = self._mziq.fetch_years(
-            build_years_target(fund.company_id, (category,))
-        )
+        years = self._mziq.fetch_years(build_years_target(fund.company_id, (category,)))
         if not years:
             return FetchedPlanilhaFundamentos(
-                ticker=ticker.upper(), category=category, document=None, fundamentos=None
+                ticker=ticker.upper(),
+                category=category,
+                document=None,
+                fundamentos=None,
             )
 
         latest_year = max(years)
@@ -115,12 +116,13 @@ class PatriaPlanilhaFundamentosHTTPHarvester:
         documents_with_url = tuple(d for d in documents if d.url)
         if not documents_with_url:
             return FetchedPlanilhaFundamentos(
-                ticker=ticker.upper(), category=category, document=None, fundamentos=None
+                ticker=ticker.upper(),
+                category=category,
+                document=None,
+                fundamentos=None,
             )
 
-        latest_document = max(
-            documents_with_url, key=lambda d: d.file_date or ""
-        )
+        latest_document = max(documents_with_url, key=lambda d: d.file_date or "")
 
         body = self._download(latest_document.url)
         import openpyxl

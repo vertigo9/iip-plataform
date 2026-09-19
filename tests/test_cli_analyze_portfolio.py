@@ -40,9 +40,7 @@ def test_analyze_portfolio_runs_and_reports_summary(monkeypatch, tmp_path):
 
     vault_dir = tmp_path / "vault"
     runner = CliRunner()
-    result = runner.invoke(
-        cli, ["analyze-portfolio", "--vault", str(vault_dir)]
-    )
+    result = runner.invoke(cli, ["analyze-portfolio", "--vault", str(vault_dir)])
 
     assert result.exit_code == 0
     assert "Resumo: 1 ok, 0 erro, 0 pulado" in result.output

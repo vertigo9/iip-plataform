@@ -47,10 +47,15 @@ def test_helper_returns_requested_month_without_warning_when_available():
 
 def test_helper_steps_back_and_names_the_month_used():
     fetch = _fetch_failing({(2026, 9)})
-    result, warning = _fetch_month_with_fallback(fetch, _Target, 2026, 9, "Informe Diário")
+    result, warning = _fetch_month_with_fallback(
+        fetch, _Target, 2026, 9, "Informe Diário"
+    )
     assert result == "ok"
     assert fetch.tried == [(2026, 9), (2026, 8)]
-    assert warning == "Informe Diário de 2026-09 ainda não publicado pela CVM; usando 2026-08."
+    assert (
+        warning
+        == "Informe Diário de 2026-09 ainda não publicado pela CVM; usando 2026-08."
+    )
 
 
 def test_helper_crosses_the_year_boundary_and_stops_after_two_months_back():
@@ -80,9 +85,15 @@ def _diario_fetch_missing_current_month(tried):
         if (target.ano, target.mes) == (2026, 9):
             raise _http_error(404)
         informe = InformeDiario(
-            tipo_fundo_classe="CLASSE FIF/FAPI", cnpj_fundo_classe=CNPJ, id_subclasse=None,
-            data_competencia="2026-08-31", valor_total=15_000_000.0, valor_cota=1.89,
-            patrimonio_liquido=14_800_000.0, captacao_dia=0.0, resgate_dia=0.0,
+            tipo_fundo_classe="CLASSE FIF/FAPI",
+            cnpj_fundo_classe=CNPJ,
+            id_subclasse=None,
+            data_competencia="2026-08-31",
+            valor_total=15_000_000.0,
+            valor_cota=1.89,
+            patrimonio_liquido=14_800_000.0,
+            captacao_dia=0.0,
+            resgate_dia=0.0,
             numero_cotistas=10,
         )
         return FetchedDiario(target=target, status_code=200, informes=(informe,))
@@ -93,7 +104,9 @@ def _diario_fetch_missing_current_month(tried):
 def test_fixed_income_fetch_falls_back_to_previous_month(monkeypatch):
     tried = []
     monkeypatch.setattr(
-        CvmRendaFixaHTTPHarvester, "fetch_diario", _diario_fetch_missing_current_month(tried)
+        CvmRendaFixaHTTPHarvester,
+        "fetch_diario",
+        _diario_fetch_missing_current_month(tried),
     )
 
     template, resultado = fetch_fixed_income_template_live("CDII11", CNPJ, 2026, 9)
@@ -106,7 +119,9 @@ def test_fixed_income_fetch_falls_back_to_previous_month(monkeypatch):
 def test_etf_fetch_falls_back_to_previous_month(monkeypatch):
     tried = []
     monkeypatch.setattr(
-        CvmRendaFixaHTTPHarvester, "fetch_diario", _diario_fetch_missing_current_month(tried)
+        CvmRendaFixaHTTPHarvester,
+        "fetch_diario",
+        _diario_fetch_missing_current_month(tried),
     )
 
     template, resultado = fetch_etf_template_live("BOVA11", CNPJ, 2026, 9, None)

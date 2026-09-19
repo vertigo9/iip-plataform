@@ -24,16 +24,26 @@ from iip.sources.cvm_fii_harvester import (
 from iip.sources.shared_caches import shared_fetch_caches
 from iip.sources.tesouro_direto import NtnbRate
 
-RATE = NtnbRate(reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073)
+RATE = NtnbRate(
+    reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073
+)
 
 
 def _value(structure="Tijolo", segment="Logístico", price=99.78, **inputs):
-    base = {"nav_per_share": 106.86, "dividend_per_share": 11.56, "dividend_yield_ttm": 10.82,
-            "ntnb_real_yield": 0.073}
+    base = {
+        "nav_per_share": 106.86,
+        "dividend_per_share": 11.56,
+        "dividend_yield_ttm": 10.82,
+        "ntnb_real_yield": 0.073,
+    }
     base.update(inputs)
     return evaluate_valuations(
-        ticker="BTLG11", asset_class="fii", sector=structure, industry=segment,
-        price=price, inputs=base,
+        ticker="BTLG11",
+        asset_class="fii",
+        sector=structure,
+        industry=segment,
+        price=price,
+        inputs=base,
     )
 
 
@@ -49,7 +59,9 @@ def test_nav_fair_value_is_the_net_asset_value_per_share():
 
     assert nav.status == "ok"
     assert nav.snapshot.fair_value == 106.86
-    assert nav.snapshot.margin_of_safety == pytest.approx(106.86 / 99.78 - 1.0)  # P/VP 0.93 -> +7%
+    assert nav.snapshot.margin_of_safety == pytest.approx(
+        106.86 / 99.78 - 1.0
+    )  # P/VP 0.93 -> +7%
 
 
 def test_nav_shows_a_premium_as_a_negative_margin_of_safety():
@@ -86,7 +98,9 @@ def test_the_premium_is_a_documented_three_points_below_the_market_implied_sprea
 def test_a_fund_yielding_exactly_the_required_rate_is_valued_at_its_price():
     required = 0.073 + FII_YIELD_RISK_PREMIUM
     price = 100.0
-    attempts = _value(price=price, dividend_per_share=price * required, dividend_yield_ttm=10.3)
+    attempts = _value(
+        price=price, dividend_per_share=price * required, dividend_yield_ttm=10.3
+    )
 
     y = _by_method(attempts)[ValuationMethod.YIELD]
 
@@ -97,8 +111,12 @@ def test_a_fund_yielding_exactly_the_required_rate_is_valued_at_its_price():
 def test_the_premium_removes_the_systematic_overstatement_against_the_nav():
     # BTLG11 (real data): without the premium the Yield ceiling sat +59% above the price
     # while the NAV said +7%; with it the two are the same order of magnitude.
-    y = _by_method(_value(dividend_per_share=11.5626, price=99.78))[ValuationMethod.YIELD]
-    nav = _by_method(_value(dividend_per_share=11.5626, price=99.78))[ValuationMethod.NAV]
+    y = _by_method(_value(dividend_per_share=11.5626, price=99.78))[
+        ValuationMethod.YIELD
+    ]
+    nav = _by_method(_value(dividend_per_share=11.5626, price=99.78))[
+        ValuationMethod.NAV
+    ]
 
     assert y.snapshot.margin_of_safety < 0.20
     assert abs(y.snapshot.margin_of_safety - nav.snapshot.margin_of_safety) < 0.15
@@ -106,27 +124,47 @@ def test_the_premium_removes_the_systematic_overstatement_against_the_nav():
 
 @pytest.mark.parametrize(
     ("structure", "segment", "expected_fragment"),
-    [("Papel", "Crédito Imobiliário", "CDI"), ("Multiestratégia", "Multiestratégia", "mistura")],
+    [
+        ("Papel", "Crédito Imobiliário", "CDI"),
+        ("Multiestratégia", "Multiestratégia", "mistura"),
+    ],
 )
-def test_yield_is_not_applicable_to_paper_or_multi_strategy_funds(structure, segment, expected_fragment):
+def test_yield_is_not_applicable_to_paper_or_multi_strategy_funds(
+    structure, segment, expected_fragment
+):
     y = _by_method(_value(structure=structure, segment=segment))[ValuationMethod.YIELD]
 
     assert y.status == "not_applicable" and y.snapshot is None
     assert expected_fragment in y.reason
     # ...but the NAV anchor still values them
-    assert _by_method(_value(structure=structure, segment=segment))[ValuationMethod.NAV].status == "ok"
+    assert (
+        _by_method(_value(structure=structure, segment=segment))[
+            ValuationMethod.NAV
+        ].status
+        == "ok"
+    )
 
 
 # --- Yield: data conditions --------------------------------------------------------
 
 
 def test_yield_refuses_an_extraordinary_trailing_yield():
-    reason = data_condition_violation(ValuationMethod.YIELD, {"dividend_yield_ttm": 20.18})
+    reason = data_condition_violation(
+        ValuationMethod.YIELD, {"dividend_yield_ttm": 20.18}
+    )
 
     assert reason is not None and "20.2%" in reason and "extraordinária" in reason
-    assert data_condition_violation(ValuationMethod.YIELD, {"dividend_yield_ttm": 20.0}) is None
-    assert data_condition_violation(ValuationMethod.YIELD, {"dividend_yield_ttm": 12.3}) is None
-    assert data_condition_violation(ValuationMethod.YIELD, {}) is None  # unknown is not a violation
+    assert (
+        data_condition_violation(ValuationMethod.YIELD, {"dividend_yield_ttm": 20.0})
+        is None
+    )
+    assert (
+        data_condition_violation(ValuationMethod.YIELD, {"dividend_yield_ttm": 12.3})
+        is None
+    )
+    assert (
+        data_condition_violation(ValuationMethod.YIELD, {}) is None
+    )  # unknown is not a violation
 
 
 def test_a_blocked_yield_never_computes_but_nav_still_does():
@@ -138,10 +176,15 @@ def test_a_blocked_yield_never_computes_but_nav_still_does():
 
 @pytest.mark.parametrize(
     ("overrides", "fragment"),
-    [({"ntnb_real_yield": None}, "NTN-B"), ({"dividend_per_share": None}, "12 meses"),
-     ({"dividend_per_share": 0.0}, "sem distribuição")],
+    [
+        ({"ntnb_real_yield": None}, "NTN-B"),
+        ({"dividend_per_share": None}, "12 meses"),
+        ({"dividend_per_share": 0.0}, "sem distribuição"),
+    ],
 )
-def test_yield_without_rate_or_income_is_insufficient_never_a_fallback(overrides, fragment):
+def test_yield_without_rate_or_income_is_insufficient_never_a_fallback(
+    overrides, fragment
+):
     y = _by_method(_value(**overrides))[ValuationMethod.YIELD]
 
     assert y.status == "insufficient_data" and y.snapshot is None
@@ -150,7 +193,9 @@ def test_yield_without_rate_or_income_is_insufficient_never_a_fallback(overrides
 
 def test_fii_lead_method_is_always_nav():
     assert ordered_methods("fii", "Tijolo", "Logístico")[0] is ValuationMethod.NAV
-    assert ordered_methods("fii", "Papel", "Crédito Imobiliário")[0] is ValuationMethod.NAV
+    assert (
+        ordered_methods("fii", "Papel", "Crédito Imobiliário")[0] is ValuationMethod.NAV
+    )
     assert first_valuation(_value()).method is ValuationMethod.NAV
 
 
@@ -158,13 +203,19 @@ def test_fii_lead_method_is_always_nav():
 
 
 def _fii(**overrides):
-    base = {"book_value_per_share": 97.401459, "dividend_yield_ttm": 12.31, "reference_date": "2026-07-01"}
+    base = {
+        "book_value_per_share": 97.401459,
+        "dividend_yield_ttm": 12.31,
+        "reference_date": "2026-07-01",
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 
 
 def test_income_per_share_is_the_yield_on_net_asset_value_times_nav():
-    financials, fetched, warnings = _fii_valuation_inputs({"dividend_yield": 6.8}, _fii())
+    financials, fetched, warnings = _fii_valuation_inputs(
+        {"dividend_yield": 6.8}, _fii()
+    )
 
     # HGCR11: 12.31% of R$ 97.40 = R$ 11.99 ~ 12 x R$ 1.00 paid per month
     assert financials["dividend_per_share"] == pytest.approx(11.99, abs=0.01)
@@ -202,7 +253,12 @@ def test_missing_yield_or_nav_never_fabricates_income_per_share():
 
 def _fii_position(ticker, structure="Tijolo", segment="Logístico"):
     return PortfolioAsset(
-        ticker, "fund", subtype="FII", structure=structure, segment=segment, cnpj="00.000.000/0000-00"
+        ticker,
+        "fund",
+        subtype="FII",
+        structure=structure,
+        segment=segment,
+        cnpj="00.000.000/0000-00",
     )
 
 
@@ -214,8 +270,12 @@ def _batch(positions, templates):
         return templates[symbol], object()
 
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token=None, positions=tuple(positions),
-        fetch_fii=fetch_fii, fetch_rate=lambda: RATE, ano=2025,
+        bolsai_api_key="k",
+        brapi_token=None,
+        positions=tuple(positions),
+        fetch_fii=fetch_fii,
+        fetch_rate=lambda: RATE,
+        ano=2025,
     )
     return result, calls
 
@@ -227,24 +287,37 @@ def _template(**financials):
 def test_batch_values_fiis_with_nav_and_yield_and_uses_the_current_year():
     result, calls = _batch(
         [_fii_position("BTLG11")],
-        {"BTLG11": _template(nav_per_share=106.86, dividend_per_share=11.56, dividend_yield_ttm=10.82)},
+        {
+            "BTLG11": _template(
+                nav_per_share=106.86, dividend_per_share=11.56, dividend_yield_ttm=10.82
+            )
+        },
     )
 
     outcome = result.outcomes[0]
     assert outcome.status == "ok"
     methods = {a.method: a.status for a in outcome.attempts}
     assert methods == {ValuationMethod.NAV: "ok", ValuationMethod.YIELD: "ok"}
-    assert calls == [("BTLG11", datetime.now(UTC).year, "k")]  # --ano is the DFP fiscal year, not for FIIs
+    assert calls == [
+        ("BTLG11", datetime.now(UTC).year, "k")
+    ]  # --ano is the DFP fiscal year, not for FIIs
 
 
 def test_batch_gives_paper_funds_the_nav_only():
     result, _ = _batch(
         [_fii_position("HGCR11", "Papel", "Crédito Imobiliário")],
-        {"HGCR11": _template(nav_per_share=97.4, dividend_per_share=11.99, dividend_yield_ttm=12.31)},
+        {
+            "HGCR11": _template(
+                nav_per_share=97.4, dividend_per_share=11.99, dividend_yield_ttm=12.31
+            )
+        },
     )
 
     statuses = {a.method: a.status for a in result.outcomes[0].attempts}
-    assert statuses == {ValuationMethod.NAV: "ok", ValuationMethod.YIELD: "not_applicable"}
+    assert statuses == {
+        ValuationMethod.NAV: "ok",
+        ValuationMethod.YIELD: "not_applicable",
+    }
 
 
 # --- shared CVM FII cache ----------------------------------------------------------
@@ -257,7 +330,11 @@ def test_fii_cache_downloads_each_year_once_and_drops_the_body():
         def fetch(self, target):
             calls.append(target.ano)
             return FetchedFiiReport(
-                target=target, status_code=200, geral=(), ativo_passivo=(), complemento=(),
+                target=target,
+                status_code=200,
+                geral=(),
+                ativo_passivo=(),
+                complemento=(),
                 body=b"x" * 1000,
             )
 

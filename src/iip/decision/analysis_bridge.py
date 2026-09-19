@@ -80,7 +80,11 @@ def analysis_to_intelligence_input(
     dividend_score = round(pillar_scores.get(Pillar.DIVIDENDS, 0.0) / 10, 2)
 
     quality_values = [pillar_scores[p] for p in _QUALITY_PILLARS if p in pillar_scores]
-    quality_score = round(sum(quality_values) / len(quality_values) / 10, 2) if quality_values else 0.0
+    quality_score = (
+        round(sum(quality_values) / len(quality_values) / 10, 2)
+        if quality_values
+        else 0.0
+    )
 
     opportunity_score = round(report.overall_score / 10, 2)
 

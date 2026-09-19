@@ -241,9 +241,7 @@ def test_cotas_emitidas_uses_cotas_as_unit_not_brl():
     assert evidence.observation.metric_name == "cotas_emitidas"
     assert evidence.observation.value == 70_940_261.0
     assert evidence.observation.unit == "cotas"  # nao BRL -- e' uma contagem
-    assert evidence.source_locator == (
-        "complemento[11.839.593/0001-09].Cotas_Emitidas"
-    )
+    assert evidence.source_locator == ("complemento[11.839.593/0001-09].Cotas_Emitidas")
     assert assess_promotion(evidence).status is PromotionStatus.ELIGIBLE
 
 

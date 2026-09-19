@@ -166,9 +166,7 @@ def parse_perfil_response(body: bytes) -> tuple[PerfilMensal, ...]:
 
     results = []
     for row in reader:
-        valores = {
-            k: v for k, v in row.items() if k not in _PERFIL_IDENTITY_COLUMNS
-        }
+        valores = {k: v for k, v in row.items() if k not in _PERFIL_IDENTITY_COLUMNS}
         results.append(
             PerfilMensal(
                 tipo_fundo_classe=row.get("TP_FUNDO_CLASSE") or None,

@@ -67,7 +67,9 @@ def _registry_by_ticker(ticker: str) -> PortfolioAsset | None:
 
 
 def _position_from_row(cells: list[str]) -> PositionState | None:
-    row_id, _name, klass, quantidade, _pm, _preco, valor, peso, _peso_alvo, status = cells
+    row_id, _name, klass, quantidade, _pm, _preco, valor, peso, _peso_alvo, status = (
+        cells
+    )
     if status.strip().casefold() != "active":
         return None
 
@@ -102,7 +104,9 @@ def _position_from_row(cells: list[str]) -> PositionState | None:
     )
 
 
-def parse_current_snapshot(path: Path | str, *, as_of: str | None = None) -> PortfolioState:
+def parse_current_snapshot(
+    path: Path | str, *, as_of: str | None = None
+) -> PortfolioState:
     """Parse the real operational snapshot table into ``PortfolioState``.
 
     ``as_of`` defaults to the file's own filesystem modification date
@@ -118,7 +122,9 @@ def parse_current_snapshot(path: Path | str, *, as_of: str | None = None) -> Por
         None,
     )
     if header_index is None:
-        raise ValueError(f"{file_path}: cabecalho de tabela '| ID | ...' nao encontrado")
+        raise ValueError(
+            f"{file_path}: cabecalho de tabela '| ID | ...' nao encontrado"
+        )
 
     positions: list[PositionState] = []
     for line in lines[header_index + 2 :]:
@@ -138,4 +144,6 @@ def parse_current_snapshot(path: Path | str, *, as_of: str | None = None) -> Por
         as_of = _dt.date.fromtimestamp(file_path.stat().st_mtime).isoformat()
 
     total_value = sum(p.market_value for p in positions)
-    return PortfolioState(as_of=as_of, positions=tuple(positions), total_value=total_value)
+    return PortfolioState(
+        as_of=as_of, positions=tuple(positions), total_value=total_value
+    )

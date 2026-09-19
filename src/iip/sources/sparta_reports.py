@@ -104,11 +104,7 @@ def _extract_cota_patrimonial_from_text(layout_text: str) -> float | None:
 
     # The value sits on the nearest non-blank line above the label line.
     value_line = next(
-        (
-            lines[i]
-            for i in range(label_line_index - 1, -1, -1)
-            if lines[i].strip()
-        ),
+        (lines[i] for i in range(label_line_index - 1, -1, -1) if lines[i].strip()),
         None,
     )
     if value_line is None:

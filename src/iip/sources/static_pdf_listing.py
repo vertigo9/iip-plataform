@@ -64,8 +64,12 @@ class StaticListingFund:
     manager: str
     page_url: str
     extra_page_urls: tuple[str, ...] = ()
-    year_param: str | None = None  # query parameter that selects the year of ``page_url``
-    year_in_path: bool = False  # the year is a path segment instead: ``<page_url>/<year>``
+    year_param: str | None = (
+        None  # query parameter that selects the year of ``page_url``
+    )
+    year_in_path: bool = (
+        False  # the year is a path segment instead: ``<page_url>/<year>``
+    )
     extensions: tuple[str, ...] = DEFAULT_EXTENSIONS
 
 
@@ -171,7 +175,9 @@ def build_target(ticker: str) -> StaticListingTarget:
     return StaticListingTarget(ticker=fund.ticker, url=fund.page_url)
 
 
-def build_targets(ticker: str, years: tuple[int, ...] = ()) -> tuple[StaticListingTarget, ...]:
+def build_targets(
+    ticker: str, years: tuple[int, ...] = ()
+) -> tuple[StaticListingTarget, ...]:
     """Every page to read for ``ticker``: the main page (once per year in ``years``
     when the registration has a ``year_param``, else once) then the extra pages.
     The FIRST target is the one that must succeed."""
@@ -182,9 +188,11 @@ def build_targets(ticker: str, years: tuple[int, ...] = ()) -> tuple[StaticListi
         main = tuple(
             StaticListingTarget(
                 fund.ticker,
-                f"{fund.page_url}/{year}"
-                if fund.year_in_path
-                else f"{fund.page_url}?{fund.year_param}={year}",
+                (
+                    f"{fund.page_url}/{year}"
+                    if fund.year_in_path
+                    else f"{fund.page_url}?{fund.year_param}={year}"
+                ),
             )
             for year in years
         )

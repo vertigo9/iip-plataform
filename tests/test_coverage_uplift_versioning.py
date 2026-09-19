@@ -29,6 +29,7 @@ def test_version_strings_are_parseable_when_api_supports_it(candidate):
         pytest.skip("Version constructor not exposed in this implementation")
     try:
         value = parse(candidate)
-    except Exception:  # noqa: BLE001 — pytest.skip se a API de Version for incompativel neste build
+    # pytest.skip se a API de Version for incompativel neste build
+    except Exception:  # noqa: BLE001
         pytest.skip("Version implementation uses a different constructor contract")
     assert str(value)

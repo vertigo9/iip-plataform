@@ -51,7 +51,8 @@ class ProviderCertifier:
 
         try:
             handle = self.factory.create(name)
-        except Exception as exc:  # noqa: BLE001 — isola falha de criacao do provider, reporta como certificacao negativa
+        # isola falha de criacao do provider, reporta como certificacao negativa
+        except Exception as exc:  # noqa: BLE001
             return ProviderCertification(
                 name,
                 CertificationStatus.INCOMPLETE,

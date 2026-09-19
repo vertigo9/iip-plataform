@@ -21,17 +21,22 @@ class B3Position:
 class B3Gateway:
     """Gateway responsável pela comunicação com a API Oficial da B3 / Área do Investidor."""
 
-    def __init__(self, client_id: str | None = None, client_secret: str | None = None) -> None:
+    def __init__(
+        self, client_id: str | None = None, client_secret: str | None = None
+    ) -> None:
         self.client_id = client_id or "MOCK_CLIENT_ID"
         self.client_secret = client_secret or "MOCK_CLIENT_SECRET"
 
     def fetch_user_positions(self, cpf: str) -> list[B3Position]:
         """Obtém a lista de ativos em custódia do investidor na B3.
-        
+
         Em ambiente sem credenciais de produção, retorna posições normalizadas
         para consumo estrito pelo DecisionEngine e orquestrador.
         """
-        logger.info("Solicitando posições de custódia na B3 para CPF: ***.%s.***-**", cpf[3:6] if len(cpf) >= 6 else "xxx")
+        logger.info(
+            "Solicitando posições de custódia na B3 para CPF: ***.%s.***-**",
+            cpf[3:6] if len(cpf) >= 6 else "xxx",
+        )
 
         # Mock estruturado com tipagem estrita de float para integração nativa
         raw_positions = [

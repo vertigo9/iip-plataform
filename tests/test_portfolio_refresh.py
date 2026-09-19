@@ -67,9 +67,11 @@ def test_refresh_portfolio_one_failure_does_not_abort_the_run(tmp_path):
         bolsai_api_key=None,
         brapi_token=None,
         positions=(make_position("BROKEN11", "fund"), make_position("BTLG11", "fund")),
-        fetch_fii=lambda symbol, *a: fake_fetch_fii_fails(symbol, *a)
-        if symbol == "BROKEN11"
-        else fake_fetch_fii_ok(symbol, *a),
+        fetch_fii=lambda symbol, *a: (
+            fake_fetch_fii_fails(symbol, *a)
+            if symbol == "BROKEN11"
+            else fake_fetch_fii_ok(symbol, *a)
+        ),
         fetch_etf=fake_fetch_etf_ok,
     )
 
@@ -122,7 +124,9 @@ def test_refresh_portfolio_defaults_to_assets_refreshable_now(tmp_path):
     tickers = {o.ticker for o in result.outcomes}
     assert "BTLG11" in tickers
     assert "LFTB11" in tickers
-    assert "BBSE3" in tickers  # equity -- CNPJ-verified in the registry, refreshable via CVM DFP
+    assert (
+        "BBSE3" in tickers
+    )  # equity -- CNPJ-verified in the registry, refreshable via CVM DFP
 
 
 def test_refresh_portfolio_reports_fetched_fields_per_position(tmp_path):
@@ -139,7 +143,11 @@ def test_refresh_portfolio_reports_fetched_fields_per_position(tmp_path):
 
 def fake_fetch_fixed_income_ok(symbol, cnpj, ano, mes):
     return (
-        {"symbol": symbol, "price": None, "financials": {"assets_under_management_millions": 14.8}},
+        {
+            "symbol": symbol,
+            "price": None,
+            "financials": {"assets_under_management_millions": 14.8},
+        },
         FetchResult(fetched_fields=("assets_under_management_millions",)),
     )
 

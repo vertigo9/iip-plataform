@@ -36,7 +36,15 @@ def test_decide_without_evidence_id_fails_before_anything_is_generated(tmp_path)
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["analyze", "BTLG11", "--type", "fii", "--data-file", str(data_file), "--decide"],
+        [
+            "analyze",
+            "BTLG11",
+            "--type",
+            "fii",
+            "--data-file",
+            str(data_file),
+            "--decide",
+        ],
     )
     assert result.exit_code != 0
     assert "evidence-id" in result.output.lower()

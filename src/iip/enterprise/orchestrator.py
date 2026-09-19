@@ -81,7 +81,8 @@ class EnterpriseOrchestrator:
             try:
                 value = handler(ticker, *args, **kwargs)
                 results.append(StageResult(stage, True, value=value))
-            except Exception as exc:  # noqa: BLE001 — isola falha do handler por estagio, nao derruba os demais
+            # isola falha do handler por estagio, nao derruba os demais
+            except Exception as exc:  # noqa: BLE001
                 results.append(
                     StageResult(stage, False, error=f"{type(exc).__name__}:{exc}")
                 )

@@ -31,7 +31,11 @@ class _FakeResponse:
         return False
 
 
-def _fake_document(category="central-resultados-earnings-release", doc_id="doc-1", url="https://filemanager-cdn.mziq.com/published/x/y.pdf"):
+def _fake_document(
+    category="central-resultados-earnings-release",
+    doc_id="doc-1",
+    url="https://filemanager-cdn.mziq.com/published/x/y.pdf",
+):
     return MziqDocument(
         id=doc_id,
         company_id="6298ef6f-2b75-43f8-b2ab-99e3fe33e809",
@@ -47,13 +51,18 @@ def _fake_document(category="central-resultados-earnings-release", doc_id="doc-1
     )
 
 
-def test_collect_equity_documents_downloads_and_persists_evidence(monkeypatch, tmp_path):
-    monkeypatch.setattr(MziqHTTPHarvester, "fetch_years", lambda self, target: (2026, 2025))
+def test_collect_equity_documents_downloads_and_persists_evidence(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        MziqHTTPHarvester, "fetch_years", lambda self, target: (2026, 2025)
+    )
     monkeypatch.setattr(
         MziqHTTPHarvester, "fetch_documents", lambda self, target: (_fake_document(),)
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -95,8 +104,13 @@ def test_collect_equity_documents_survives_incomplete_read(monkeypatch, tmp_path
         MziqHTTPHarvester,
         "fetch_documents",
         lambda self, target: (
-            _fake_document(doc_id="huge", url="https://filemanager-cdn.mziq.com/published/x/huge.pdf"),
-            _fake_document(doc_id="ok", url="https://filemanager-cdn.mziq.com/published/x/ok.pdf"),
+            _fake_document(
+                doc_id="huge",
+                url="https://filemanager-cdn.mziq.com/published/x/huge.pdf",
+            ),
+            _fake_document(
+                doc_id="ok", url="https://filemanager-cdn.mziq.com/published/x/ok.pdf"
+            ),
         ),
     )
 

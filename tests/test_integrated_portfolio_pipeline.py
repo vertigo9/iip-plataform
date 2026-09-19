@@ -109,7 +109,9 @@ def test_registered_assets_are_converted_and_sent_to_universal_ingestion():
 
         def ingest_many(self, assets, years):
             self.assets = tuple(assets)
-            return tuple(Result(asset.ticker, asset.ticker == "XPML11") for asset in self.assets)
+            return tuple(
+                Result(asset.ticker, asset.ticker == "XPML11") for asset in self.assets
+            )
 
     service = Service()
     result = ingest_registered_assets(

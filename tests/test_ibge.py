@@ -47,7 +47,9 @@ def test_build_target_accepts_explicit_period_range_and_locality():
         (1705, 63, "-6", ""),
     ],
 )
-def test_build_target_rejects_invalid_arguments(agregado, variavel, periodos, localidades):
+def test_build_target_rejects_invalid_arguments(
+    agregado, variavel, periodos, localidades
+):
     with pytest.raises(ValueError):
         build_target(agregado, variavel, periodos=periodos, localidades=localidades)
 
@@ -121,7 +123,10 @@ def test_parse_agregados_response_handles_multiple_localities_and_periods():
                                 "serie": {"2024": "12325232", "2025": "12396372"},
                             },
                             {
-                                "localidade": {"id": "3304557", "nome": "Rio de Janeiro"},
+                                "localidade": {
+                                    "id": "3304557",
+                                    "nome": "Rio de Janeiro",
+                                },
                                 "serie": {"2024": "6211423"},
                             },
                         ],

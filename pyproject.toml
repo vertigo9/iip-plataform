@@ -25,7 +25,7 @@ dev = [
     "pytest-asyncio>=0.23",
     "pytest-cov>=5.0",
     "ruff>=0.4",
-    "black>=24.4",
+    "black>=26.5,<27",
     "mypy>=1.10",
 ]
 
@@ -42,6 +42,10 @@ where = ["src"]
 # completamente diferentes (191 vs 403 erros) so por causa disso.
 # Fixando explicitamente pra ficar igual em qualquer maquina.
 target-version = "py312"
+# Historico arquivado e material a revisar nao sao codigo mantido: ficam fora
+# do lint (eram 326 dos 403 erros do "ruff check ."). O CI ja so olhava
+# src/ e tests/, entao isto so alinha o "ruff check ." local com ele.
+extend-exclude = ["archive", "_lixo_para_revisar"]
 
 [tool.ruff.lint]
 # Conjunto que ja estava sendo tratado como padrao real do projeto
@@ -75,6 +79,25 @@ select = [
     "EXE001",
     "PLR0133",
 ]
+
+# Scripts avulsos (diagnosticos, patches pontuais, testes manuais de fonte):
+# nao sao o pacote entregue. O "except Exception" aqui e deliberado (o script
+# reporta o erro e segue) e datetime.now() e so carimbo de log. As regras de
+# higiene (F401/F841/I001) continuam valendo neles.
+[tool.ruff.lint.per-file-ignores]
+"scripts/**" = ["BLE001", "S110", "S112", "DTZ005", "DTZ011", "RUF059"]
+"examples/**" = ["BLE001", "S110", "S112", "DTZ005", "DTZ011", "RUF059"]
+"RUN_*.py" = ["BLE001", "DTZ005"]
+"reconhecer_*.py" = ["BLE001"]
+"diagnosticar_*.py" = ["BLE001"]
+"testar_*.py" = ["BLE001", "DTZ011"]
+
+# Sem isto o black infere a versao-alvo por arquivo a partir da sintaxe e do
+# Python que esta rodando (3.14 local, 3.12 no CI), e o resultado varia.
+# Mesmo alvo do ruff.
+[tool.black]
+target-version = ["py312"]
+extend-exclude = "(iip_knowledge_bridge|archive|_lixo_para_revisar)"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

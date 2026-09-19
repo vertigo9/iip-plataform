@@ -58,20 +58,104 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
     # cad_cia_aberta.csv), cruzando razão social/nome comercial com cada
     # ticker (nunca adivinhado) -- usados para localizar cada empresa no
     # dataset de DFP (ver iip.sources.cvm_dfp).
-    PortfolioAsset("BBSE3", "equity", sector="Financeiro", industry="Previdência e Seguros", cnpj="17.344.597/0001-94"),
-    PortfolioAsset("ISAE4", "equity", sector="Utilidade Pública", industry="Energia Elétrica", cnpj="02.998.611/0001-04"),
-    PortfolioAsset("CXSE3", "equity", sector="Financeiro", industry="Previdência e Seguros", cnpj="22.543.331/0001-00"),
-    PortfolioAsset("CPFE3", "equity", sector="Utilidade Pública", industry="Energia Elétrica", cnpj="02.429.144/0001-93"),
-    PortfolioAsset("ABCB4", "equity", sector="Financeiro", industry="Intermediários Financeiros (Bancos)", cnpj="28.195.667/0001-06"),
-    PortfolioAsset("CMIG4", "equity", sector="Utilidade Pública", industry="Energia Elétrica", cnpj="17.155.730/0001-64"),
-    PortfolioAsset("SAUD3", "equity", sector="Saúde", industry="Serviços Médico-Hospitalares, Analíticos e Diagnósticos", cnpj="13.270.520/0001-66"),
-    PortfolioAsset("ALOS3", "equity", sector="Financeiro", industry="Exploração de Imóveis", cnpj="05.878.397/0001-32"),
-    PortfolioAsset("CSUD3", "equity", sector="Utilidade Pública / Tecnologia", industry="Processamento de Dados e Serviços", cnpj="01.896.779/0001-38"),
-    PortfolioAsset("VBBR3", "equity", sector="Petróleo, Gás e Biocombustíveis", industry="Comércio Varejista e Atacadista", cnpj="34.274.233/0001-02"),
-    PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel", cnpj="89.637.490/0001-45"),
-    PortfolioAsset("FESA4", "equity", sector="Materiais Básicos", industry="Siderurgia e Metalurgia", cnpj="15.141.799/0001-03"),
-    PortfolioAsset("LEVE3", "equity", sector="Bens Industriais", industry="Material de Transporte", cnpj="60.476.884/0001-87"),
-    PortfolioAsset("PASS3", "equity", sector="Utilidade Pública", industry="Gás", cnpj="21.389.501/0001-81"),
+    PortfolioAsset(
+        "BBSE3",
+        "equity",
+        sector="Financeiro",
+        industry="Previdência e Seguros",
+        cnpj="17.344.597/0001-94",
+    ),
+    PortfolioAsset(
+        "ISAE4",
+        "equity",
+        sector="Utilidade Pública",
+        industry="Energia Elétrica",
+        cnpj="02.998.611/0001-04",
+    ),
+    PortfolioAsset(
+        "CXSE3",
+        "equity",
+        sector="Financeiro",
+        industry="Previdência e Seguros",
+        cnpj="22.543.331/0001-00",
+    ),
+    PortfolioAsset(
+        "CPFE3",
+        "equity",
+        sector="Utilidade Pública",
+        industry="Energia Elétrica",
+        cnpj="02.429.144/0001-93",
+    ),
+    PortfolioAsset(
+        "ABCB4",
+        "equity",
+        sector="Financeiro",
+        industry="Intermediários Financeiros (Bancos)",
+        cnpj="28.195.667/0001-06",
+    ),
+    PortfolioAsset(
+        "CMIG4",
+        "equity",
+        sector="Utilidade Pública",
+        industry="Energia Elétrica",
+        cnpj="17.155.730/0001-64",
+    ),
+    PortfolioAsset(
+        "SAUD3",
+        "equity",
+        sector="Saúde",
+        industry="Serviços Médico-Hospitalares, Analíticos e Diagnósticos",
+        cnpj="13.270.520/0001-66",
+    ),
+    PortfolioAsset(
+        "ALOS3",
+        "equity",
+        sector="Financeiro",
+        industry="Exploração de Imóveis",
+        cnpj="05.878.397/0001-32",
+    ),
+    PortfolioAsset(
+        "CSUD3",
+        "equity",
+        sector="Utilidade Pública / Tecnologia",
+        industry="Processamento de Dados e Serviços",
+        cnpj="01.896.779/0001-38",
+    ),
+    PortfolioAsset(
+        "VBBR3",
+        "equity",
+        sector="Petróleo, Gás e Biocombustíveis",
+        industry="Comércio Varejista e Atacadista",
+        cnpj="34.274.233/0001-02",
+    ),
+    PortfolioAsset(
+        "KLBN4",
+        "equity",
+        sector="Materiais Básicos",
+        industry="Madeiras e Papel",
+        cnpj="89.637.490/0001-45",
+    ),
+    PortfolioAsset(
+        "FESA4",
+        "equity",
+        sector="Materiais Básicos",
+        industry="Siderurgia e Metalurgia",
+        cnpj="15.141.799/0001-03",
+    ),
+    PortfolioAsset(
+        "LEVE3",
+        "equity",
+        sector="Bens Industriais",
+        industry="Material de Transporte",
+        cnpj="60.476.884/0001-87",
+    ),
+    PortfolioAsset(
+        "PASS3",
+        "equity",
+        sector="Utilidade Pública",
+        industry="Gás",
+        cnpj="21.389.501/0001-81",
+    ),
     PortfolioAsset(
         "BTLG11",
         "fund",
@@ -80,7 +164,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Logístico",
         manager="BTG Pactual",
         source_url="https://btlg.btgpactual.com",
-        indexation=("IPCA",),  # confirmado via busca (site oficial + agregador concordam; parte dos contratos)
+        indexation=(
+            "IPCA",
+        ),  # confirmado via busca (site oficial + agregador concordam; parte dos contratos)
         strategy="Logística",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável (apenas linguagem vaga de volatilidade).
@@ -95,7 +181,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Híbrido (Renda Urbana/Logística)",
         manager="TRX",
         source_url="https://trxf11.com.br/relatorios-gerenciais-2",
-        indexation=("IPCA", "IGP-M"),  # confirmado via busca (agregador; site oficial confirma mandato híbrido)
+        indexation=(
+            "IPCA",
+            "IGP-M",
+        ),  # confirmado via busca (agregador; site oficial confirma mandato híbrido)
         strategy="Tijolo/Híbrido",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável.
@@ -110,7 +199,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Renda Urbana",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/hgru",
-        indexation=("IPCA",),  # confirmado via busca (2 fontes independentes, uma com percentual preciso: 99,36% dos contratos)
+        indexation=(
+            "IPCA",
+        ),  # confirmado via busca (2 fontes independentes, uma com percentual preciso: 99,36% dos contratos)
         strategy="Renda Urbana",
         risk_profile="Médio",  # confirmado via busca (baixa confiança: blog agregador descreve como "perfil moderado", não é doc formal da gestora)
         classification_provenance=ClassificationProvenance.USER,
@@ -138,7 +229,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Infraestrutura (Debêntures Incentivadas)",
         manager="Sparta",
         source_url="https://sparta.com.br/juro11",
-        indexation=("IPCA", "CDI"),  # confirmado via busca (agregador; site oficial confirma referência ao IMA-B 5)
+        indexation=(
+            "IPCA",
+            "CDI",
+        ),  # confirmado via busca (agregador; site oficial confirma referência ao IMA-B 5)
         strategy="FI-Infra",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável.
@@ -167,7 +261,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Crédito Imobiliário",
         manager="BTG Pactual",
         source_url="https://btgpactual.com/asset-management/.../BTCI11",
-        indexation=("IPCA", "CDI"),  # confirmado via busca (2 fontes agregadoras concordam: IPCA predominante, CDI secundário)
+        indexation=(
+            "IPCA",
+            "CDI",
+        ),  # confirmado via busca (2 fontes agregadoras concordam: IPCA predominante, CDI secundário)
         strategy="Papel/Crédito Imobiliário",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável ("high grade" descreve o crédito
@@ -183,7 +280,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Títulos e Valores Mobiliários (CRI - IPCA)",
         manager="Valora Invest (fonte agregadora)",
         source_url="https://valorainvest.com.br/fundo/vgip11",
-        indexation=("IPCA",),  # confirmado via busca (site oficial: benchmark ligado a índices de inflação)
+        indexation=(
+            "IPCA",
+        ),  # confirmado via busca (site oficial: benchmark ligado a índices de inflação)
         strategy="CRI",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável.
@@ -203,7 +302,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Títulos e Valores Mobiliários (CRI - Middle Risk)",
         manager="Pátria",
         source_url="https://realestate.patria.com/papel/pcip11/",
-        indexation=("IPCA",),  # confirmado via busca (fonte oficial: "CRI indexado a IPCA")
+        indexation=(
+            "IPCA",
+        ),  # confirmado via busca (fonte oficial: "CRI indexado a IPCA")
         strategy="CRI",
         risk_profile="Médio",  # confirmado via busca (relatório XP: carteira de crédito descrita como "moderate risk"/perfil mais conservador)
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -248,7 +349,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Infraestrutura (Debêntures Incentivadas)",
         manager="Capitânia",
         source_url="https://capitaniainfra.com.br/cpti11",
-        indexation=("IPCA",),  # confirmado via busca (site oficial + relatório mensal: "carrego bruto de IPCA + 8,56%")
+        indexation=(
+            "IPCA",
+        ),  # confirmado via busca (site oficial + relatório mensal: "carrego bruto de IPCA + 8,56%")
         strategy="Debêntures Incentivadas",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável (apenas fatores de risco genéricos
@@ -315,7 +418,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Crédito Imobiliário",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/hgcr11",
-        indexation=("CDI", "IPCA"),  # confirmado via busca (relatório XP: carteira 53% IPCA / 46% CDI)
+        indexation=(
+            "CDI",
+            "IPCA",
+        ),  # confirmado via busca (relatório XP: carteira 53% IPCA / 46% CDI)
         risk_profile="Médio",  # relatório institucional XP: "perfil de risco moderado" (confiança média, não é doc formal da gestora)
         strategy="CRI (Recebíveis Imobiliários) — mandato flexível entre indexadores",
         classification_provenance=ClassificationProvenance.DATABASE,
@@ -351,7 +457,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Lajes",
         manager="Pátria",
         source_url="https://realestate.patria.com/tijolo/pvbi11",
-        indexation=("IPCA", "IGP-M"),  # confirmado via busca (2 fontes concordam: 84% IPCA / 16% IGP-M)
+        indexation=(
+            "IPCA",
+            "IGP-M",
+        ),  # confirmado via busca (2 fontes concordam: 84% IPCA / 16% IGP-M)
         strategy="Lajes Corporativas AAA (contratos típicos, Faria Lima/Itaim/Vila Olímpia)",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável.
@@ -366,7 +475,9 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Híbrido / Multicategoria (Renda Urbana/Logística)",
         manager="Alianza",
         source_url="https://alzr11.alianza.com.br",
-        indexation=("IPCA",),  # confirmado via busca (relatórios gerenciais oficiais, IPCA em múltiplos imóveis; % do total não confirmado)
+        indexation=(
+            "IPCA",
+        ),  # confirmado via busca (relatórios gerenciais oficiais, IPCA em múltiplos imóveis; % do total não confirmado)
         strategy="Renda Urbana — contratos atípicos de longo prazo",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável.
@@ -381,7 +492,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Misto / Híbrido (Escritórios e Logística)",
         manager="Kinea",
         source_url="https://kinea.com.br/fundos/.../knri11",
-        indexation=("IPCA", "IGP-M"),  # confirmado via busca (site oficial Kinea: "reajuste anual pela inflação, IGPM ou IPCA")
+        indexation=(
+            "IPCA",
+            "IGP-M",
+        ),  # confirmado via busca (site oficial Kinea: "reajuste anual pela inflação, IGPM ou IPCA")
         strategy="Renda",
         # risk_profile pesquisado, sem classificação explícita de risco
         # encontrada em fonte confiável (relatório XP usa "perfil defensivo"
@@ -417,7 +531,10 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         segment="Pós-fixado (Selic com Duration Alvo / IPCA)",
         manager="Investo",
         source_url="https://www.investoetf.com/etf/lftb11/",
-        indexation=("Selic", "IPCA"),  # confirmado via busca (site oficial: cesta Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)
+        indexation=(
+            "Selic",
+            "IPCA",
+        ),  # confirmado via busca (site oficial: cesta Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)
         strategy="Gestão passiva — réplica de cesta de títulos públicos (Tesouro Selic/LFT + Tesouro IPCA+/NTN-B)",
         risk_profile="Baixo",  # confirmado via busca (confiança média: réplica de títulos públicos, agregadores descrevem como baixa volatilidade/baixo risco; emissora não usa rótulo explícito)
         classification_provenance=ClassificationProvenance.DATABASE,

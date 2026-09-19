@@ -95,7 +95,9 @@ def _parse_number(raw: str) -> float | None:
         return None
 
 
-def _read_csv_rows(archive: zipfile.ZipFile, filename_fragment: str, *, exclude: str | None = None) -> list[dict[str, str]]:
+def _read_csv_rows(
+    archive: zipfile.ZipFile, filename_fragment: str, *, exclude: str | None = None
+) -> list[dict[str, str]]:
     matches = [
         name
         for name in archive.namelist()

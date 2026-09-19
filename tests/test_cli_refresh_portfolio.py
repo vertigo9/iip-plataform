@@ -48,7 +48,11 @@ def fake_cvm_fii_fetch(self, target):
         ),
     )
     return FetchedFiiReport(
-        target=target, status_code=200, geral=(), ativo_passivo=(), complemento=complementos
+        target=target,
+        status_code=200,
+        geral=(),
+        ativo_passivo=(),
+        complemento=complementos,
     )
 
 
@@ -74,7 +78,9 @@ def fake_cvm_fiagro_fetch(self, target):
     # Sem correspondencia de CNPJ real aqui de proposito -- so precisa
     # nao tentar rede de verdade; um "nao encontrado" e' um aviso, nao
     # uma falha, entao nao derruba o exit_code do comando.
-    return FetchedFiagroReport(target=target, status_code=200, informes=(), subclasses=())
+    return FetchedFiagroReport(
+        target=target, status_code=200, informes=(), subclasses=()
+    )
 
 
 def fake_cvm_dfp_fetch(self, target):
@@ -98,13 +104,24 @@ def test_refresh_portfolio_runs_without_credentials(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BOLSAI_API_KEY", raising=False)
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch
+    )
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
     monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
-        cli, ["refresh-portfolio", "--output-dir", str(tmp_path), "--ano", "2026", "--mes", "8"]
+        cli,
+        [
+            "refresh-portfolio",
+            "--output-dir",
+            str(tmp_path),
+            "--ano",
+            "2026",
+            "--mes",
+            "8",
+        ],
     )
 
     assert result.exit_code == 0
@@ -116,13 +133,24 @@ def test_refresh_portfolio_writes_real_snapshot_files(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BOLSAI_API_KEY", raising=False)
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch
+    )
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
     monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
-        cli, ["refresh-portfolio", "--output-dir", str(tmp_path), "--ano", "2026", "--mes", "8"]
+        cli,
+        [
+            "refresh-portfolio",
+            "--output-dir",
+            str(tmp_path),
+            "--ano",
+            "2026",
+            "--mes",
+            "8",
+        ],
     )
 
     assert result.exit_code == 0
@@ -132,7 +160,9 @@ def test_refresh_portfolio_writes_real_snapshot_files(monkeypatch, tmp_path):
     assert "BTLG11.json" in snapshot_files
     assert "LFTB11.json" in snapshot_files
 
-    btlg_data = json.loads((snapshot_dirs[0] / "BTLG11.json").read_text(encoding="utf-8"))
+    btlg_data = json.loads(
+        (snapshot_dirs[0] / "BTLG11.json").read_text(encoding="utf-8")
+    )
     assert btlg_data["financials"]["dividend_yield"] != 0
 
 
@@ -142,7 +172,9 @@ def test_refresh_portfolio_uses_bolsai_and_brapi_when_credentials_present(
     monkeypatch.setenv("IIP_BOLSAI_API_KEY", "fake-key")
     monkeypatch.setenv("IIP_BRAPI_TOKEN", "fake-token")
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", fake_cvm_fii_fetch)
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch
+    )
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
     monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
@@ -186,8 +218,11 @@ def test_refresh_portfolio_uses_bolsai_and_brapi_when_credentials_present(
             status_code=200,
             quotes=tuple(
                 BrapiQuote(
-                    symbol=s, short_name=None, currency="BRL",
-                    regular_market_price=10.0, regular_market_change_percent=0.0,
+                    symbol=s,
+                    short_name=None,
+                    currency="BRL",
+                    regular_market_price=10.0,
+                    regular_market_change_percent=0.0,
                 )
                 for s in target.symbols
             ),
@@ -196,12 +231,23 @@ def test_refresh_portfolio_uses_bolsai_and_brapi_when_credentials_present(
 
     runner = CliRunner()
     result = runner.invoke(
-        cli, ["refresh-portfolio", "--output-dir", str(tmp_path), "--ano", "2026", "--mes", "8"]
+        cli,
+        [
+            "refresh-portfolio",
+            "--output-dir",
+            str(tmp_path),
+            "--ano",
+            "2026",
+            "--mes",
+            "8",
+        ],
     )
 
     assert result.exit_code == 0, result.output
     snapshot_dirs = list(tmp_path.iterdir())
-    btlg_data = json.loads((snapshot_dirs[0] / "BTLG11.json").read_text(encoding="utf-8"))
+    btlg_data = json.loads(
+        (snapshot_dirs[0] / "BTLG11.json").read_text(encoding="utf-8")
+    )
     assert btlg_data["price"] == 95.50
 
 
@@ -213,13 +259,24 @@ def test_refresh_portfolio_exits_nonzero_when_a_position_fails(monkeypatch, tmp_
         raise RuntimeError("CVM indisponível")
 
     monkeypatch.setattr(CvmFiiHTTPHarvester, "fetch", failing_fetch)
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch)
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", fake_cvm_diario_fetch
+    )
     monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_cvm_fiagro_fetch)
     monkeypatch.setattr(CvmDfpHTTPHarvester, "fetch", fake_cvm_dfp_fetch)
 
     runner = CliRunner()
     result = runner.invoke(
-        cli, ["refresh-portfolio", "--output-dir", str(tmp_path), "--ano", "2026", "--mes", "8"]
+        cli,
+        [
+            "refresh-portfolio",
+            "--output-dir",
+            str(tmp_path),
+            "--ano",
+            "2026",
+            "--mes",
+            "8",
+        ],
     )
 
     assert result.exit_code == 1

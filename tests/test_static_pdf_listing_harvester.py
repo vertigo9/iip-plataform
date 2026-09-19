@@ -22,7 +22,9 @@ class _FakeResponse:
 
 
 def test_fetch_parses_documents_from_html_body():
-    html = b'<a href="https://fundo.com.br/uploads/Relatorio-Setembro-2026.pdf">Baixar</a>'
+    html = (
+        b'<a href="https://fundo.com.br/uploads/Relatorio-Setembro-2026.pdf">Baixar</a>'
+    )
 
     def fake_opener(request, timeout):
         return _FakeResponse(html, "https://fundo.com.br/pagina/")
@@ -35,13 +37,18 @@ def test_fetch_parses_documents_from_html_body():
     assert result.status_code == 200
     assert result.final_url == "https://fundo.com.br/pagina/"
     assert len(result.documents) == 1
-    assert result.documents[0].url == "https://fundo.com.br/uploads/Relatorio-Setembro-2026.pdf"
+    assert (
+        result.documents[0].url
+        == "https://fundo.com.br/uploads/Relatorio-Setembro-2026.pdf"
+    )
     assert result.documents[0].ticker == "TICK11"
 
 
 def test_fetch_returns_empty_documents_when_no_pdf_links():
     def fake_opener(request, timeout):
-        return _FakeResponse(b"<html>sem documentos</html>", "https://fundo.com.br/pagina/")
+        return _FakeResponse(
+            b"<html>sem documentos</html>", "https://fundo.com.br/pagina/"
+        )
 
     harvester = StaticPdfListingHTTPHarvester(opener=fake_opener)
     target = StaticListingTarget(ticker="TICK11", url="https://fundo.com.br/pagina/")
