@@ -38,6 +38,12 @@ class IIPSettings(BaseSettings):
     bolsai_api_key: SecretStr | None = None
     brapi_token: SecretStr | None = None
 
+    # Optional on-disk cache of bolsai responses (IIP_BOLSAI_CACHE_DIR /
+    # IIP_BOLSAI_CACHE_TTL_MINUTES). Off unless BOTH are set: the free plan allows
+    # 200 calls a day, and re-running a batch or a test session can burn that.
+    bolsai_cache_dir: Path | None = None
+    bolsai_cache_ttl_minutes: int = 0
+
     @property
     def is_production(self) -> bool:
         return self.environment == Environment.PRODUCTION

@@ -21,6 +21,7 @@ produced a value is written; the side-by-side view is what the run returns.
 from __future__ import annotations
 
 import datetime as _dt
+import functools
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
@@ -93,7 +94,10 @@ def value_portfolio(
     )
 
     fetch_equity = fetch_equity or fetch_equity_template_live
-    fetch_fii = fetch_fii or fetch_fii_template_live
+    # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
+    # previous-year CVM file, NAV trend): skip them -- fewer downloads, and fewer
+    # calls to spend the daily provider quota on.
+    fetch_fii = fetch_fii or functools.partial(fetch_fii_template_live, analysis_inputs=False)
     fetch_rate = fetch_rate or _default_fetch_rate
 
     rate: NtnbRate | None = None

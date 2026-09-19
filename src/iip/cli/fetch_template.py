@@ -442,6 +442,8 @@ def fetch_fii_template_live(
     cnpj: str,
     ano: int,
     bolsai_api_key: str | None,
+    *,
+    analysis_inputs: bool = True,
 ) -> tuple[dict[str, Any], FetchResult]:
     """Do the real network fetch (CVM FII + optional bolsai price) and
     assemble the FII template. Raises whatever the CVM harvester raises
@@ -449,6 +451,11 @@ def fetch_fii_template_live(
     template from without it. A bolsai failure is NOT raised — it's
     folded into the returned FetchResult.warnings, since price is
     optional (the CVM-only fields still get filled).
+
+    ``analysis_inputs=False`` skips what only ``FIIAnalyzer`` reads -- the Pátria
+    spreadsheet enrichment (5 file downloads for their funds), the previous-year
+    CVM file and the NAV trend -- for callers that only value the fund
+    (``value-portfolio``); the price/NAV/yield inputs valuation needs stay.
 
     Also tries a Pátria-specific enrichment (real occupancy_rate/
     avg_lease_term_years for HGRU11/LVBI11/PVBI11, reserves_to_npa for
@@ -491,10 +498,13 @@ def fetch_fii_template_live(
         price=price,
         geral=list(cvm_result.geral),
     )
-    enriched_financials, patria_fetched, patria_warnings = (
-        _enrich_fii_with_patria_fundamentos(template["financials"], symbol)
-    )
-    template["financials"] = enriched_financials
+    if analysis_inputs:
+        enriched_financials, patria_fetched, patria_warnings = (
+            _enrich_fii_with_patria_fundamentos(template["financials"], symbol)
+        )
+        template["financials"] = enriched_financials
+    else:
+        patria_fetched, patria_warnings = [], []
 
     valuation_financials, valuation_fetched, valuation_warnings = (
         _fii_valuation_inputs(template["financials"], bolsai_fii)
@@ -521,13 +531,16 @@ def fetch_fii_template_live(
     # Market rate and NAV preservation for the dividends pillar (see
     # FIIAnalyzer._analyze_fii_dividends). Both best-effort: failures degrade
     # the pillar to its previous calibration and say so.
-    pillar_financials, pillar_fetched, pillar_warnings = _fii_dividend_pillar_inputs(
-        template["financials"],
-        cnpj,
-        list(cvm_result.complemento),
-        lambda: fii_harvester.fetch(_build_cvm_fii_target(ano - 1)).complemento,
-    )
-    template["financials"] = pillar_financials
+    if analysis_inputs:
+        pillar_financials, pillar_fetched, pillar_warnings = _fii_dividend_pillar_inputs(
+            template["financials"],
+            cnpj,
+            list(cvm_result.complemento),
+            lambda: fii_harvester.fetch(_build_cvm_fii_target(ano - 1)).complemento,
+        )
+        template["financials"] = pillar_financials
+    else:
+        pillar_fetched, pillar_warnings = [], []
 
     extra_warnings = (
         *([bolsai_warning] if bolsai_warning else []),
