@@ -964,6 +964,7 @@ def fetch_fiagro_template_live(
     ano: int,
     mes: int,
     brapi_token: str | None = None,
+    bolsai_api_key: str | None = None,
 ) -> tuple[dict[str, Any], FetchResult]:
     """Fill what's honestly fillable for a FIAGRO fund from CVM's own
     Informe Mensal FIAGRO, plus price via brapi.dev when configured.
@@ -1081,6 +1082,28 @@ def fetch_fiagro_template_live(
         warnings.append(
             "IIP_BRAPI_TOKEN não definida — pulando busca de preço."
         )
+
+    # Valuation inputs (NAV per share, 12-month yield) -- bolsai serves FIAGROs from
+    # its FII endpoint, so this is the same lookup the FII valuation uses (CRAA11 is
+    # absent from CVM's FIAGRO dataset, so CVM cannot provide the NAV). Opt-in: only
+    # when a key is passed, so refresh-portfolio's quota use is unchanged.
+    if bolsai_api_key:
+        from iip.sources.b3_bolsai import build_fii_target as _build_bolsai_fii_target
+        from iip.sources.b3_bolsai_harvester import (
+            BolsaiHTTPHarvester as _BolsaiHTTPHarvester,
+        )
+
+        try:
+            bolsai_result = _BolsaiHTTPHarvester(api_key=bolsai_api_key).fetch_fii(
+                _build_bolsai_fii_target(symbol)
+            )
+            financials, val_fetched, val_warnings = _fii_valuation_inputs(
+                financials, bolsai_result.fii
+            )
+            fetched.extend(val_fetched)
+            warnings.extend(val_warnings)
+        except Exception as exc:  # noqa: BLE001 — opcional, mesmo padrão do preço via brapi
+            warnings.append(f"não consegui buscar NAV/yield via bolsai: {exc}")
 
     warnings.append(
         "AgroAnalyzer não tem campo de patrimônio/AUM — só "

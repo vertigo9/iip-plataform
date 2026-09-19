@@ -249,3 +249,30 @@ def test_value_portfolio_command_exits_nonzero_when_a_position_errors(monkeypatc
     result = CliRunner().invoke(cli, ["value-portfolio"])
 
     assert result.exit_code == 1
+
+
+def test_fiagro_paper_fund_is_valued_by_nav_only_through_the_fiagro_fetch():
+    craa = PortfolioAsset(
+        "CRAA11", "fund", subtype="FI-Agro", structure="Papel",
+        segment="Crédito Agrícola", cnpj="48.903.610/0001-21",
+    )
+    calls = []
+
+    def fetch_fiagro(symbol, cnpj, ano, mes, brapi_token, bolsai_api_key=None):
+        calls.append((symbol, brapi_token, bolsai_api_key))
+        return _template(
+            price=90.99, nav_per_share=100.96, dividend_yield_ttm=15.66,
+            dividend_per_share=15.81,
+        ), object()
+
+    result = value_portfolio(
+        bolsai_api_key="k", brapi_token="b", positions=(craa,),
+        fetch_fiagro=fetch_fiagro, fetch_rate=lambda: RATE,
+    )
+
+    outcome = result.outcomes[0]
+    assert outcome.status == "ok" and outcome.asset_class == "fiagro"
+    by_method = {a.method: a for a in outcome.attempts}
+    assert by_method[ValuationMethod.NAV].snapshot.fair_value == 100.96
+    assert by_method[ValuationMethod.YIELD].status == "not_applicable"  # papel: CDI, not real
+    assert calls == [("CRAA11", "b", "k")]

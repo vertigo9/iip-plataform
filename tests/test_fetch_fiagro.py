@@ -223,3 +223,70 @@ def test_fetch_fiagro_does_not_swallow_other_http_errors(monkeypatch):
         assert exc.code == 500
     else:
         raise AssertionError("esperava HTTPError")
+
+
+def _bolsai_fii(**kw):
+    from iip.sources.b3_bolsai import BolsaiFiiData
+
+    base = {
+        "ticker": "CRAA11", "name": "SPARTA", "reference_date": "2026-08-01", "close_price": 90.99,
+        "book_value_per_share": 100.96, "pvp": 0.9, "dividend_yield_ttm": 15.66,
+        "net_asset_value": 239_259_457.21, "shares_outstanding": 2_369_836.0,
+        "total_shareholders": 10_889.0, "segment": None, "management_type": None,
+    }
+    base.update(kw)
+    return BolsaiFiiData(**base)
+
+
+def _patch_bolsai(monkeypatch, fii=None, error=None):
+    from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
+
+    calls = []
+
+    def fetch_fii(self, target):
+        calls.append(target.ticker)
+        if error:
+            raise error
+        return type("R", (), {"fii": fii})()
+
+    monkeypatch.setattr(BolsaiHTTPHarvester, "fetch_fii", fetch_fii)
+    return calls
+
+
+def test_fetch_fiagro_adds_valuation_inputs_from_bolsai_when_key_given(monkeypatch):
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_fetch)
+    calls = _patch_bolsai(monkeypatch, fii=_bolsai_fii())
+
+    template, resultado = fetch_fiagro_template_live(
+        "CRAA11", CNPJ, 2025, 8, bolsai_api_key="k"
+    )
+
+    fin = template["financials"]
+    assert calls == ["CRAA11"]
+    assert fin["nav_per_share"] == 100.96
+    assert fin["dividend_yield_ttm"] == 15.66
+    assert fin["dividend_per_share"] == round(15.66 / 100 * 100.96, 4)
+    assert "nav_per_share" in resultado.fetched_fields
+    assert fin["dividend_yield_pct"] == round(1.2 + 0.9 + 1.59, 4)  # analyzer input untouched
+
+
+def test_fetch_fiagro_does_not_call_bolsai_without_key(monkeypatch):
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_fetch)
+    calls = _patch_bolsai(monkeypatch, fii=_bolsai_fii())
+
+    template, _ = fetch_fiagro_template_live("CRAA11", CNPJ, 2025, 8)
+
+    assert calls == []
+    assert "nav_per_share" not in template["financials"]
+
+
+def test_fetch_fiagro_bolsai_failure_is_a_warning_not_an_error(monkeypatch):
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fake_fetch)
+    _patch_bolsai(monkeypatch, error=RuntimeError("cota esgotada"))
+
+    template, resultado = fetch_fiagro_template_live(
+        "CRAA11", CNPJ, 2025, 8, bolsai_api_key="k"
+    )
+
+    assert "nav_per_share" not in template["financials"]
+    assert any("bolsai" in w and "cota esgotada" in w for w in resultado.warnings)

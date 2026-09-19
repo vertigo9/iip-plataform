@@ -43,7 +43,7 @@ its reason:
     first; elsewhere Graham does. The lead method is the one the batch persists
     and, later, the one that can feed a decision.
 
-FIIs have two methods. NAV: the fund's net asset value per share is the anchor
+FIIs (and FIAGROs, which bolsai serves from the same endpoint) have two methods. NAV: the fund's net asset value per share is the anchor
 (``nav_per_share``; P/VP below 1 is a margin of safety). Yield: the SAME income
 capitalization as Bazin, over the NTN-B real yield PLUS a FII risk premium
 (``FII_YIELD_RISK_PREMIUM``) -- which is only meaningful where distributions
@@ -84,6 +84,9 @@ METHODS_BY_ASSET_CLASS: dict[str, tuple[ValuationMethod, ...]] = {
         ValuationMethod.RELATIVE,
     ),
     "fii": (ValuationMethod.NAV, ValuationMethod.YIELD),
+    # FIAGRO trades and reports like a FII (same bolsai record: NAV per share and
+    # 12-month yield), so it shares the FII methods and the "papel" rule for Yield.
+    "fiagro": (ValuationMethod.NAV, ValuationMethod.YIELD),
 }
 
 # Per-method sector/industry exclusions: lowercase substrings matched against

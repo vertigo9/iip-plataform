@@ -47,7 +47,7 @@ class ValuationOutcome:
     detail: str
     price: float | None = None
     attempts: tuple[MethodAttempt, ...] = field(default_factory=tuple)
-    asset_class: str | None = None  # the catalog class ("equity", "fii")
+    asset_class: str | None = None  # the catalog class ("equity", "fii", "fiagro")
     segment: str | None = None  # "sector / industry" as used to pick the methods
 
 
@@ -87,15 +87,18 @@ def value_portfolio(
     positions: tuple[PortfolioAsset, ...] | None = None,
     fetch_equity: Callable[..., tuple[dict, object]] | None = None,
     fetch_fii: Callable[..., tuple[dict, object]] | None = None,
+    fetch_fiagro: Callable[..., tuple[dict, object]] | None = None,
     fetch_rate: Callable[[], NtnbRate | None] | None = None,
     bridge_cls: Callable[[str], object] | None = None,
 ) -> ValuationRunResult:
     from iip.cli.fetch_template import (
         fetch_equity_template_live,
+        fetch_fiagro_template_live,
         fetch_fii_template_live,
     )
 
     fetch_equity = fetch_equity or fetch_equity_template_live
+    fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
     # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
     # previous-year CVM file, NAV trend): skip them -- fewer downloads, and fewer
     # calls to spend the daily provider quota on.
@@ -163,6 +166,11 @@ def value_portfolio(
         try:
             if template_type == "fii":
                 template, _ = fetch_fii(position.ticker, position.cnpj, ano_fii, bolsai_api_key)
+            elif template_type == "fiagro":
+                template, _ = fetch_fiagro(
+                    position.ticker, position.cnpj, ano_fii, hoje.month, brapi_token,
+                    bolsai_api_key=bolsai_api_key,
+                )
             else:
                 template, _ = fetch_equity(
                     position.ticker, position.cnpj, ano_dfp, bolsai_api_key, brapi_token

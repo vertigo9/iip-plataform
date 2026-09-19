@@ -32,7 +32,7 @@ REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Valuation.md"
 
 HIGHLIGHT_COUNT = 5
 
-_CLASS_TITLES = {"equity": "Ações", "fii": "FIIs"}
+_CLASS_TITLES = {"equity": "Ações", "fii": "FIIs", "fiagro": "FIAGROs"}
 
 _READING_GUIDE = """\
 ## Como ler
@@ -42,7 +42,7 @@ tecnologia e ativos intangíveis (nesses, fica sem valor).
 - **Bazin** (ações): dividendo por ação (dividendos e JCP pagos no ano fiscal ÷ ações) \
 dividido pela NTN-B longa real, em vez dos 6% fixos. Exige 3 anos de dividendos e \
 payout de no máximo 100%.
-- **NAV** (FIIs): o patrimônio por cota. Âncora de todos os FIIs.
+- **NAV** (FIIs e FIAGROs): o patrimônio por cota. Âncora de todos os FIIs e FIAGROs.
 - **Yield** (FIIs de tijolo): a renda de 12 meses por cota dividida pela NTN-B longa real \
 MAIS um prêmio de risco de FII de 3,0 p.p. (o mercado paga hoje, em mediana, ~3,7 p.p. sobre a \
 NTN-B aos FIIs de tijolo; sem o prêmio o teto sairia +16% a +174% acima do preço). O prêmio é \
