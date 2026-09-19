@@ -995,6 +995,8 @@ def fetch_fiagro_template_live(
     error — the command still succeeds with whatever price data brapi
     provides.
     """
+    from urllib.error import HTTPError
+
     from iip.sources.b3_brapi import build_target as _build_brapi_target
     from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester as _BrapiHTTPHarvester
     from iip.sources.cvm_fiagro import build_target as _build_cvm_fiagro_target
@@ -1002,7 +1004,29 @@ def fetch_fiagro_template_live(
         CvmFiagroHTTPHarvester as _CvmFiagroHTTPHarvester,
     )
 
-    result = _CvmFiagroHTTPHarvester().fetch(_build_cvm_fiagro_target(ano, mes))
+    # O ZIP do FIAGRO e mensal e o do mes corrente ainda nao existe (404 por
+    # atraso de publicacao) -- recua ate 2 meses antes de desistir. Qualquer
+    # outro erro HTTP continua propagando.
+    harvester = _CvmFiagroHTTPHarvester()
+    result = None
+    ano_try, mes_try = ano, mes
+    for tentativa in range(3):
+        try:
+            result = harvester.fetch(_build_cvm_fiagro_target(ano_try, mes_try))
+            break
+        except HTTPError as exc:
+            if exc.code != 404 or tentativa == 2:
+                raise
+            mes_try -= 1
+            if mes_try == 0:
+                ano_try, mes_try = ano_try - 1, 12
+    assert result is not None
+    fallback_warning = (
+        f"Informe FIAGRO de {ano}-{mes:02d} ainda não publicado pela CVM; "
+        f"usando {ano_try}-{mes_try:02d}."
+        if (ano_try, mes_try) != (ano, mes)
+        else None
+    )
 
     normalized_cnpj = "".join(ch for ch in cnpj if ch.isdigit())
     matches = [
@@ -1015,6 +1039,8 @@ def fetch_fiagro_template_live(
     financials = dict(default_financials)
     fetched: list[str] = []
     warnings: list[str] = []
+    if fallback_warning:
+        warnings.append(fallback_warning)
 
     if not matches:
         warnings.append(

@@ -1,3 +1,5 @@
+from urllib.error import HTTPError
+
 from iip.cli.fetch_template import fetch_fiagro_template_live
 from iip.sources.b3_brapi import BrapiQuote
 from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester, FetchedQuotes
@@ -155,3 +157,69 @@ def test_fetch_fiagro_does_not_call_brapi_without_a_token(monkeypatch):
     monkeypatch.setattr(BrapiHTTPHarvester, "__init__", exploding_init)
 
     fetch_fiagro_template_live("CRAA11", CNPJ, 2025, 8)
+
+
+def _http_error(code):
+    return HTTPError("https://dados.cvm.gov.br/x", code, "err", None, None)
+
+
+def test_fetch_fiagro_falls_back_to_previous_month_on_404(monkeypatch):
+    tentados = []
+
+    def fetch(self, target):
+        tentados.append((target.ano, target.mes))
+        if (target.ano, target.mes) == (2026, 9):
+            raise _http_error(404)
+        return fake_fetch(self, target)
+
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fetch)
+
+    _, resultado = fetch_fiagro_template_live("CRAA11", CNPJ, 2026, 9)
+
+    assert tentados == [(2026, 9), (2026, 8)]
+    assert "dividend_yield_pct" in resultado.fetched_fields
+    assert any("2026-09" in w and "2026-08" in w for w in resultado.warnings)
+
+
+def test_fetch_fiagro_fallback_crosses_year_boundary(monkeypatch):
+    tentados = []
+
+    def fetch(self, target):
+        tentados.append((target.ano, target.mes))
+        if len(tentados) < 3:
+            raise _http_error(404)
+        return fake_fetch(self, target)
+
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fetch)
+
+    fetch_fiagro_template_live("CRAA11", CNPJ, 2026, 1)
+
+    assert tentados == [(2026, 1), (2025, 12), (2025, 11)]
+
+
+def test_fetch_fiagro_gives_up_after_three_404s(monkeypatch):
+    def fetch(self, target):
+        raise _http_error(404)
+
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fetch)
+
+    try:
+        fetch_fiagro_template_live("CRAA11", CNPJ, 2026, 9)
+    except HTTPError as exc:
+        assert exc.code == 404
+    else:
+        raise AssertionError("esperava HTTPError")
+
+
+def test_fetch_fiagro_does_not_swallow_other_http_errors(monkeypatch):
+    def fetch(self, target):
+        raise _http_error(500)
+
+    monkeypatch.setattr(CvmFiagroHTTPHarvester, "fetch", fetch)
+
+    try:
+        fetch_fiagro_template_live("CRAA11", CNPJ, 2026, 9)
+    except HTTPError as exc:
+        assert exc.code == 500
+    else:
+        raise AssertionError("esperava HTTPError")
