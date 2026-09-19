@@ -138,7 +138,8 @@ def test_the_reading_guide_states_the_limits_and_that_it_is_not_a_recommendation
     text = render_valuation_report(_result(EQUITY), as_of=AS_OF)
 
     guide = text.split("## Como ler")[1]
-    for word in ("Graham", "Bazin", "NAV", "Yield", "ranking", "não é recomendação", "Método principal"):
+    for word in ("Graham", "Bazin", "NAV", "Yield", "prêmio", "calibração", "não é recomendação",
+                 "Método principal"):
         assert word in guide
 
 

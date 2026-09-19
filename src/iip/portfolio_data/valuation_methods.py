@@ -45,8 +45,9 @@ its reason:
 
 FIIs have two methods. NAV: the fund's net asset value per share is the anchor
 (``nav_per_share``; P/VP below 1 is a margin of safety). Yield: the SAME income
-capitalization as Bazin (distributed income per share over the NTN-B real
-yield), which is only meaningful where distributions follow inflation --
+capitalization as Bazin, over the NTN-B real yield PLUS a FII risk premium
+(``FII_YIELD_RISK_PREMIUM``) -- which is only meaningful where distributions
+follow inflation --
 "Tijolo" funds, whose leases are indexed. "Papel" funds pay CDI/credit-spread
 income and "Multiestratégia" funds mix both, so the real-yield comparison would
 overstate their ceiling and Yield is not applicable to them. The yield used is
@@ -126,6 +127,17 @@ BAZIN_MAX_PAYOUT_PCT = 100.0
 # A trailing FII yield above this is not a recurring income stream (special
 # distributions / amortizations), so it must not be capitalized.
 FII_MAX_SUSTAINABLE_YIELD_PCT = 20.0
+
+# What a FII must yield ABOVE the real NTN-B (vacancy, liquidity and management
+# risk that the government bond does not carry), as a fraction (0.03 = 3.0 p.p.).
+# Without it the ceiling compares a FII's yield -- which already embeds that
+# premium -- with the risk-free rate alone, and every tijolo fund comes out
+# 16%-174% above its price. Measured on 18/09/2026: the median trailing yield of
+# the 10 tijolo FIIs in the portfolio was 10.98%, i.e. 3.7 p.p. over the real
+# NTN-B (7.30%); 3.0 sits slightly below that market-implied spread, so a fund
+# yielding the median is valued a little above its price rather than exactly at it.
+# A calibration choice, not a measurement: change it here.
+FII_YIELD_RISK_PREMIUM = 0.03
 
 AttemptStatus = Literal["ok", "not_applicable", "not_implemented", "insufficient_data"]
 
@@ -279,7 +291,11 @@ def _yield_income(inputs: Mapping[str, float | None]) -> tuple[float | None, str
         return None, "rendimento por cota dos últimos 12 meses indisponível"
     if dps <= 0:
         return None, f"rendimento por cota={dps}: sem distribuição, Yield não se aplica"
-    return bazin_ceiling_price(dps, rate), f"renda/cota={dps:.2f}, taxa real NTN-B={rate:.2%}"
+    required = rate + FII_YIELD_RISK_PREMIUM
+    return bazin_ceiling_price(dps, required), (
+        f"renda/cota={dps:.2f}, NTN-B real {rate:.2%} + prêmio {FII_YIELD_RISK_PREMIUM:.2%} "
+        f"= {required:.2%}"
+    )
 
 
 # method -> calculator returning (fair_value or None, detail/reason)

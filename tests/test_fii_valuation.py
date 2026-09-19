@@ -8,6 +8,7 @@ from iip.portfolio.batch_value import value_portfolio
 from iip.portfolio.registry import PortfolioAsset
 from iip.portfolio_data.valuation import ValuationMethod
 from iip.portfolio_data.valuation_methods import (
+    FII_YIELD_RISK_PREMIUM,
     data_condition_violation,
     evaluate_valuations,
     first_valuation,
@@ -67,12 +68,40 @@ def test_nav_without_a_positive_net_asset_value_is_insufficient(value):
 # --- Yield: applicability by structure ---------------------------------------------
 
 
-def test_yield_capitalizes_income_over_the_real_ntnb_for_tijolo_funds():
+def test_yield_capitalizes_income_over_the_real_ntnb_plus_the_fii_risk_premium():
     y = _by_method(_value())[ValuationMethod.YIELD]
 
+    required = 0.073 + FII_YIELD_RISK_PREMIUM
     assert y.status == "ok"
-    assert y.snapshot.fair_value == pytest.approx(11.56 / 0.073, abs=0.01)
-    assert "7.30%" in y.reason
+    assert y.snapshot.fair_value == pytest.approx(11.56 / required, abs=0.01)
+    assert "7.30%" in y.reason and "3.00%" in y.reason and "10.30%" in y.reason
+
+
+def test_the_premium_is_a_documented_three_points_below_the_market_implied_spread():
+    # measured 18/09/2026: median tijolo yield 10.98% vs real NTN-B 7.30% -> 3.7 p.p.
+    assert FII_YIELD_RISK_PREMIUM == pytest.approx(0.03)
+    assert FII_YIELD_RISK_PREMIUM < 0.0368
+
+
+def test_a_fund_yielding_exactly_the_required_rate_is_valued_at_its_price():
+    required = 0.073 + FII_YIELD_RISK_PREMIUM
+    price = 100.0
+    attempts = _value(price=price, dividend_per_share=price * required, dividend_yield_ttm=10.3)
+
+    y = _by_method(attempts)[ValuationMethod.YIELD]
+
+    assert y.snapshot.fair_value == pytest.approx(price, abs=0.01)
+    assert y.snapshot.margin_of_safety == pytest.approx(0.0, abs=1e-4)
+
+
+def test_the_premium_removes_the_systematic_overstatement_against_the_nav():
+    # BTLG11 (real data): without the premium the Yield ceiling sat +59% above the price
+    # while the NAV said +7%; with it the two are the same order of magnitude.
+    y = _by_method(_value(dividend_per_share=11.5626, price=99.78))[ValuationMethod.YIELD]
+    nav = _by_method(_value(dividend_per_share=11.5626, price=99.78))[ValuationMethod.NAV]
+
+    assert y.snapshot.margin_of_safety < 0.20
+    assert abs(y.snapshot.margin_of_safety - nav.snapshot.margin_of_safety) < 0.15
 
 
 @pytest.mark.parametrize(

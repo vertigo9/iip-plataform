@@ -40,10 +40,11 @@ tecnologia e ativos intangíveis (nesses, fica sem valor).
 dividido pela NTN-B longa real, em vez dos 6% fixos. Exige 3 anos de dividendos e \
 payout de no máximo 100%.
 - **NAV** (FIIs): o patrimônio por cota. Âncora de todos os FIIs.
-- **Yield** (FIIs de tijolo): a renda de 12 meses por cota dividida pela NTN-B longa real. \
-Compara um yield nominal com uma taxa real: use como ranking entre fundos, não como \
-preço-alvo. Papel e multiestratégia não têm Yield; yield acima de 20% é tratado como \
-distribuição extraordinária.
+- **Yield** (FIIs de tijolo): a renda de 12 meses por cota dividida pela NTN-B longa real \
+MAIS um prêmio de risco de FII de 3,0 p.p. (o mercado paga hoje, em mediana, ~3,7 p.p. sobre a \
+NTN-B aos FIIs de tijolo; sem o prêmio o teto sairia +16% a +174% acima do preço). O prêmio é \
+uma escolha de calibração, não uma medida. Papel e multiestratégia não têm Yield; yield \
+acima de 20% é tratado como distribuição extraordinária.
 - **Método principal**: o primeiro da ordem do setor (Bazin em energia, gás, seguros e \
 bancos; Graham nas demais ações; NAV nos FIIs). É o que `--persist` grava e o que alimenta a \
 decisão com `--auto-valuation`.

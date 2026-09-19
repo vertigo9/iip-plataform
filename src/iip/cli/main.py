@@ -799,7 +799,7 @@ def value_portfolio_command(
         "[dim]Valor justo não é recomendação: Graham parte do patrimônio (fraco para "
         "tecnologia e ativos intangíveis); Bazin usa o caixa pago no ano fiscal; "
         "NAV é o patrimônio por cota; Yield capitaliza a renda de 12 meses pela "
-        "NTN-B real (só FIIs de tijolo).[/]"
+        "NTN-B real + prêmio de 3 p.p. (só FIIs de tijolo).[/]"
     )
 
     if report:
