@@ -88,9 +88,10 @@ def analysis_to_intelligence_input(
         valuation_score = _NEUTRO_SEM_VALUATION
         warnings.append(
             "valuation_score não fornecido — nenhum dos 5 analisadores calcula "
-            "valor intrínseco, preço-alvo ou margem de segurança (confirmado "
-            "por auditoria: sem DCF/Graham/Bazin no projeto). Usando neutro "
-            "(5.0) em vez de emprestar outro pilar disfarçado de valuation."
+            "valor intrínseco, preço-alvo ou margem de segurança (para ações, "
+            "`--auto-valuation` usa o catálogo de valuation por setor: "
+            "Graham/Bazin). Usando neutro (5.0) em vez de emprestar outro "
+            "pilar disfarçado de valuation."
         )
 
     mapped_risk = _RISK_LEVEL_MAP.get(report.risk_level)

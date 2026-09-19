@@ -637,6 +637,42 @@ def analyze_portfolio_command(
         raise SystemExit(1)
 
 
+def _auto_valuation_score(
+    symbol: str, asset_type: str, raw: dict, price: float | None, financials: dict
+) -> float | None:
+    """Valuation score for ``analyze --decide --auto-valuation`` (see
+    ``iip.decision.catalog_valuation``). ``None`` keeps the neutral default."""
+    from iip.decision.catalog_valuation import catalog_valuation_for_decision
+    from iip.portfolio.batch_value import _default_fetch_rate
+
+    rate = None
+    try:
+        found = _default_fetch_rate()
+        rate = found.real_yield if found else None
+        if found:
+            console.print(
+                f"[dim]NTN-B longa (venc. {found.maturity:%d/%m/%Y}, ref. "
+                f"{found.reference_date:%d/%m/%Y}): IPCA + {found.real_yield:.2%}[/]"
+            )
+    except Exception as exc:  # noqa: BLE001 — a taxa é consulta de mercado opcional; sem ela o Bazin fica sem valor, a decisão segue
+        console.print(f"[yellow]Aviso: não consegui buscar a taxa da NTN-B: {exc}[/]")
+
+    result = catalog_valuation_for_decision(
+        ticker=symbol,
+        asset_class=asset_type,
+        sector=raw["sector"],
+        industry=raw["industry"],
+        price=price,
+        financials=financials,
+        ntnb_real_yield=rate,
+    )
+    if result.score is None:
+        console.print(f"[yellow]Aviso: valuation automático sem valor — {result.explanation}[/]")
+        return None
+    console.print(f"[dim]Valuation automático: {result.explanation}[/]")
+    return result.score
+
+
 def _lead_method(attempts) -> str:
     from iip.portfolio_data.valuation_methods import first_valuation
 
@@ -831,6 +867,17 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
     "margem de segurança calculada à mão). Sem isso, fica neutro (5.0) com "
     "aviso — nenhum dos 5 analisadores calcula valuation de verdade hoje.",
 )
+@click.option(
+    "--auto-valuation",
+    "auto_valuation",
+    is_flag=True,
+    default=False,
+    help="Só com --decide e --type equity: calcula a nota de valuation pelo método "
+    "principal do catálogo para o setor (Bazin em setores de dividendo, Graham nos "
+    "demais; Bazin usa a NTN-B longa, buscada agora). Um --valuation-score "
+    "explícito tem precedência. Se nenhum método produz valor, fica neutro (5.0) "
+    "e o motivo é mostrado.",
+)
 def analyze(
     symbol: str,
     asset_type: str,
@@ -842,6 +889,7 @@ def analyze(
     thesis_signal: str,
     evidence_ids: tuple[str, ...],
     valuation_score: float | None,
+    auto_valuation: bool,
 ) -> None:
     """Run an IIP framework analysis on SYMBOL using data from --data-file."""
     try:
@@ -895,6 +943,15 @@ def analyze(
         from iip.decision.analysis_bridge import analysis_to_intelligence_input
         from iip.decision.decision_engine import decide as _decide
         from iip.decision.models import EvidenceRef
+
+        if auto_valuation and valuation_score is None:
+            valuation_score = _auto_valuation_score(
+                symbol, asset_type, raw, data.price, data.financials
+            )
+        elif auto_valuation:
+            console.print(
+                "[dim]--auto-valuation ignorado: --valuation-score explícito tem precedência.[/]"
+            )
 
         intelligence_input, bridge_warnings = analysis_to_intelligence_input(
             report,
