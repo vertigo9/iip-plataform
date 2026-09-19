@@ -169,6 +169,7 @@ com valor justo/teto e margem de segurança contra o preço atual:
 |---|---|
 | Ação | Graham; Bazin (taxa exigida = yield real da NTN-B longa, nunca 6% fixos) — Bazin lidera em setores movidos a dividendo (elétricas, bancos, seguros) |
 | FII e FIAGRO | NAV (P/VP); Yield (renda 12m capitalizada sobre a NTN-B real + prêmio de risco de 3 p.p. — só de tijolo; papel como o CRAA11 fica só com NAV). NAV e yield vêm do bolsai |
+| FI-Infra listado (CDII11, JURO11, CPTI11) | NAV apenas: a cota do Informe Diário da CVM contra o preço do brapi (rendem CDI/spread, então sem Yield) |
 
 `--report` grava `vault/02_Portfolio/Valuation.md` (todas as posições, motivo de
 cada método sem valor) e o Dashboard mostra os destaques lendo essa nota. Se
@@ -176,12 +177,12 @@ nenhuma posição for avaliada (ex.: cota do bolsai esgotada), a nota anterior �
 mantida. `--persist` grava no vault o primeiro método que produziu valor.
 
 Posições sem método implementado aparecem como "puladas" com o motivo —
-hoje: fundos `fixed_income` (o fetch nunca busca preço de propósito: alguns,
-como AXIA3, são rótulos de fundos que não negociam) e LFTB11 (ETF: o CNPJ
-consta no cadastro da CVM como FIIM, mas o Informe Diário que usamos não traz
-a cota dele, então não há NAV — verificado em 19/09/2026). O CRAA11 não está
-no dataset FIAGRO da CVM, mas o bolsai o serve pelo endpoint de FIIs, então
-ele é avaliado por NAV como os FIIs. Valor justo
+hoje: AXIA3 (rótulo de um FMP-FGTS que não negocia em bolsa, sem preço para
+comparar) e LFTB11 (ETF: o CNPJ consta no cadastro da CVM como FIIM, mas o
+Informe Diário que usamos não traz a cota dele, então não há NAV — verificado
+em 19/09/2026). O CRAA11 não está no dataset FIAGRO da CVM, mas o bolsai o
+serve pelo endpoint de FIIs, então é avaliado por NAV como os FIIs. Os FI-Infra
+listados usam a cota da CVM (o bolsai não os tem). Valor justo
 não é recomendação de compra.
 
 ### Coletar documentos de RI e gestoras

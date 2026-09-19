@@ -96,3 +96,41 @@ def test_fetch_fixed_income_does_not_call_any_price_provider(monkeypatch):
 
     # Should complete without touching BrapiHTTPHarvester at all.
     fetch_fixed_income_template_live("AXIA3", CNPJ, 2026, 8)
+
+
+def test_fetch_fixed_income_exposes_latest_cota_as_nav_per_share(monkeypatch):
+    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_fetch_diario)
+
+    template, resultado = fetch_fixed_income_template_live("CDII11", CNPJ, 2026, 8)
+
+    assert template["financials"]["nav_per_share"] == 1.89
+    assert "nav_per_share" in resultado.fetched_fields
+    assert any("2026-08-05" in w for w in resultado.warnings)
+
+
+def test_fetch_fixed_income_fetches_price_only_when_brapi_token_is_passed(monkeypatch):
+    from iip.sources.b3_brapi import BrapiQuote
+    from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester, FetchedQuotes
+
+    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", fake_fetch_diario)
+    symbols = []
+
+    def fake_brapi(self, target):
+        symbols.append(target)
+        quote = BrapiQuote(
+            symbol="CDII11", short_name="CDII", currency="BRL",
+            regular_market_price=95.2, regular_market_change_percent=0.1,
+        )
+        return FetchedQuotes(target=target, status_code=200, quotes=(quote,))
+
+    monkeypatch.setattr(BrapiHTTPHarvester, "fetch", fake_brapi)
+
+    without, _ = fetch_fixed_income_template_live("CDII11", CNPJ, 2026, 8)
+    assert without["price"] is None and symbols == []
+
+    with_token, resultado = fetch_fixed_income_template_live(
+        "CDII11", CNPJ, 2026, 8, brapi_token="t"
+    )
+    assert with_token["price"] == 95.2 and len(symbols) == 1
+    assert "price" in resultado.fetched_fields
+    assert not any("não buscado de propósito" in w for w in resultado.warnings)

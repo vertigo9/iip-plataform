@@ -78,6 +78,7 @@ def missing_required_market_data(
         "equity": ("bolsai/brapi", bolsai_api_key or brapi_token),
         "etf": ("brapi", brapi_token),
         "fiagro": ("brapi", brapi_token),
+        "fi_infra": ("brapi", brapi_token),
     }.get(template_type or "")
     if credential is None:
         return None

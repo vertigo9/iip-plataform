@@ -87,6 +87,11 @@ METHODS_BY_ASSET_CLASS: dict[str, tuple[ValuationMethod, ...]] = {
     # FIAGRO trades and reports like a FII (same bolsai record: NAV per share and
     # 12-month yield), so it shares the FII methods and the "papel" rule for Yield.
     "fiagro": (ValuationMethod.NAV, ValuationMethod.YIELD),
+    # Listed FI-Infra funds (CDII11, JURO11, CPTI11): NAV only. The cota comes from
+    # CVM's Informe Diário (VL_QUOTA), which tracks the market price closely; there
+    # is no income input for Yield and these are "papel" (CDI/credit-spread income).
+    # Not the whole fixed_income class: AXIA3 is a FMP-FGTS with no market ticker.
+    "fi_infra": (ValuationMethod.NAV,),
 }
 
 # Per-method sector/industry exclusions: lowercase substrings matched against

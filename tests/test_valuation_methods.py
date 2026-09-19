@@ -389,3 +389,13 @@ def test_a_bazin_attempt_blocked_by_its_data_says_why_and_never_computes():
     assert "mínimo 3" in bazin.reason
     # Graham still values it, and becomes the persisted method since Bazin has none
     assert first_valuation(attempts).method is ValuationMethod.GRAHAM
+
+
+def test_fi_infra_is_valued_by_nav_only_and_the_rest_of_fixed_income_is_not():
+    assert ordered_methods("fi_infra") == (ValuationMethod.NAV,)
+    assert ordered_methods("fixed_income") == ()
+    attempts = evaluate_valuations(
+        ticker="CDII11", asset_class="fi_infra", sector="Papel", industry="Infraestrutura",
+        price=95.2, inputs={"nav_per_share": 101.17},
+    )
+    assert attempts[0].snapshot.fair_value == 101.17

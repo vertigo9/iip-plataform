@@ -1156,10 +1156,14 @@ def fetch_fixed_income_template_live(
     cnpj: str,
     ano: int,
     mes: int,
+    brapi_token: str | None = None,
 ) -> tuple[dict[str, Any], FetchResult]:
-    """CVM Informe Diário only (patrimônio/cota) — deliberately NEVER
-    attempts a market price lookup, unlike the FII/ETF live-fetch
-    functions.
+    """CVM Informe Diário (patrimônio/cota) — a market price lookup is
+    opt-in: it only happens when the caller passes ``brapi_token``, and the
+    caller must only do so for a fund whose ``symbol`` is really its own B3
+    ticker (listed FI-Infra: CDII11, JURO11, CPTI11). ``refresh-portfolio``
+    never passes it. Without the token this NEVER attempts a price lookup,
+    unlike the FII/ETF live-fetch functions.
 
     Reason: found live with AXIA3 (Daycoval FMP-FGTS Eletrobras) — the
     ``symbol`` a person's portfolio tool uses to label this kind of
@@ -1189,27 +1193,59 @@ def fetch_fixed_income_template_live(
         "Informe Diário",
     )
 
+    price = None
+    price_warning = None
+    if brapi_token:
+        from iip.sources.b3_brapi import build_target as _build_brapi_target
+        from iip.sources.b3_brapi_harvester import (
+            BrapiHTTPHarvester as _BrapiHTTPHarvester,
+        )
+
+        try:
+            brapi_result = _BrapiHTTPHarvester(token=brapi_token).fetch(
+                _build_brapi_target((symbol,))
+            )
+            if brapi_result.quotes:
+                price = brapi_result.quotes[0].regular_market_price
+        except Exception as exc:  # noqa: BLE001 — preço é opcional, mesmo padrão do ETF
+            price_warning = f"não consegui buscar preço via brapi.dev: {exc}"
+
     default_financials = _fixed_income_defaults()
     template, resultado = build_etf_template(
         symbol=symbol,
         cnpj=cnpj,
         informes=list(diario_result.informes),
         default_financials=default_financials,
-        price=None,
+        price=price,
     )
+
+    fetched = list(resultado.fetched_fields)
+    extra: list[str] = []
+    # Input of the NAV valuation method (not a FixedIncomeAnalyzer field): the fund's
+    # last published cota, which lags the market price by the CVM publication delay.
+    latest = latest_informe_for_cnpj(list(diario_result.informes), cnpj)
+    if latest is not None and latest.valor_cota is not None and latest.valor_cota > 0:
+        template["financials"]["nav_per_share"] = round(latest.valor_cota, 4)
+        fetched.append("nav_per_share")
+        extra.append(
+            f"nav_per_share = cota de {latest.data_competencia} (Informe Diário da CVM), "
+            "defasada em relação ao preço de mercado."
+        )
+    if diario_warning:
+        extra.append(diario_warning)
+    if price_warning:
+        extra.append(price_warning)
+    if not brapi_token:
+        extra.append(
+            "Preço de mercado não buscado de propósito para este ativo "
+            "(fixed_income) — o ticker de referência pode não corresponder "
+            "a um ticker de mercado real deste fundo. Preencha manualmente "
+            "se souber o valor."
+        )
     resultado = FetchResult(
-        fetched_fields=resultado.fetched_fields,
+        fetched_fields=tuple(fetched),
         dividend_yield_months_used=resultado.dividend_yield_months_used,
-        warnings=(
-            *resultado.warnings,
-            *((diario_warning,) if diario_warning else ()),
-            (
-                "Preço de mercado não buscado de propósito para este ativo "
-                "(fixed_income) — o ticker de referência pode não corresponder "
-                "a um ticker de mercado real deste fundo. Preencha manualmente "
-                "se souber o valor."
-            ),
-        ),
+        warnings=(*resultado.warnings, *extra),
     )
     return template, resultado
 

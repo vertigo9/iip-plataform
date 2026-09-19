@@ -47,7 +47,7 @@ class ValuationOutcome:
     detail: str
     price: float | None = None
     attempts: tuple[MethodAttempt, ...] = field(default_factory=tuple)
-    asset_class: str | None = None  # the catalog class ("equity", "fii", "fiagro")
+    asset_class: str | None = None  # the catalog class ("equity", "fii", "fiagro", "fi_infra")
     segment: str | None = None  # "sector / industry" as used to pick the methods
 
 
@@ -70,6 +70,16 @@ class ValuationRunResult:
         return tuple(o for o in self.outcomes if o.status == "pulado")
 
 
+def _valuation_class(position: PortfolioAsset) -> str | None:
+    """The valuation catalog class: the refresh template type, except that listed
+    FI-Infra funds get their own class ("fi_infra") -- the rest of ``fixed_income``
+    (AXIA3, a FMP-FGTS with no market ticker) has no price to value against."""
+    template_type = _template_type_for(position)
+    if template_type == "fixed_income" and position.subtype == "FI-Infra":
+        return "fi_infra"
+    return template_type
+
+
 def _default_fetch_rate() -> NtnbRate | None:
     from iip.sources.tesouro_direto_harvester import TesouroDiretoHTTPHarvester
 
@@ -88,6 +98,7 @@ def value_portfolio(
     fetch_equity: Callable[..., tuple[dict, object]] | None = None,
     fetch_fii: Callable[..., tuple[dict, object]] | None = None,
     fetch_fiagro: Callable[..., tuple[dict, object]] | None = None,
+    fetch_fixed_income: Callable[..., tuple[dict, object]] | None = None,
     fetch_rate: Callable[[], NtnbRate | None] | None = None,
     bridge_cls: Callable[[str], object] | None = None,
 ) -> ValuationRunResult:
@@ -95,10 +106,12 @@ def value_portfolio(
         fetch_equity_template_live,
         fetch_fiagro_template_live,
         fetch_fii_template_live,
+        fetch_fixed_income_template_live,
     )
 
     fetch_equity = fetch_equity or fetch_equity_template_live
     fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
+    fetch_fixed_income = fetch_fixed_income or fetch_fixed_income_template_live
     # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
     # previous-year CVM file, NAV trend): skip them -- fewer downloads, and fewer
     # calls to spend the daily provider quota on.
@@ -140,7 +153,7 @@ def value_portfolio(
 
     outcomes: list[ValuationOutcome] = []
     for position in all_positions:
-        template_type = _template_type_for(position)
+        template_type = _valuation_class(position)
         if template_type is None or not has_calculator(template_type):
             outcomes.append(
                 ValuationOutcome(
@@ -166,6 +179,13 @@ def value_portfolio(
         try:
             if template_type == "fii":
                 template, _ = fetch_fii(position.ticker, position.cnpj, ano_fii, bolsai_api_key)
+            elif template_type == "fi_infra":
+                # Only listed FI-Infra reach here, so ``symbol`` is the fund's own
+                # B3 ticker and the price lookup is safe (unlike AXIA3's).
+                template, _ = fetch_fixed_income(
+                    position.ticker, position.cnpj, ano_fii, hoje.month,
+                    brapi_token=brapi_token,
+                )
             elif template_type == "fiagro":
                 template, _ = fetch_fiagro(
                     position.ticker, position.cnpj, ano_fii, hoje.month, brapi_token,

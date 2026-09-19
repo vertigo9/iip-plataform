@@ -276,3 +276,52 @@ def test_fiagro_paper_fund_is_valued_by_nav_only_through_the_fiagro_fetch():
     assert by_method[ValuationMethod.NAV].snapshot.fair_value == 100.96
     assert by_method[ValuationMethod.YIELD].status == "not_applicable"  # papel: CDI, not real
     assert calls == [("CRAA11", "b", "k")]
+
+
+def _fi_infra(ticker="CDII11"):
+    return PortfolioAsset(
+        ticker, "fund", subtype="FI-Infra", structure="Papel",
+        segment="Infraestrutura", cnpj="48.973.783/0001-16",
+    )
+
+
+def test_listed_fi_infra_is_valued_by_nav_with_brapi_price():
+    calls = []
+
+    def fetch_fixed_income(symbol, cnpj, ano, mes, brapi_token=None):
+        calls.append((symbol, brapi_token))
+        return _template(price=95.2, nav_per_share=101.17), object()
+
+    result = value_portfolio(
+        bolsai_api_key="k", brapi_token="b", positions=(_fi_infra(),),
+        fetch_fixed_income=fetch_fixed_income, fetch_rate=lambda: RATE,
+    )
+
+    outcome = result.outcomes[0]
+    assert outcome.status == "ok" and outcome.asset_class == "fi_infra"
+    assert outcome.attempts[0].snapshot.fair_value == 101.17
+    assert outcome.attempts[0].snapshot.margin_of_safety == pytest.approx(101.17 / 95.2 - 1)
+    assert calls == [("CDII11", "b")]
+
+
+def test_fi_infra_with_failed_price_fetch_is_an_error():
+    result = value_portfolio(
+        bolsai_api_key="k", brapi_token="b", positions=(_fi_infra(),),
+        fetch_fixed_income=lambda *a, **kw: (_template(price=None, nav_per_share=101.17), object()),
+        fetch_rate=lambda: RATE,
+    )
+    assert result.outcomes[0].status == "erro"
+
+
+def test_unlisted_fixed_income_like_axia3_is_still_skipped_without_fetching():
+    axia = PortfolioAsset("AXIA3", "fixed_income", subtype="Daycoval FMP FGTS", cnpj="1")
+
+    def fetch_fixed_income(*a, **kw):
+        raise AssertionError("must not fetch: no market ticker to price against")
+
+    result = value_portfolio(
+        bolsai_api_key="k", brapi_token="b", positions=(axia,),
+        fetch_fixed_income=fetch_fixed_income, fetch_rate=lambda: RATE,
+    )
+    assert result.outcomes[0].status == "pulado"
+    assert "fixed_income" in result.outcomes[0].detail
