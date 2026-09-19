@@ -47,6 +47,8 @@ class ValuationOutcome:
     detail: str
     price: float | None = None
     attempts: tuple[MethodAttempt, ...] = field(default_factory=tuple)
+    asset_class: str | None = None  # the catalog class ("equity", "fii")
+    segment: str | None = None  # "sector / industry" as used to pick the methods
 
 
 @dataclass(frozen=True)
@@ -190,7 +192,8 @@ def value_portfolio(
             outcomes.append(
                 ValuationOutcome(
                     position.ticker, "pulado", f"nenhum método produziu valor — {why}",
-                    price=price, attempts=attempts,
+                    price=price, attempts=attempts, asset_class=template_type,
+                    segment=f"{sector} / {industry}",
                 )
             )
             continue
@@ -205,6 +208,11 @@ def value_portfolio(
             except Exception as exc:  # noqa: BLE001 — isolamento por posição
                 outcomes.append(ValuationOutcome(position.ticker, "erro", str(exc), price, attempts))
                 continue
-        outcomes.append(ValuationOutcome(position.ticker, "ok", detail, price, attempts))
+        outcomes.append(
+            ValuationOutcome(
+                position.ticker, "ok", detail, price, attempts, template_type,
+                f"{sector} / {industry}",
+            )
+        )
 
     return ValuationRunResult(tuple(outcomes), rate, ntnb_note)

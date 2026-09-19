@@ -712,7 +712,17 @@ def _lead_and_others(attempts) -> tuple[str, str, str]:
     help="Grava no vault o primeiro método que produziu valor (a nota de score "
     "guarda um só snapshot de valuation). Sem esta opção nada é gravado.",
 )
-def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -> None:
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Valuation.md no vault com todos os métodos por "
+    "ativo (tabelas por classe, motivos dos métodos sem valor, guia de leitura). "
+    "Sobrescrita a cada execução; independente de --persist.",
+)
+def value_portfolio_command(
+    vault: str | None, ano: int | None, persist: bool, report: bool
+) -> None:
     """Valuation da carteira: cada posição é avaliada por TODOS os métodos
     que cabem nela (Graham, Bazin...), lado a lado, com valor e margem de
     segurança contra o preço atual.
@@ -791,6 +801,18 @@ def value_portfolio_command(vault: str | None, ano: int | None, persist: bool) -
         "NAV é o patrimônio por cota; Yield capitaliza a renda de 12 meses pela "
         "NTN-B real (só FIIs de tijolo).[/]"
     )
+
+    if report:
+        import datetime as _dt
+
+        from iip.obsidian.valuation_report import write_valuation_report
+
+        written = write_valuation_report(
+            vault_path,
+            resultado,
+            as_of=_dt.date.today(),  # noqa: DTZ011 — data de calendário do usuário (a mesma das decisões), não timestamp
+        )
+        console.print(f"[dim]Relatório de valuation: {written}[/]")
 
     if resultado.failed:
         raise SystemExit(1)
