@@ -258,6 +258,8 @@ def _enrich_fii_with_vacancia_report(
             f"occupancy_rate vem da vacância {reading.basis} do relatório gerencial "
             "(o relatório não informa a financeira, base usada nos fundos da Pátria)."
         )
+    if reading.note:
+        warnings.append(f"occupancy_rate: {reading.note}")
     return financials, ["occupancy_rate"], warnings
 
 
