@@ -14,7 +14,9 @@ used whole. The parser takes the newest date it actually finds, and
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import UTC, date, datetime
 from urllib.request import Request, urlopen
 
@@ -63,3 +65,36 @@ class TesouroDiretoHTTPHarvester:
         return long_ntnb_rate(
             rows, today=today or datetime.now(UTC).date(), max_age_days=max_age_days
         )
+
+
+_RATE_MEMO: ContextVar[dict | None] = ContextVar("iip_ntnb_rate_memo", default=None)
+
+
+def long_ntnb_rate_cached() -> NtnbRate | None:
+    """The long NTN-B real yield, fetched ONCE per ``shared_ntnb_rate_cache()``
+    block (a failure is memoized too, so a batch does not retry a dead network
+    once per position). Outside a block it just fetches."""
+    memo = _RATE_MEMO.get()
+    if memo is not None and "outcome" in memo:
+        outcome = memo["outcome"]
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+    try:
+        rate = TesouroDiretoHTTPHarvester().fetch_long_ntnb_rate()
+    except Exception as exc:  # noqa: BLE001 -- memoized and re-raised for the caller to handle
+        if memo is not None:
+            memo["outcome"] = exc
+        raise
+    if memo is not None:
+        memo["outcome"] = rate
+    return rate
+
+
+@contextmanager
+def shared_ntnb_rate_cache() -> Iterator[None]:
+    token = _RATE_MEMO.set({})
+    try:
+        yield
+    finally:
+        _RATE_MEMO.reset(token)

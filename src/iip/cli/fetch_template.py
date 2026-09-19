@@ -314,6 +314,101 @@ def _fii_valuation_inputs(
     return financials, fetched, warnings
 
 
+def nav_preservation_score(change_pct: float) -> float:
+    """0-100: a fund whose net asset value per share held or grew over 12 months
+    scores 100; each -1% costs 20 points, so -5% or worse scores 0."""
+    if change_pct >= 0:
+        return 100.0
+    return round(max(0.0, 100.0 + 20.0 * change_pct), 1)
+
+
+def nav_change_12m_pct(
+    complementos: list[Any], cnpj: str
+) -> tuple[float | None, str | None]:
+    """(net asset value per share change over 12 months in percent, reason it is
+    unavailable). Needs the latest month and the month exactly 12 earlier, and
+    refuses when any share amortization was recorded in the window (returned
+    capital lowers the NAV per share without being erosion)."""
+    digits = "".join(ch for ch in cnpj if ch.isdigit())
+    by_month: dict[str, Any] = {}
+    for c in sorted(complementos, key=lambda c: (c.data_referencia, c.versao)):
+        if "".join(ch for ch in c.cnpj_fundo_classe if ch.isdigit()) == digits:
+            by_month[c.data_referencia] = c  # latest version of each month
+    if not by_month:
+        return None, "sem registros do fundo na CVM"
+    months = sorted(by_month)
+    latest = months[-1]
+    year, month = int(latest[:4]), int(latest[5:7])
+    earlier = f"{year - 1:04d}-{month:02d}-01"
+    if earlier not in by_month:
+        return None, f"sem o mês {earlier[:7]} para comparar (12 meses antes de {latest[:7]})"
+    window = [m for m in months if earlier < m <= latest]
+    if any((by_month[m].valores.get("Percentual_Amortizacao_Cotas_Mes") or 0) > 0 for m in window):
+        return None, "houve amortização de cotas na janela (capital devolvido, não erosão)"
+    now = by_month[latest].valores.get("Valor_Patrimonial_Cotas")
+    ago = by_month[earlier].valores.get("Valor_Patrimonial_Cotas")
+    if not now or not ago or ago <= 0:
+        return None, "patrimônio por cota ausente em um dos extremos"
+    return round((now / ago - 1) * 100, 2), None
+
+
+def _fii_dividend_pillar_inputs(
+    financials: dict[str, Any],
+    cnpj: str,
+    complementos: list[Any],
+    load_previous_year: Any,
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Inputs the recalibrated FII dividends pillar needs:
+    ``risk_free_real_yield`` (long NTN-B, percent) and a real
+    ``payout_sustainability_score`` from the NAV-per-share trend (replacing the
+    constant default 80)."""
+    from iip.sources.tesouro_direto_harvester import long_ntnb_rate_cached
+
+    financials = dict(financials)
+    fetched: list[str] = []
+    warnings: list[str] = []
+
+    try:
+        rate = long_ntnb_rate_cached()
+    except Exception as exc:  # noqa: BLE001 — a taxa é consulta de mercado opcional
+        rate = None
+        warnings.append(f"não consegui buscar a taxa da NTN-B: {exc}")
+    if rate is not None:
+        financials["risk_free_real_yield"] = round(rate.real_yield * 100, 4)
+        fetched.append("risk_free_real_yield")
+        warnings.append(
+            f"risk_free_real_yield = NTN-B longa (venc. {rate.maturity:%d/%m/%Y}, ref. "
+            f"{rate.reference_date:%d/%m/%Y}): o pilar de dividendos pontua o yield "
+            "relativo a ela (o dobro dela = nota máxima)."
+        )
+    else:
+        warnings.append(
+            "sem a taxa da NTN-B: o pilar de dividendos usa a calibração antiga "
+            "(yield fixo, satura em 8,3%)."
+        )
+
+    all_complementos = list(complementos)
+    try:
+        all_complementos += list(load_previous_year())
+    except Exception as exc:  # noqa: BLE001 — o ano anterior é opcional; sem ele a tendência do VP pode ficar indisponível
+        warnings.append(f"não consegui buscar o informe CVM do ano anterior: {exc}")
+    change, reason = nav_change_12m_pct(all_complementos, cnpj)
+    if change is not None:
+        financials["nav_change_12m_pct"] = change
+        financials["payout_sustainability_score"] = nav_preservation_score(change)
+        fetched += ["nav_change_12m_pct", "payout_sustainability_score"]
+        warnings.append(
+            f"payout_sustainability_score = preservação do patrimônio por cota em 12 "
+            f"meses ({change:+.1f}%): proxy, não medida direta — inclui reavaliação de "
+            "imóveis; 100 se o VP não caiu, 0 se caiu 5% ou mais."
+        )
+    else:
+        warnings.append(
+            f"payout_sustainability_score continua no valor-padrão (80): {reason}."
+        )
+    return financials, fetched, warnings
+
+
 def _use_ttm_dividend_yield(
     financials: dict[str, Any], fii: Any
 ) -> tuple[dict[str, Any], bool, str | None]:
@@ -371,9 +466,8 @@ def fetch_fii_template_live(
     )
     from iip.sources.cvm_fii_harvester import active_fii_cache as _active_fii_cache
 
-    cvm_result = (_active_fii_cache() or _CvmFiiHTTPHarvester()).fetch(
-        _build_cvm_fii_target(ano)
-    )
+    fii_harvester = _active_fii_cache() or _CvmFiiHTTPHarvester()
+    cvm_result = fii_harvester.fetch(_build_cvm_fii_target(ano))
 
     price = None
     bolsai_fii = None
@@ -424,12 +518,25 @@ def fetch_fii_template_live(
             base_fetched = (*base_fetched, "dividend_yield")
         months_used = 12
 
+    # Market rate and NAV preservation for the dividends pillar (see
+    # FIIAnalyzer._analyze_fii_dividends). Both best-effort: failures degrade
+    # the pillar to its previous calibration and say so.
+    pillar_financials, pillar_fetched, pillar_warnings = _fii_dividend_pillar_inputs(
+        template["financials"],
+        cnpj,
+        list(cvm_result.complemento),
+        lambda: fii_harvester.fetch(_build_cvm_fii_target(ano - 1)).complemento,
+    )
+    template["financials"] = pillar_financials
+
     extra_warnings = (
         *([bolsai_warning] if bolsai_warning else []),
         *patria_warnings,
         *valuation_warnings,
         *([ttm_warning] if ttm_warning else []),
+        *pillar_warnings,
     )
+    valuation_fetched = [*valuation_fetched, *pillar_fetched]
     patria_fetched = [*patria_fetched, *valuation_fetched]
     if patria_fetched or extra_warnings or ttm_used:
         resultado = FetchResult(

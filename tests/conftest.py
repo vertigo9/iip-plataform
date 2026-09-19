@@ -21,3 +21,14 @@ def _no_real_patria_planilha_download(monkeypatch):
         )
 
     monkeypatch.setattr(PatriaPlanilhaFundamentosHTTPHarvester, "fetch", offline_fetch)
+
+
+@pytest.fixture(autouse=True)
+def _no_real_ntnb_rate_in_fii_template(monkeypatch):
+    """``fetch_fii_template_live`` asks for the long NTN-B rate (for the FII
+    dividends pillar). Tests must not touch the network, and "no rate" is the
+    neutral default (the pillar keeps its previous calibration). Tests that need
+    a rate patch ``long_ntnb_rate_cached`` themselves, which takes precedence."""
+    import iip.sources.tesouro_direto_harvester as harvester_module
+
+    monkeypatch.setattr(harvester_module, "long_ntnb_rate_cached", lambda: None)

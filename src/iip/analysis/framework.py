@@ -402,15 +402,39 @@ class FIIAnalyzer(BaseAnalyzer):
         )
 
     def _analyze_fii_dividends(self, fin: dict) -> PillarScore:
+        """Dividends pillar for FIIs.
+
+        Two calibrations, chosen by whether the data carries the market's
+        risk-free rate (``risk_free_real_yield``, the long NTN-B real yield in
+        percent -- filled by ``fetch-template``/the batches):
+
+        - WITH it: the yield term is ``dy / (2 * risk_free)`` clamped to 0-100
+          (a yield equal to the real risk-free rate scores 50, twice it scores
+          100), so it does not saturate at a fixed yield; ``yield_on_cost`` (the
+          investor's own cost basis, which public data cannot provide) only
+          counts when explicitly supplied; the pillar averages the terms present.
+        - WITHOUT it (hand-written data files): the original formula, unchanged --
+          ``(min(dy*12, 100) + min(yoc*12, 100) + sustainability) / 3``, which
+          saturates at an 8.3% yield.
+        """
         dy = fin.get("dividend_yield", 0)
         yoc = fin.get("yield_on_cost", 0)
         sus = fin.get("payout_sustainability_score", 80)
+        risk_free = fin.get("risk_free_real_yield")
         indicators = {
             "Dividend Yield": round(dy * 10, 2),
             "Yield on Cost": round(yoc * 10, 2),
             "Payout Sustainability": sus,
         }
-        score = min((min(dy * 12, 100) + min(yoc * 12, 100) + sus) / 3, 100.0)
+        if risk_free is not None and risk_free > 0:
+            yield_term = max(0.0, min(dy / (2 * risk_free) * 100, 100.0))
+            terms = [yield_term, sus]
+            if yoc:
+                terms.append(min(yoc * 12, 100))
+            indicators["Risk-free real yield"] = risk_free
+            score = min(sum(terms) / len(terms), 100.0)
+        else:
+            score = min((min(dy * 12, 100) + min(yoc * 12, 100) + sus) / 3, 100.0)
         return PillarScore(
             pillar=Pillar.DIVIDENDS,
             score=round(score, 2),
