@@ -30,6 +30,11 @@ class IIPSettings(BaseSettings):
     log_format: str = "json"
     obsidian_vault: Path = Field(default_factory=lambda: Path.cwd() / "vault")
 
+    # Comma-separated dotted module paths of provider plugins (IIP_PLUGINS), loaded
+    # by the CLI at startup -- see iip.providers.registry.load_plugins. The
+    # process environment variable of the same name takes precedence over the .env.
+    plugins: str = ""
+
     # Provider credentials. SecretStr keeps them out of repr()/logs — call
     # .get_secret_value() explicitly when the raw value is actually needed
     # (e.g. building an Authorization header). Maps from IIP_BOLSAI_API_KEY

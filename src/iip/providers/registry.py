@@ -369,39 +369,114 @@ def manifest_map() -> dict[str, ProviderManifest]:
     return merged
 
 
-def discover_plugins(env_var: str = "IIP_PLUGINS") -> tuple[ProviderManifest, ...]:
-    """Import plugin modules named in ``env_var`` (comma-separated
-    dotted module paths) and register any manifests they expose.
+PLUGINS_ENV_VAR = "IIP_PLUGINS"
 
-    A plugin module must define ``iip_plugin_manifests() -> tuple[ProviderManifest, ...]``;
-    modules without that function are skipped, not errored. A module
-    that fails to import is logged and skipped — one broken plugin
-    must not prevent the others (or the application) from starting.
+
+@dataclass(frozen=True)
+class PluginFailure:
+    module: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class PluginLoadReport:
+    """What ``load_plugins`` did: which configured modules loaded (and the manifests
+    they registered) and which failed, with the reason -- so a broken plugin is
+    visible (``iip health``) instead of only a line in the log."""
+
+    configured: tuple[str, ...] = ()
+    loaded: tuple[str, ...] = ()
+    manifests: tuple[ProviderManifest, ...] = ()
+    failures: tuple[PluginFailure, ...] = ()
+
+
+_last_report: PluginLoadReport | None = None
+
+
+def last_plugin_report() -> PluginLoadReport | None:
+    """The report of the most recent ``load_plugins`` call in this process, or
+    ``None`` if plugins were never loaded."""
+    return _last_report
+
+
+def _configured_plugin_modules(env_var: str) -> tuple[str, ...]:
+    raw = os.environ.get(env_var)
+    if raw is None and env_var == PLUGINS_ENV_VAR:
+        # not in the process environment: fall back to IIP_PLUGINS in the .env
+        # (pydantic-settings reads the .env into IIPSettings, not into os.environ)
+        from iip.config import get_settings
+
+        raw = get_settings().plugins
+    return tuple(name.strip() for name in (raw or "").split(",") if name.strip())
+
+
+def load_plugins(env_var: str = PLUGINS_ENV_VAR) -> PluginLoadReport:
+    """Import the plugin modules named in ``env_var`` (comma-separated dotted module
+    paths; ``IIP_PLUGINS`` may also come from the ``.env``) and register the provider
+    manifests they expose.
+
+    Plugin contract: a module defines ``iip_plugin_manifests() ->
+    tuple[ProviderManifest, ...]``. Set ``ProviderManifest.implementation`` to a
+    dotted path to the provider class (``"pkg.module.Class"``) and
+    ``ProviderFactory`` instantiates it, injecting the credential named by
+    ``credential_setting``/``credential_kwarg`` when there is one. A manifest
+    with the name of a built-in overrides it (last registration wins).
+
+    A plugin that cannot be loaded -- import error, any exception raised while
+    importing or calling ``iip_plugin_manifests``, a missing function, or a return
+    value that is not a sequence of ``ProviderManifest`` -- is recorded as a
+    failure and skipped: one broken plugin must not stop the others or the
+    application. Nothing from a failed plugin is registered.
 
     Security note: this executes arbitrary importable code named by an
     environment variable. That is an accepted tradeoff for local,
-    single-user use — it is not appropriate for a shared or
+    single-user use -- it is not appropriate for a shared or
     multi-tenant deployment, which would need a vetted/signed plugin
     list instead of "anything importable in this environment".
     """
-    raw = os.environ.get(env_var, "")
-    module_names = tuple(name.strip() for name in raw.split(",") if name.strip())
+    global _last_report
+    modules = _configured_plugin_modules(env_var)
 
-    discovered: list[ProviderManifest] = []
-    for module_name in module_names:
+    loaded: list[str] = []
+    manifests: list[ProviderManifest] = []
+    failures: list[PluginFailure] = []
+    for module_name in modules:
         try:
             module = importlib.import_module(module_name)
-        except ImportError as exc:
-            logger.error("plugin_import_failed", module=module_name, error=str(exc))
+            factory_fn = getattr(module, "iip_plugin_manifests", None)
+            if factory_fn is None:
+                raise AttributeError("missing function iip_plugin_manifests()")
+            provided = tuple(factory_fn())
+            invalid = [m for m in provided if not isinstance(m, ProviderManifest)]
+            if invalid:
+                raise TypeError(
+                    "iip_plugin_manifests() must return ProviderManifest items, "
+                    f"got {type(invalid[0]).__name__}"
+                )
+        # arbitrary third-party code: whatever it raises must not abort startup
+        except Exception as exc:  # noqa: BLE001
+            # no logger here (nor in the registration below): unconfigured, the
+            # project's structlog prints every level to stdout, which would land in
+            # the middle of e.g. ``--format json`` output on each command. The
+            # failure lives in the report: ``iip health`` and the CLI's stderr warning.
+            reason = f"{type(exc).__name__}: {exc}"
+            failures.append(PluginFailure(module_name, reason))
             continue
 
-        factory_fn = getattr(module, "iip_plugin_manifests", None)
-        if factory_fn is None:
-            logger.error("plugin_missing_manifest_function", module=module_name)
-            continue
+        for manifest in provided:
+            _runtime_manifests[manifest.name] = manifest
+        manifests.extend(provided)
+        loaded.append(module_name)
 
-        for manifest in factory_fn():
-            register_manifest(manifest)
-            discovered.append(manifest)
+    _last_report = PluginLoadReport(
+        configured=modules,
+        loaded=tuple(loaded),
+        manifests=tuple(manifests),
+        failures=tuple(failures),
+    )
+    return _last_report
 
-    return tuple(discovered)
+
+def discover_plugins(env_var: str = PLUGINS_ENV_VAR) -> tuple[ProviderManifest, ...]:
+    """The manifests registered by ``load_plugins`` (see it for the contract)."""
+    return load_plugins(env_var).manifests
