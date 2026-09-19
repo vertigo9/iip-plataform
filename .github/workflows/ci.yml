@@ -31,14 +31,7 @@ jobs:
       - name: Pytest -- bloqueante
         run: pytest tests/ --no-cov
 
-      - name: Black (checagem de formatacao) -- informativo, nao bloqueia ainda
-        # Achado em 12/09/2026: 70 arquivos ainda nao seguem o padrao do
-        # black (nunca foi aplicado no projeto). Bloquear o CI nisso agora
-        # faria a primeira execucao nascer vermelha por um motivo que nao
-        # tem relacao com a mudanca sendo validada. Fica visivel aqui
-        # (aparece como "failed" neste step especifico, sem derrubar o
-        # job todo) ate virar uma tarefa deliberada de formatacao em lote,
-        # do mesmo jeito que o Ruff foi tratado (nao em massa, com testes
-        # a cada lote).
-        continue-on-error: true
+      - name: Black (checagem de formatacao) -- bloqueante
+        # Aplicado em lote em 19/09/2026 (190 arquivos, com testes a cada lote).
+        # A versao-alvo (py312) e a exclusao ficam em [tool.black] do pyproject.
         run: black --check --diff src/ tests/ --exclude "iip_knowledge_bridge"
