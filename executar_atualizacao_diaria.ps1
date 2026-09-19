@@ -66,8 +66,10 @@ $ValueExitCode = $LASTEXITCODE
 Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
-    $msg1 = "Uma ou mais fontes de dado (CVM, BACEN, bolsai, etc.) nao responderam hoje. Veja " + $LogFile
-    Notificar-Windows "IIP: fonte de dado inacessivel" $msg1 "Warning"
+    # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
+    # (IIP_PLUGINS) que nao carregou. A mensagem nao pode culpar so as fontes.
+    $msg1 = "O health check falhou hoje: uma fonte de dado (CVM, BACEN, bolsai, etc.) nao respondeu ou um plugin (IIP_PLUGINS) nao carregou. Veja " + $LogFile
+    Notificar-Windows "IIP: health check falhou" $msg1 "Warning"
 }
 
 if ($RefreshExitCode -ne 0) {
