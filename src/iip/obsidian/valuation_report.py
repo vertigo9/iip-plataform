@@ -19,6 +19,7 @@ from collections.abc import Mapping
 from datetime import date
 from pathlib import Path
 
+from iip.obsidian.dashboard import HIGHLIGHTS_BOTTOM_KEY, HIGHLIGHTS_TOP_KEY
 from iip.portfolio.batch_value import (
     NO_METHOD_PREFIX,
     ValuationOutcome,
@@ -28,6 +29,8 @@ from iip.portfolio_data.valuation import ValuationMethod
 from iip.portfolio_data.valuation_methods import METHODS_BY_ASSET_CLASS, first_valuation
 
 REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Valuation.md"
+
+HIGHLIGHT_COUNT = 5
 
 _CLASS_TITLES = {"equity": "Ações", "fii": "FIIs"}
 
@@ -72,6 +75,62 @@ def _label(ticker: str, links: Mapping[str, str], *, in_table: bool = False) -> 
     if not target:
         return ticker
     return f"[[{target}\\|{ticker}]]" if in_table else f"[[{target}|{ticker}]]"
+
+
+def compute_highlights(
+    result: ValuationRunResult, count: int = HIGHLIGHT_COUNT
+) -> tuple[list[dict], list[dict]]:
+    """(largest, smallest) margins of safety among the valued positions, by the
+    LEAD method of each. Positions whose margin is unknown (no price) are left
+    out; the two lists never share a ticker."""
+    entries: list[dict] = []
+    for outcome in result.outcomes:
+        if outcome.status != "ok":
+            continue
+        lead = first_valuation(outcome.attempts)
+        if lead is None or lead.margin_of_safety is None:
+            continue
+        entries.append({
+            "ticker": outcome.ticker,
+            "classe": outcome.asset_class or "equity",
+            "metodo": lead.method.value,
+            "preco": round(outcome.price, 2) if outcome.price is not None else None,
+            "valor": round(lead.fair_value, 2),
+            "margem": round(lead.margin_of_safety, 4),
+        })
+    ranked = sorted(entries, key=lambda e: e["margem"], reverse=True)
+    top = ranked[:count]
+    top_tickers = {e["ticker"] for e in top}
+    bottom = [e for e in reversed(ranked) if e["ticker"] not in top_tickers][:count]
+    return top, bottom
+
+
+def _yaml_list(key: str, entries: list[dict]) -> list[str]:
+    """Block-style YAML (the most portable) for one highlights list."""
+    if not entries:
+        return [f"{key}: []"]
+    lines = [f"{key}:"]
+    for entry in entries:
+        first = True
+        for field, value in entry.items():
+            prefix = "  - " if first else "    "
+            first = False
+            lines.append(f"{prefix}{field}: {'null' if value is None else value}")
+    return lines
+
+
+def _highlights_table(entries: list[dict], links: Mapping[str, str]) -> str:
+    header = ["Ativo", "Classe", "Método", "Preço", "Valor", "Margem"]
+    lines = ["| " + " | ".join(header) + " |", "|" + "|".join(["---"] * len(header)) + "|"]
+    for e in entries:
+        price = f"{e['preco']:.2f}" if e["preco"] is not None else "—"
+        lines.append(
+            "| " + " | ".join([
+                _label(e["ticker"], links, in_table=True), _CLASS_TITLES.get(e["classe"], e["classe"]),
+                e["metodo"], price, f"{e['valor']:.2f}", f"{e['margem']:+.0%}",
+            ]) + " |"
+        )
+    return "\n".join(lines)
 
 
 def _class_columns(asset_class: str) -> tuple[ValuationMethod, ...]:
@@ -127,6 +186,9 @@ def render_valuation_report(
             f"ntnb_maturity: {rate.maturity.isoformat()}",
             f"ntnb_reference_date: {rate.reference_date.isoformat()}",
         ]
+    top, bottom = compute_highlights(result)
+    frontmatter += _yaml_list(HIGHLIGHTS_TOP_KEY, top)
+    frontmatter += _yaml_list(HIGHLIGHTS_BOTTOM_KEY, bottom)
     frontmatter += ["tags:", "  - iip/valuation", "  - iip/portfolio", "---"]
 
     body = [
@@ -140,6 +202,21 @@ def render_valuation_report(
     if source_note:
         body += ["", f"> {source_note}"]
     body.append("")
+
+    if top:
+        body += [
+            "## Destaques",
+            "",
+            "Maiores e menores margens de segurança pelo método principal de cada ativo. Margens de "
+            "métodos diferentes não são diretamente comparáveis: veja a coluna Método.",
+            "",
+            "**Maiores margens**",
+            "",
+            _highlights_table(top, links),
+            "",
+        ]
+        if bottom:
+            body += ["**Menores margens**", "", _highlights_table(bottom, links), ""]
 
     valued = [o for o in result.outcomes if o.attempts and o.status == "ok"]
     by_class: dict[str, list[ValuationOutcome]] = {}

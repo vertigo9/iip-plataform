@@ -62,6 +62,13 @@ PAPER = _outcome(
 )
 
 
+def _class_row(text, section, ticker):
+    """The row of ``ticker`` inside the ``## <section>`` class table (the highlights
+    table above it repeats some tickers with other columns)."""
+    body = text.split(f"## {section}")[1].split("\n## ")[0]
+    return next(line for line in body.splitlines() if line.startswith(f"| {ticker}") or f"|{ticker}]]" in line)
+
+
 # --- rendering -----------------------------------------------------------------------
 
 
@@ -96,7 +103,7 @@ def test_one_table_per_class_with_that_classs_own_methods():
 def test_the_lead_method_and_every_value_with_its_margin_are_shown():
     text = render_valuation_report(_result(EQUITY), as_of=AS_OF)
 
-    row = next(line for line in text.splitlines() if line.startswith("| CXSE3"))
+    row = _class_row(text, "Ações", "CXSE3")
     assert "**Bazin**" in row  # dividend-centric sector: Bazin leads
     assert "17.26" in row and "12.17" in row  # Bazin and Graham
     assert "(-16%)" in row and "(-41%)" in row
@@ -105,7 +112,7 @@ def test_the_lead_method_and_every_value_with_its_margin_are_shown():
 def test_a_paper_fund_shows_only_the_nav_and_a_dash_for_yield():
     text = render_valuation_report(_result(PAPER), as_of=AS_OF)
 
-    row = next(line for line in text.splitlines() if line.startswith("| HGCR11"))
+    row = _class_row(text, "FIIs", "HGCR11")
     assert "**NAV**" in row and "97.40 (+2%)" in row
     assert row.rstrip().endswith("— |")  # the Yield column has no value
 
@@ -148,7 +155,7 @@ def test_pipes_in_text_cannot_break_the_table():
 
     text = render_valuation_report(_result(odd), as_of=AS_OF)
 
-    row = next(line for line in text.splitlines() if line.startswith("| KLBN4"))
+    row = _class_row(text, "Ações", "KLBN4")
     assert "Materiais \\| Básicos" in row
 
 

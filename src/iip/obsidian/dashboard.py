@@ -28,6 +28,14 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+# The valuation note (``iip.obsidian.valuation_report``) carries its highlights in its
+# YAML frontmatter -- the only thing the dashboard's DataviewJS can read -- under these
+# keys. Defined once here and imported by the report so the two can never drift apart.
+VALUATION_NOTE_DV_PATH = "02_Portfolio/Valuation"
+VALUATION_NOTE_LINK = "[[Valuation|Valuation da Carteira]]"
+HIGHLIGHTS_TOP_KEY = "destaques_maiores_margens"
+HIGHLIGHTS_BOTTOM_KEY = "destaques_menores_margens"
+
 DASHBOARD_TEMPLATE = "\n".join([
     "---",
     "type: dashboard",
@@ -46,6 +54,32 @@ DASHBOARD_TEMPLATE = "\n".join([
     "fundamentalista, valuation, quantitativo, cross-asset). Um ativo sem "
     "nenhuma rodada ainda não aparece em nenhuma tabela.",
     "<!-- IIP:END:METRICS_SUMMARY -->",
+    "",
+    "---",
+    "",
+    "## 🔎 Valuation da Carteira — Destaques",
+    "",
+    f"Nota completa, com todos os métodos por ativo: {VALUATION_NOTE_LINK}. "
+    "Gerada por `iip value-portfolio --report`.",
+    "",
+    "```dataviewjs",
+    f'const p = dv.page("{VALUATION_NOTE_DV_PATH}");',
+    "if (!p) {",
+    '    dv.paragraph("Nota de valuation ainda não gerada: rode `iip value-portfolio --report`.");',
+    "} else {",
+    '    const fmt = (m) => (Number(m) * 100).toFixed(0) + "%";',
+    "    const rows = (list) => Array.from(list || []).map(x => [",
+    "        x.ticker, x.classe, x.metodo, x.preco, x.valor, fmt(x.margem)",
+    "    ]);",
+    '    const head = ["Ativo", "Classe", "Método", "Preço", "Valor", "Margem de segurança"];',
+    '    dv.paragraph("Dados de " + String(p.as_of).slice(0, 10) + ". Margens de métodos diferentes '
+    'não são diretamente comparáveis: veja a coluna Método.");',
+    '    dv.header(3, "Maiores margens de segurança");',
+    f"    dv.table(head, rows(p.{HIGHLIGHTS_TOP_KEY}));",
+    '    dv.header(3, "Menores margens de segurança");',
+    f"    dv.table(head, rows(p.{HIGHLIGHTS_BOTTOM_KEY}));",
+    "}",
+    "```",
     "",
     "---",
     "",
