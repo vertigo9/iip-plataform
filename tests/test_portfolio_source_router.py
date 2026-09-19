@@ -1,27 +1,29 @@
 from __future__ import annotations
 
-import pytest
+from typing import ClassVar
 
+import pytest
+from pydantic import SecretStr
+
+from iip.atlas import build_configured_portfolio_ingestion
+from iip.config import IIPSettings
 from iip.portfolio.registry import get_asset
 from iip.portfolio.source_router import PortfolioSourceRouter
-from iip.sources.b3_equity_provider import BolsaiEquityProvider, adapt_fundamentals
-from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
-from iip.sources.registry import AssetRef
 from iip.sources.adapter_catalog import (
     AdapterKind,
     AdapterReadiness,
     adapter_descriptor,
 )
-from iip.sources.cvm_fii import build_target as build_cvm_target
-from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
-from iip.sources.cvm_fii_provider import adapt_fii_report
-from tests.test_cvm_fii import make_zip
+from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
 from iip.sources.b3_brapi import build_target as build_brapi_target
 from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
 from iip.sources.b3_brapi_provider import BrapiMarketProvider, adapt_quotes
-from iip.atlas import build_configured_portfolio_ingestion
-from iip.config import IIPSettings
-from pydantic import SecretStr
+from iip.sources.b3_equity_provider import BolsaiEquityProvider, adapt_fundamentals
+from iip.sources.cvm_fii import build_target as build_cvm_target
+from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
+from iip.sources.cvm_fii_provider import adapt_fii_report
+from iip.sources.registry import AssetRef
+from tests.test_cvm_fii import make_zip
 
 
 class FakeProvider:
@@ -79,7 +81,7 @@ def test_bolsai_equity_adapter_preserves_raw_response_for_atlas():
 
     class Response:
         status = 200
-        headers = {"Content-Type": "application/json; charset=utf-8"}
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json; charset=utf-8"}
 
         def read(self):
             return b'{"ticker":"BBSE3","close_price":41.69}'
@@ -156,7 +158,7 @@ def test_cvm_fii_adapter_filters_bulk_report_by_cnpj():
 
     class Response:
         status = 200
-        headers = {"Content-Type": "application/zip"}
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/zip"}
 
         def read(self):
             return make_zip()
@@ -183,7 +185,7 @@ def test_cvm_fii_adapter_rejects_unmatched_cnpj():
 
     class Response:
         status = 200
-        headers = {"Content-Type": "application/zip"}
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/zip"}
 
         def read(self):
             return make_zip()
@@ -203,7 +205,7 @@ def test_brapi_adapter_preserves_quote_payload():
 
     class Response:
         status = 200
-        headers = {"Content-Type": "application/json"}
+        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json"}
 
         def read(self):
             return b'{"results":[{"symbol":"AAPL34","regularMarketPrice":10}]}'

@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
-from iip.portfolio.pipeline import IntegratedPortfolioPipeline
-from iip.portfolio.pipeline import ingest_registered_assets
+from iip.portfolio.pipeline import IntegratedPortfolioPipeline, ingest_registered_assets
 from iip.portfolio.registry import get_asset
 
 

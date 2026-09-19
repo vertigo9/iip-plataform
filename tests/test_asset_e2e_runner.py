@@ -1,7 +1,11 @@
 from pathlib import Path
 
 from iip.portfolio.e2e import AssetE2ERunner
-from iip.portfolio.historical_series import HistoricalObservation, HistoricalSeries, HistoricalSeriesStore
+from iip.portfolio.historical_series import (
+    HistoricalObservation,
+    HistoricalSeries,
+    HistoricalSeriesStore,
+)
 from iip.universal.portfolio_state import PortfolioState, PositionState
 
 

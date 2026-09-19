@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import ClassVar
 
 from iip.portfolio.historical_series import (
     HistoricalObservation,
@@ -13,7 +14,7 @@ from tests.test_cvm_fii import make_zip
 
 class Response:
     status = 200
-    headers = {"Content-Type": "application/zip"}
+    headers: ClassVar[dict[str, str]] = {"Content-Type": "application/zip"}
 
     def read(self):
         return make_zip()

@@ -1,7 +1,10 @@
 from pathlib import Path
 from urllib.error import HTTPError
 
-from iip.portfolio.historical_series import HistoricalSeriesStore, collect_sparta_report_history
+from iip.portfolio.historical_series import (
+    HistoricalSeriesStore,
+    collect_sparta_report_history,
+)
 
 
 class _FetchedSpartaReport:

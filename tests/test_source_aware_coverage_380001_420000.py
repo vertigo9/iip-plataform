@@ -3,6 +3,13 @@ from typing import ClassVar
 
 import pytest
 
+from iip.atlas import (
+    AtlasDocument,
+    AtlasKnowledgeAdapter,
+    SourceIngestionService,
+    SourceTransportBinding,
+)
+from iip.knowledge import KnowledgeBridge
 from iip.portfolio_data.currency import normalize_currency_weight
 from iip.portfolio_data.data_quality import validate_weight
 from iip.portfolio_data.income import IncomeEvent, annualized_income
@@ -24,13 +31,11 @@ from iip.sources.policy import (
     default_priority_for,
     default_provider_specs,
 )
+from iip.sources.provider import DocumentProvider
 from iip.sources.provider_registry import ProviderRegistry
 from iip.sources.registry import AssetRef, SourceRef, SourceRegistry
 from iip.sources.router import SourceRouter
 from iip.sources.xp_asset import DocumentTarget, XPAssetProvider
-from iip.atlas import AtlasDocument, AtlasKnowledgeAdapter, SourceIngestionService, SourceTransportBinding
-from iip.knowledge import KnowledgeBridge
-from iip.sources.provider import DocumentProvider
 from iip.strategy.allocation_planner import plan
 from iip.strategy.e2e import execute as execute_e2e
 from iip.strategy.income_plan import build as build_income

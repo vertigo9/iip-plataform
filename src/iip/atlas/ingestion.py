@@ -6,6 +6,8 @@ from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from iip.config import IIPSettings, get_settings
+from iip.knowledge import KnowledgeBridge
 from iip.sources import (
     AssetRef,
     ProviderRegistry,
@@ -14,22 +16,20 @@ from iip.sources import (
     XPAssetHTTPHarvester,
     XPAssetProvider,
 )
+from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
+from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
+from iip.sources.b3_brapi_provider import BrapiMarketProvider, adapt_quotes
 from iip.sources.b3_equity_provider import (
     BolsaiEquityProvider,
     adapt_fundamentals,
 )
-from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester
-from iip.sources.cvm_fii_provider import CvmFiiProvider, adapt_fii_report
 from iip.sources.cvm_fii_harvester import CvmFiiHTTPHarvester
-from iip.sources.b3_brapi_provider import BrapiMarketProvider, adapt_quotes
-from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester
-from iip.config import IIPSettings, get_settings
+from iip.sources.cvm_fii_provider import CvmFiiProvider, adapt_fii_report
+from iip.sources.provider import DocumentProvider
 
 from .adapter import AtlasDocumentAdapter
 from .knowledge_adapter import AtlasKnowledgeAdapter
 from .models import AtlasDocument
-from iip.sources.provider import DocumentProvider
-from iip.knowledge import KnowledgeBridge
 
 
 @dataclass(frozen=True)

@@ -13,20 +13,20 @@ from iip.portfolio.registry import ClassificationProvenance, PortfolioAsset
 
 
 def _asset(**overrides) -> PortfolioAsset:
-    defaults = dict(
-        ticker="BTCI11",
-        asset_class="fund",
-        subtype="FII",
-        structure="Papel",
-        segment="Crédito Imobiliário",
-        manager="BTG Pactual",
-        source_url="https://btgpactual.com/btci11",
-        indexation=("CDI",),
-        risk_profile="Médio",
-        strategy="Recebíveis",
-        classification_provenance=ClassificationProvenance.USER,
-        cnpj="09.552.812/0001-14",
-    )
+    defaults = {
+        "ticker": "BTCI11",
+        "asset_class": "fund",
+        "subtype": "FII",
+        "structure": "Papel",
+        "segment": "Crédito Imobiliário",
+        "manager": "BTG Pactual",
+        "source_url": "https://btgpactual.com/btci11",
+        "indexation": ("CDI",),
+        "risk_profile": "Médio",
+        "strategy": "Recebíveis",
+        "classification_provenance": ClassificationProvenance.USER,
+        "cnpj": "09.552.812/0001-14",
+    }
     defaults.update(overrides)
     return PortfolioAsset(**defaults)
 

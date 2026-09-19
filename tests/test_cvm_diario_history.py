@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from iip.portfolio.historical_series import HistoricalSeriesStore, collect_cvm_diario_history
+from iip.portfolio.historical_series import (
+    HistoricalSeriesStore,
+    collect_cvm_diario_history,
+)
 from iip.sources.cvm_renda_fixa import InformeDiario
 
 

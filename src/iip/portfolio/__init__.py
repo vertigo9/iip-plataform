@@ -1,14 +1,5 @@
 """Portfolio registry and orchestration API."""
 
-from .registry import (
-    PORTFOLIO_ASSETS,
-    ClassificationProvenance,
-    PortfolioAsset,
-    assets_by_class,
-    get_asset,
-)
-from .source_policy import AssetSourcePolicy, PortfolioSourcePolicyResolver
-from .source_router import PortfolioSourceRouter, RoutedPortfolioAsset
 from .e2e import AssetE2EResult, AssetE2ERunner, E2EStep
 from .historical_series import (
     HistoricalObservation,
@@ -20,6 +11,15 @@ from .historical_series import (
     collect_sparta_report_history,
     normalize_quota_splits,
 )
+from .registry import (
+    PORTFOLIO_ASSETS,
+    ClassificationProvenance,
+    PortfolioAsset,
+    assets_by_class,
+    get_asset,
+)
+from .source_policy import AssetSourcePolicy, PortfolioSourcePolicyResolver
+from .source_router import PortfolioSourceRouter, RoutedPortfolioAsset
 
 try:
     from .capabilities import Capability, ProviderCapabilities

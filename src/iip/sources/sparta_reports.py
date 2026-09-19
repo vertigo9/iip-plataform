@@ -129,8 +129,9 @@ def extract_cota_patrimonial(pdf_body: bytes) -> float | None:
     """Extract "Cota patrimonial" (NAV per quota, BRL) from a Sparta
     monthly report PDF. Returns None if the layout doesn't match what
     was confirmed live (see module docstring) -- never guesses."""
-    from pypdf import PdfReader
     from io import BytesIO
+
+    from pypdf import PdfReader
 
     reader = PdfReader(BytesIO(pdf_body))
     for page in reader.pages:

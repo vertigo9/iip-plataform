@@ -2,7 +2,13 @@ from datetime import UTC, date, datetime
 from pathlib import Path
 
 from iip.decision.thesis_exit_gate import GateStatus, assess_thesis_exit
-from iip.knowledge.models import Decision, Evidence, PortfolioSnapshot, Position, Verdict
+from iip.knowledge.models import (
+    Decision,
+    Evidence,
+    PortfolioSnapshot,
+    Position,
+    Verdict,
+)
 from iip.knowledge.repository import AssetDirectory, ObsidianRepository
 
 

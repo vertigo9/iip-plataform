@@ -1,6 +1,9 @@
 from pathlib import Path
 
-from iip.portfolio.historical_series import HistoricalSeriesStore, collect_cotahist_history
+from iip.portfolio.historical_series import (
+    HistoricalSeriesStore,
+    collect_cotahist_history,
+)
 from iip.sources.b3_cotahist import CotahistQuote
 
 

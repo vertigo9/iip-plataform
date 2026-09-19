@@ -6,7 +6,8 @@ from iip.decision.models import Decision
 from iip.portfolio.registry import PortfolioAsset
 
 from .decision_adapter import decision_to_asset_signal
-from .portfolio_pipeline import IntegratedPortfolioDecision, run as run_portfolio_pipeline
+from .portfolio_pipeline import IntegratedPortfolioDecision
+from .portfolio_pipeline import run as run_portfolio_pipeline
 
 
 class PortfolioCompositionError(ValueError):

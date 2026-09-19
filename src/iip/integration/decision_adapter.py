@@ -7,7 +7,6 @@ from iip.portfolio.registry import PortfolioAsset
 
 from .models import Action, AssetSignal
 
-
 _VERDICT_TO_ACTION: dict[Verdict, Action] = {
     Verdict.COMPRAR: Action.APORTAR,
     Verdict.MANTER: Action.MANTER,
