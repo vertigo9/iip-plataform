@@ -178,7 +178,8 @@ mantida. `--persist` grava no vault o primeiro método que produziu valor.
 Posições sem método implementado aparecem como "puladas" com o motivo —
 hoje: fundos `fixed_income` (o fetch nunca busca preço de propósito: alguns,
 como AXIA3, são rótulos de fundos que não negociam), CRAA11 (fora do dataset
-FIAGRO da CVM, sem NAV) e LFTB11 (ETF sem método catalogado). Valor justo
+FIAGRO da CVM, sem NAV) e LFTB11 (ETF: o CNPJ consta no cadastro da CVM como
+FIIM, mas o Informe Diário que usamos não traz a cota dele, então não há NAV — verificado em 19/09/2026). Valor justo
 não é recomendação de compra.
 
 ### Coletar documentos de RI e gestoras
