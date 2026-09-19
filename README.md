@@ -187,6 +187,16 @@ aberto até haver fonte de NAV confiável — detalhes e caminho para retomar em
 `IIP_reconciliacao_blueprint_vs_codigo.md` ("Pendências em aberto"). Valor justo
 não é recomendação de compra.
 
+**Da valuation à decisão.** `iip analyze ... --decide --auto-valuation` usa o método
+principal do catálogo como nota de valuation (margem de segurança → 0-10; sem
+método que produza valor, fica neutro em 5.0 e mostra o motivo). Vale para
+`--type equity`, `fii`, `agro` (FIAGRO, NAV) e `fixed_income` (FI-Infra listado,
+NAV). Para gerar o data-file: `fetch-template --type agro` já traz `nav_per_share`
+(bolsai); `fetch-template --type fixed_income --preco-mercado` traz a cota da CVM e o
+preço — a flag é opt-in e só serve quando o símbolo é o ticker B3 do próprio
+fundo (CDII11, JURO11, CPTI11); sem ela nunca há preço (AXIA3), e sem preço a nota
+fica neutra.
+
 ### Coletar documentos de RI e gestoras
 
 Cada comando lista e baixa documentos reais e grava evidência no vault

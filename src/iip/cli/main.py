@@ -319,6 +319,16 @@ def analyze_template(asset_type: str, output: str | None) -> None:
     help="Mês de referência CVM, 1-12 (para --type etf/fixed_income/agro; padrão: mês atual).",
 )
 @click.option(
+    "--preco-mercado",
+    "market_price",
+    is_flag=True,
+    default=False,
+    help="Só para --type fixed_income: busca o preço de mercado (brapi). Use APENAS "
+    "quando o símbolo é o ticker B3 do próprio fundo (FI-Infra listado: CDII11, "
+    "JURO11, CPTI11) — em outros (ex.: AXIA3, um FMP-FGTS sem ticker) o símbolo "
+    "pode ser de outro ativo e o preço seria de outra empresa.",
+)
+@click.option(
     "--output",
     "-o",
     type=click.Path(),
@@ -331,6 +341,7 @@ def fetch_template(
     cnpj: str | None,
     ano: int | None,
     mes: int | None,
+    market_price: bool,
     output: str | None,
 ) -> None:
     """Busca dados reais (CVM + bolsai/brapi) e pré-preenche um template
@@ -353,10 +364,10 @@ def fetch_template(
     DFP), e debt_to_equity continua no valor-padrão de propósito (ver
     docstring de ``fetch_equity_template_live``).
 
-    fixed_income: preenche só patrimônio (via CVM Informe Diário) —
-    nunca busca preço de mercado, mesmo se configurado, porque o
-    ticker de referência desses fundos (ex: AXIA3) pode não corresponder
-    a um ticker de mercado real do próprio fundo.
+    fixed_income: preenche patrimônio e cota (nav_per_share) via CVM
+    Informe Diário — só busca preço de mercado com --preco-mercado,
+    porque o ticker de referência de alguns desses fundos (ex: AXIA3)
+    pode não corresponder a um ticker de mercado real do próprio fundo.
 
     agro: preenche só dividend_yield_pct (via CVM FIAGRO — dataset
     dedicado, diferente do de FII/Informe Diário) — AgroAnalyzer não
@@ -425,9 +436,16 @@ def fetch_template(
         console.print(
             f"[dim]Buscando dados CVM Informe Diário para {ano_efetivo}-{mes_efetivo:02d}...[/]"
         )
+        brapi_token = None
+        if market_price:
+            brapi_token = _unwrap_secret(get_settings().brapi_token)
+            if not brapi_token:
+                console.print(
+                    "[dim]IIP_BRAPI_TOKEN não definida — pulando busca de preço.[/]"
+                )
         try:
             template, resultado = fetch_fixed_income_template_live(
-                symbol, cnpj, ano_efetivo, mes_efetivo
+                symbol, cnpj, ano_efetivo, mes_efetivo, brapi_token
             )
         except Exception as exc:
             console.print(f"[bold red]Erro ao buscar Informe Diário da CVM:[/] {exc}")
@@ -445,7 +463,8 @@ def fetch_template(
             )
         try:
             template, resultado = fetch_fiagro_template_live(
-                symbol, cnpj, ano_efetivo, mes_efetivo, brapi_token
+                symbol, cnpj, ano_efetivo, mes_efetivo, brapi_token,
+                bolsai_api_key=_unwrap_secret(get_settings().bolsai_api_key),
             )
         except Exception as exc:
             console.print(f"[bold red]Erro ao buscar dados CVM FIAGRO:[/] {exc}")
@@ -637,6 +656,12 @@ def analyze_portfolio_command(
         raise SystemExit(1)
 
 
+# ``analyze --type`` value -> valuation catalog class, where they differ. fixed_income
+# maps to fi_infra (NAV only): a fund WITHOUT a market price (AXIA3) still gets no
+# score, because the catalog reports the missing price instead of inventing a margin.
+_AUTO_VALUATION_CLASS = {"agro": "fiagro", "fixed_income": "fi_infra"}
+
+
 def _auto_valuation_score(
     symbol: str, asset_type: str, raw: dict, price: float | None, financials: dict
 ) -> float | None:
@@ -659,7 +684,7 @@ def _auto_valuation_score(
 
     result = catalog_valuation_for_decision(
         ticker=symbol,
-        asset_class=asset_type,
+        asset_class=_AUTO_VALUATION_CLASS.get(asset_type, asset_type),
         sector=raw["sector"],
         industry=raw["industry"],
         price=price,
@@ -903,14 +928,15 @@ def value_portfolio_command(
     "auto_valuation",
     is_flag=True,
     default=False,
-    help="Só com --decide e --type equity ou fii: calcula a nota de valuation pelo "
-    "método principal do catálogo (ações: Bazin em setores de dividendo, Graham nos "
-    "demais; FIIs: NAV, o patrimônio por cota; Bazin/Yield usam a NTN-B longa, "
-    "buscada agora). O --data-file precisa trazer os insumos (lpa/vpa/"
-    "dividend_per_share nas ações; nav_per_share nos FIIs) e, nos FIIs, sector/"
-    "industry = estrutura/segmento (Tijolo, Papel...). Um --valuation-score "
-    "explícito tem precedência. Se nenhum método produz valor, fica neutro (5.0) "
-    "e o motivo é mostrado.",
+    help="Só com --decide e --type equity, fii, agro ou fixed_income: calcula a nota "
+    "de valuation pelo método principal do catálogo (ações: Bazin em setores de "
+    "dividendo, Graham nos demais; FIIs e FIAGRO (--type agro): NAV, o patrimônio por "
+    "cota; FI-Infra listado (--type fixed_income): NAV, a cota da CVM contra o preço; "
+    "Bazin/Yield usam a NTN-B longa, buscada agora). O --data-file precisa trazer os "
+    "insumos (lpa/vpa/dividend_per_share nas ações; nav_per_share nos demais, mais o "
+    "preço) e, nos fundos, sector/industry = estrutura/segmento (Tijolo, Papel...). "
+    "Um --valuation-score explícito tem precedência. Se nenhum método produz valor "
+    "(ex.: fixed_income sem preço de mercado), fica neutro (5.0) e o motivo é mostrado.",
 )
 def analyze(
     symbol: str,

@@ -225,3 +225,103 @@ def test_a_fii_without_nav_keeps_the_neutral_value_and_says_why(tmp_path, monkey
     assert "valuation automático sem valor" in result.output
     assert "patrimônio por cota" in result.output
     assert "valuation_score não fornecido" in result.output
+
+
+# --- FIAGRO (--type agro) and listed FI-Infra (--type fixed_income) -------------------
+
+
+def _typed_file(tmp_path, asset_type, *, sector, industry, price, **financials):
+    path = tmp_path / f"{asset_type}.json"
+    CliRunner().invoke(cli, ["analyze-template", "--type", asset_type, "-o", str(path)])
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data.update({"sector": sector, "industry": industry, "price": price})
+    data["financials"].update(financials)
+    path.write_text(json.dumps(data), encoding="utf-8")
+    return path
+
+
+def _analyze_typed(tmp_path, monkeypatch, symbol, asset_type, **file_kwargs):
+    import iip.portfolio.batch_value as bv
+
+    monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
+    path = _typed_file(tmp_path, asset_type, **file_kwargs)
+    return CliRunner().invoke(
+        cli,
+        ["analyze", symbol, "--type", asset_type, "--data-file", str(path), "--decide",
+         "--evidence-id", "ev-1", "--auto-valuation"],
+    )
+
+
+def test_auto_valuation_uses_the_nav_for_a_fiagro(tmp_path, monkeypatch):
+    result = _analyze_typed(
+        tmp_path, monkeypatch, "CRAA11", "agro", sector="Papel",
+        industry="Crédito Agrícola", price=90.99, nav_per_share=100.96,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Valuation automático: NAV" in result.output
+    assert "valuation_score não fornecido" not in result.output
+
+
+def test_auto_valuation_uses_the_nav_for_a_listed_fi_infra(tmp_path, monkeypatch):
+    result = _analyze_typed(
+        tmp_path, monkeypatch, "CDII11", "fixed_income", sector="Papel",
+        industry="Infraestrutura", price=95.2, nav_per_share=101.17,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Valuation automático: NAV" in result.output
+    assert "valuation_score não fornecido" not in result.output
+
+
+def test_fixed_income_without_a_market_price_stays_neutral_and_says_why(tmp_path, monkeypatch):
+    # AXIA3 case: the data file has a cota but no price to compare it with.
+    result = _analyze_typed(
+        tmp_path, monkeypatch, "AXIA3", "fixed_income", sector="Utilities",
+        industry="Electric Utilities", price=None, nav_per_share=1.89,
+    )
+
+    assert result.exit_code == 0, result.output
+    output = " ".join(result.output.split())  # Rich wraps long warnings
+    assert "valuation automático sem valor" in output
+    assert "sem preço de mercado" in output
+    assert "valuation_score não fornecido" in output
+
+
+def _fetch_template_fixed_income(monkeypatch, tmp_path, *extra, token="tok"):
+    import iip.cli.fetch_template as ft
+
+    calls = []
+
+    def fake(symbol, cnpj, ano, mes, brapi_token=None):
+        calls.append(brapi_token)
+        return {"symbol": symbol, "price": None, "financials": {}}, type(
+            "R", (), {"fetched_fields": (), "warnings": ()}
+        )()
+
+    monkeypatch.setattr(ft, "fetch_fixed_income_template_live", fake)
+    monkeypatch.setenv("IIP_BRAPI_TOKEN", token)
+    from iip.config import get_settings
+
+    get_settings.cache_clear()
+    try:
+        result = CliRunner().invoke(
+            cli,
+            ["fetch-template", "CDII11", "--type", "fixed_income",
+             "--cnpj", "48.973.783/0001-16", "-o", str(tmp_path / "t.json"), *extra],
+        )
+    finally:
+        get_settings.cache_clear()
+    return result, calls
+
+
+def test_fetch_template_fixed_income_never_prices_without_the_flag(monkeypatch, tmp_path):
+    result, calls = _fetch_template_fixed_income(monkeypatch, tmp_path)
+    assert result.exit_code == 0, result.output
+    assert calls == [None]
+
+
+def test_fetch_template_fixed_income_prices_only_with_the_flag(monkeypatch, tmp_path):
+    result, calls = _fetch_template_fixed_income(monkeypatch, tmp_path, "--preco-mercado")
+    assert result.exit_code == 0, result.output
+    assert calls == ["tok"]
