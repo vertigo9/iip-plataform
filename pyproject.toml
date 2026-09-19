@@ -92,6 +92,13 @@ select = [
 "diagnosticar_*.py" = ["BLE001"]
 "testar_*.py" = ["BLE001", "DTZ011"]
 
+# Sem isto o black infere a versao-alvo por arquivo a partir da sintaxe e do
+# Python que esta rodando (3.14 local, 3.12 no CI), e o resultado varia.
+# Mesmo alvo do ruff.
+[tool.black]
+target-version = ["py312"]
+extend-exclude = "(iip_knowledge_bridge|archive|_lixo_para_revisar)"
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --cov=iip --cov-report=term-missing"
