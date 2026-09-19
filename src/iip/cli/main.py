@@ -1656,8 +1656,16 @@ def _collect_mziq_manager_documents(
 @click.option(
     "--ticker",
     required=True,
-    help="Fundo com listagem de documentos em HTML estático: TRXF11, "
-    "VGIP11, CPTI11, MANA11, RBVA11, HGBS11 ou KNRI11.",
+    help="Ativo com listagem de documentos em HTML estático: os fundos TRXF11, "
+    "VGIP11, CPTI11, MANA11, RBVA11, HGBS11 e KNRI11, e as empresas ISAE4 e CMIG4.",
+)
+@click.option(
+    "--anos-historico",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Só para quem tem seletor de ano na página (ISAE4, CMIG4): quantos anos, contando o "
+    "corrente, buscar. Os fundos listam tudo numa página e ignoram esta opção.",
 )
 @click.option(
     "--limite",
@@ -1687,6 +1695,7 @@ def _collect_mziq_manager_documents(
 )
 def collect_static_documents_command(
     ticker: str,
+    anos_historico: int,
     limite: int | None,
     vault: str | None,
     sem_evidencia: bool,
@@ -1716,7 +1725,6 @@ def collect_static_documents_command(
     from iip.knowledge.bridge import KnowledgeBridge
     from iip.sources.static_pdf_listing import (
         STATIC_PDF_LISTING_FUNDS,
-        build_target,
         fund_for_ticker,
     )
     from iip.sources.static_pdf_listing_harvester import StaticPdfListingHTTPHarvester
@@ -1735,8 +1743,16 @@ def collect_static_documents_command(
         f"({fund.page_url})...[/]\n"
     )
 
-    listing = StaticPdfListingHTTPHarvester().fetch(build_target(normalized_ticker))
-    documents = listing.documents
+    import datetime as _dt
+
+    this_year = _dt.date.today().year  # noqa: DTZ011 — ano de calendário (histórico de documentos), não timestamp
+    harvester = StaticPdfListingHTTPHarvester()
+    documents = harvester.collect(
+        normalized_ticker,
+        years=tuple(range(this_year, this_year - max(anos_historico, 1), -1)),
+    )
+    for problem in harvester.last_errors:
+        console.print(f"[yellow]Aviso: página ignorada — {problem}[/]")
     if limite is not None:
         documents = documents[:limite]
 
@@ -1803,7 +1819,7 @@ def collect_static_documents_command(
 @click.option(
     "--ticker",
     required=True,
-    help="Ativo com config Solutions IR registrada: hoje só BTCI11.",
+    help="Ativo com config Solutions IR registrada: BTCI11 (fundo) e CSUD3 (empresa).",
 )
 @click.option(
     "--categoria",
@@ -1823,6 +1839,21 @@ def collect_static_documents_command(
     default=None,
     help="Baixa só os N primeiros documentos encontrados (útil pra "
     "teste/preview -- BTCI11 sozinho tem ~800 documentos).",
+)
+@click.option(
+    "--anos-historico",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Só para empresas (ex.: CSUD3): quantos anos, contando o corrente, buscar "
+    "-- a API devolve um ano por chamada. Fundos (BTCI11) ignoram: vêm de uma vez.",
+)
+@click.option(
+    "--incluir-midia",
+    is_flag=True,
+    default=False,
+    help="Também baixa áudio e vídeo (mp3/mp4...). Por padrão são pulados: são pesados "
+    "e não viram evidência textual.",
 )
 @click.option(
     "--vault",
@@ -1848,6 +1879,8 @@ def collect_solutions_ir_documents_command(
     categoria: tuple[str, ...],
     ano: int | None,
     limite: int | None,
+    anos_historico: int,
+    incluir_midia: bool,
     vault: str | None,
     sem_evidencia: bool,
     output_dir: str | None,
@@ -1874,7 +1907,6 @@ def collect_solutions_ir_documents_command(
     from iip.knowledge.bridge import KnowledgeBridge
     from iip.sources.solutions_ir import (
         SOLUTIONS_IR_COMPANIES,
-        build_documents_target,
         company_for_ticker,
     )
     from iip.sources.solutions_ir_harvester import SolutionsIrHTTPHarvester
@@ -1889,8 +1921,18 @@ def collect_solutions_ir_documents_command(
 
     console.print(f"[dim]Buscando documentos de {normalized_ticker} via Solutions IR...[/]\n")
 
-    result = SolutionsIrHTTPHarvester().fetch(build_documents_target(normalized_ticker))
-    documents = result.documents
+    import datetime as _dt
+
+    this_year = _dt.date.today().year  # noqa: DTZ011 — ano de calendário (histórico de documentos), não timestamp
+    documents = SolutionsIrHTTPHarvester().collect(
+        normalized_ticker,
+        years=tuple(range(this_year, this_year - max(anos_historico, 1), -1)),
+    )
+    if not incluir_midia:
+        media = {".mp3", ".mp4", ".wav", ".m4a", ".mov", ".avi"}
+        documents = tuple(
+            d for d in documents if Path(d.url.split("?", 1)[0]).suffix.lower() not in media
+        )
     if categoria:
         wanted = set(categoria)
         documents = tuple(d for d in documents if d.category_sigla in wanted)
@@ -1956,6 +1998,119 @@ def collect_solutions_ir_documents_command(
     console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
     if out_dir is not None:
         console.print(f"[dim]Cópias salvas em {out_dir}[/]")
+    if bridge is not None:
+        console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
+
+
+@cli.command("collect-cpfl-documents")
+@click.option(
+    "--anos-historico",
+    type=int,
+    default=3,
+    show_default=True,
+    help="Quantos anos, contando o corrente, coletar (a página lista de 2002 até hoje).",
+)
+@click.option(
+    "--incluir-midia",
+    is_flag=True,
+    default=False,
+    help="Também baixa áudio e vídeo das conferências. Por padrão são pulados: são "
+    "pesados e não viram evidência textual.",
+)
+@click.option(
+    "--limite",
+    type=int,
+    default=None,
+    help="Baixa só os N primeiros documentos (útil pra teste/preview).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault -- só lista/baixa os documentos.",
+)
+def collect_cpfl_documents_command(
+    anos_historico: int,
+    incluir_midia: bool,
+    limite: int | None,
+    vault: str | None,
+    sem_evidencia: bool,
+) -> None:
+    """Lista e baixa documentos reais do RI da CPFL Energia (CPFE3) — Release
+    e Apresentação de Resultados, Demonstrações Financeiras, transcrições —
+    do CMS legado ``ri.cpfl.com.br`` (``iip.sources.cpfl_ri``): a "Central de
+    Resultados" traz todos os anos numa página e cada arquivo sai de
+    ``Download.aspx``, com HTTP simples, sem navegador.
+    """
+    import datetime as _dt
+    from urllib.error import HTTPError
+    from urllib.request import Request, urlopen
+
+    from iip.atlas.knowledge_adapter import AtlasKnowledgeAdapter
+    from iip.atlas.models import AtlasDocument
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.sources.cpfl_ri_harvester import CpflRiHTTPHarvester
+
+    console.print("[dim]Buscando a Central de Resultados de CPFE3 (ri.cpfl.com.br)...[/]\n")
+    documents = CpflRiHTTPHarvester().fetch().documents
+    first_year = _dt.date.today().year - max(anos_historico, 1) + 1  # noqa: DTZ011 — ano de calendário (histórico de documentos), não timestamp
+    documents = tuple(d for d in documents if d.year >= first_year)
+    if not incluir_midia:
+        documents = tuple(d for d in documents if not d.is_media)
+    if limite is not None:
+        documents = documents[:limite]
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    bridge = None if sem_evidencia else KnowledgeBridge(vault_path)
+
+    table = Table(title="Documentos RI — CPFE3 (CPFL Energia)")
+    table.add_column("Título")
+    table.add_column("Status")
+
+    baixados = 0
+    for document in documents:
+        try:
+            request = Request(document.url, headers={"User-Agent": "Mozilla/5.0 (compatible; IIP-D-OBSIDIAN/1.0)"})
+            with urlopen(request, timeout=60.0) as response:  # noqa: S310 — URL vem da própria Central de Resultados do RI, não de entrada externa
+                body = response.read()
+                content_type = response.headers.get("Content-Type", "application/pdf")
+        except HTTPError as exc:
+            table.add_row(document.title, f"[red]HTTP {exc.code}[/]")
+            continue
+        except Exception as exc:  # noqa: BLE001 — um documento ruim não deve abortar a coleta inteira
+            table.add_row(document.title, f"[red]{type(exc).__name__}[/]")
+            continue
+
+        if bridge is not None:
+            atlas_document = AtlasDocument.build(
+                ticker="CPFE3",
+                provider="cpfl_ri",
+                role="investor_relations_document",
+                url=document.url,
+                final_url=document.url,
+                content_type=content_type,
+                status_code=200,
+                body=body,
+                discovered_year=document.year,
+                title=document.title,
+            )
+            evidence = AtlasKnowledgeAdapter.to_evidence(atlas_document)
+            try:
+                bridge.persist_evidence(evidence)
+            except FileExistsError:
+                pass
+
+        baixados += 1
+        table.add_row(document.title, "[green]ok[/]")
+
+    console.print(table)
+    console.print(f"\n[green]{baixados}/{len(documents)} documento(s)[/] baixado(s) com sucesso.")
     if bridge is not None:
         console.print("[dim]Evidência Atlas persistida no vault (04_Evidence).[/]")
 

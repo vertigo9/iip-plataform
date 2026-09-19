@@ -19,9 +19,9 @@ def test_fund_for_ticker_unknown_returns_none():
     assert fund_for_ticker("XPML11") is None
 
 
-def test_all_seven_funds_registered():
+def test_all_seven_funds_and_the_isae4_cmig4_companies_registered():
     assert set(STATIC_PDF_LISTING_FUNDS) == {
-        "TRXF11", "VGIP11", "CPTI11", "MANA11", "RBVA11", "HGBS11", "KNRI11",
+        "TRXF11", "VGIP11", "CPTI11", "MANA11", "RBVA11", "HGBS11", "KNRI11", "ISAE4", "CMIG4",
     }
 
 

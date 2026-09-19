@@ -11,6 +11,9 @@ from urllib.request import Request, urlopen
 from .solutions_ir import (
     SolutionsIrDocument,
     SolutionsIrTarget,
+    build_documents_target,
+    build_site_targets,
+    company_for_ticker,
     parse_documents_response,
 )
 
@@ -48,4 +51,29 @@ class SolutionsIrHTTPHarvester:
 
         return FetchedSolutionsIrDocuments(
             target=target, status_code=status_code, documents=documents
+        )
+
+    def collect(
+        self, ticker: str, *, years: tuple[int, ...] = ()
+    ) -> tuple[SolutionsIrDocument, ...]:
+        """Every document of ``ticker``, whichever endpoint shape it is registered
+        with: one call for a fund; one call per year in ``years`` for a company
+        site (deduplicated by URL, newest first)."""
+        company = company_for_ticker(ticker)
+        if company is None:
+            raise ValueError(f"no Solutions IR config registered for ticker {ticker!r}")
+        if not company.is_site:
+            return self.fetch(build_documents_target(ticker)).documents
+        if not years:
+            raise ValueError("years is required for a company site")
+        by_url: dict[str, SolutionsIrDocument] = {}
+        for target in build_site_targets(ticker, years):
+            for document in self.fetch(target).documents:
+                by_url.setdefault(document.url, document)
+        return tuple(
+            sorted(
+                by_url.values(),
+                key=lambda d: (d.year, d.date, d.category_sigla),
+                reverse=True,
+            )
         )

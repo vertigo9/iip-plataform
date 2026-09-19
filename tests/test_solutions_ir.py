@@ -22,8 +22,8 @@ def test_company_for_ticker_unknown_returns_none():
     assert company_for_ticker("ALZR11") is None
 
 
-def test_only_btci11_registered():
-    assert set(SOLUTIONS_IR_COMPANIES) == {"BTCI11"}
+def test_registered_tickers_are_the_fund_and_the_company_site():
+    assert set(SOLUTIONS_IR_COMPANIES) == {"BTCI11", "CSUD3"}
 
 
 def test_build_documents_target_uses_fund_id_and_cnpj():

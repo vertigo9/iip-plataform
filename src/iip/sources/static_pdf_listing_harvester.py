@@ -9,7 +9,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.request import Request, urlopen
 
-from .static_pdf_listing import StaticDocument, StaticListingTarget, parse_pdf_links
+from .static_pdf_listing import (
+    DEFAULT_EXTENSIONS,
+    StaticDocument,
+    StaticListingTarget,
+    build_targets,
+    fund_for_ticker,
+    parse_pdf_links,
+)
 
 
 @dataclass(frozen=True)
@@ -31,6 +38,7 @@ class StaticPdfListingHTTPHarvester:
         self._opener = opener or urlopen
         self.timeout = timeout
         self.user_agent = user_agent
+        self.last_errors: list[str] = []
 
     def fetch(self, target: StaticListingTarget) -> FetchedListingPage:
         request = Request(
@@ -43,7 +51,10 @@ class StaticPdfListingHTTPHarvester:
         final_url = str(response.geturl() if hasattr(response, "geturl") else target.url)
 
         html = body.decode("utf-8", errors="replace")
-        documents = parse_pdf_links(html, final_url, target.ticker)
+        fund = fund_for_ticker(target.ticker)
+        documents = parse_pdf_links(
+            html, final_url, target.ticker, fund.extensions if fund else DEFAULT_EXTENSIONS
+        )
 
         return FetchedListingPage(
             target=target,
@@ -51,3 +62,25 @@ class StaticPdfListingHTTPHarvester:
             documents=documents,
             final_url=final_url,
         )
+
+    def collect(
+        self, ticker: str, *, years: tuple[int, ...] = ()
+    ) -> tuple[StaticDocument, ...]:
+        """Every document of ``ticker`` across all its registered pages (and, for a
+        registration with a year parameter, across ``years``), deduplicated by URL
+        in the order found. The FIRST page must succeed -- a failure there is real
+        and propagates; a failing later page or year is recorded in ``last_errors``
+        and skipped, so one flaky page does not lose the rest."""
+        self.last_errors = []
+        by_url: dict[str, StaticDocument] = {}
+        for index, target in enumerate(build_targets(ticker, years)):
+            try:
+                page = self.fetch(target)
+            except Exception as exc:  # noqa: BLE001 — see docstring: only the first page is mandatory
+                if index == 0:
+                    raise
+                self.last_errors.append(f"{target.url}: {type(exc).__name__}: {exc}")
+                continue
+            for document in page.documents:
+                by_url.setdefault(document.url, document)
+        return tuple(by_url.values())

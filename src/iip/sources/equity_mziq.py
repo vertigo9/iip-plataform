@@ -37,8 +37,12 @@ future session doesn't repeat the same investigation:
     api.mziq.com document links only survive in stale search-engine
     caches from before the relaunch.
 
-Each of these 4 would need its own separate, non-MZIQ provider to get
-real document coverage -- not attempted here.
+Each of these 4 needed its own non-MZIQ provider. Added 18/09/2026 (all with
+plain HTTP, no browser): ISAE4 and CMIG4 through ``static_pdf_listing`` (company
+registrations with a year selector), CSUD3 through ``solutions_ir`` (company site
+endpoint), CPFE3 through ``cpfl_ri`` (legacy CMS results center). The corrections
+to the notes above: ISAE4's and CMIG4's pages are server-rendered, and CPFE3's
+opaque ``idCanal`` URLs are stable and list every year in one page.
 """
 
 from __future__ import annotations

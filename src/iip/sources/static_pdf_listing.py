@@ -27,15 +27,35 @@ to parse reliably, while the filename is uniform to extract.
 either (date formats vary per site, several ambiguous) -- evidence
 falls back to its ingestion date instead of guessing the document's
 real one.
+
+COMPANY SITES (added 18/09/2026, ISAE4): the same pattern also fits an issuer whose
+IR site is server-rendered (checked with plain GETs of ri.isaenergiabrasil.com.br,
+which was previously recorded as a "custom ASP.NET MVC site" with no adapter). Three
+optional registration fields cover what differed from the fund pages: ``extra_page_urls``
+(the documents are spread over several pages), ``year_param`` (the results page shows
+the current year and takes ``?ano=YYYY`` for earlier ones -- its year <select> posts
+to an AJAX action, but the same GET query works) and ``extensions`` (the company also
+publishes ``.xlsx`` results workbooks, which are structured data worth keeping). A fund
+registration without those fields behaves exactly as before.
+
+CMIG4 (Cemig) is registered the same way, with ``year_in_path`` (``<page>/<year>``).
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from functools import lru_cache
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 _PDF_HREF_RE = re.compile(r'href="([^"]+\.pdf)"', re.IGNORECASE)
+DEFAULT_EXTENSIONS = (".pdf",)
+
+
+@lru_cache(maxsize=None)
+def _href_re(extensions: tuple[str, ...]) -> re.Pattern[str]:
+    alternatives = "|".join(re.escape(e) for e in extensions)
+    return re.compile(rf'href="([^"]+(?:{alternatives}))"', re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -43,6 +63,10 @@ class StaticListingFund:
     ticker: str
     manager: str
     page_url: str
+    extra_page_urls: tuple[str, ...] = ()
+    year_param: str | None = None  # query parameter that selects the year of ``page_url``
+    year_in_path: bool = False  # the year is a path segment instead: ``<page_url>/<year>``
+    extensions: tuple[str, ...] = DEFAULT_EXTENSIONS
 
 
 STATIC_PDF_LISTING_FUNDS: dict[str, StaticListingFund] = {
@@ -87,6 +111,39 @@ STATIC_PDF_LISTING_FUNDS: dict[str, StaticListingFund] = {
         # this one confirmed working (18/09/2026), found via web search.
         page_url="https://www.kinea.com.br/fundos/fundo-imobiliario-kinea-renda-knri11/",
     ),
+    # ISA Energia Brasil (a listed company, not a fund): results center by year plus the
+    # reports, modelling-support and subsidiary-statements pages. The pages for
+    # shareholder remuneration, debt and regulatory documents render no links in the
+    # static HTML (they load client-side) and are deliberately not registered.
+    "ISAE4": StaticListingFund(
+        ticker="ISAE4",
+        manager="ISA Energia Brasil",
+        page_url="https://ri.isaenergiabrasil.com.br/pt/informacoes-financeiras/central-de-resultados",
+        year_param="ano",
+        extra_page_urls=(
+            "https://ri.isaenergiabrasil.com.br/pt/informacoes-financeiras/relatorios",
+            "https://ri.isaenergiabrasil.com.br/pt/informacoes-financeiras/suporte-para-modelagem",
+            "https://ri.isaenergiabrasil.com.br/pt/informacoes-financeiras/demonstracoes-das-subsidiarias",
+        ),
+        extensions=(".pdf", ".xlsx"),
+    ),
+    # Cemig (CMIG4): Next.js site, but the pages are server-rendered with the files as
+    # plain ``/docs/<name>-<date>-<hash>.pdf|xlsx`` links. The "central de downloads"
+    # shows the current year (175 files) and ``.../<year>`` gives an earlier one (found
+    # by trying it: the year buttons are client-side links, the page data lists 2000-2026
+    # with ~250 posts each). The results and presentations pages are current-year only
+    # but cheap, and cover a file that could appear there first.
+    "CMIG4": StaticListingFund(
+        ticker="CMIG4",
+        manager="Cemig",
+        page_url="https://ri.cemig.com.br/servicos-aos-investidores/central-de-downloads",
+        year_in_path=True,
+        extra_page_urls=(
+            "https://ri.cemig.com.br/divulgacao-e-resultados/central-de-resultados",
+            "https://ri.cemig.com.br/divulgacao-e-resultados/apresentacoes-e-teleconferencias",
+        ),
+        extensions=(".pdf", ".xlsx"),
+    ),
 }
 
 
@@ -114,6 +171,29 @@ def build_target(ticker: str) -> StaticListingTarget:
     return StaticListingTarget(ticker=fund.ticker, url=fund.page_url)
 
 
+def build_targets(ticker: str, years: tuple[int, ...] = ()) -> tuple[StaticListingTarget, ...]:
+    """Every page to read for ``ticker``: the main page (once per year in ``years``
+    when the registration has a ``year_param``, else once) then the extra pages.
+    The FIRST target is the one that must succeed."""
+    fund = fund_for_ticker(ticker)
+    if fund is None:
+        raise ValueError(f"no static-listing config registered for ticker {ticker!r}")
+    if (fund.year_param or fund.year_in_path) and years:
+        main = tuple(
+            StaticListingTarget(
+                fund.ticker,
+                f"{fund.page_url}/{year}"
+                if fund.year_in_path
+                else f"{fund.page_url}?{fund.year_param}={year}",
+            )
+            for year in years
+        )
+    else:
+        main = (StaticListingTarget(fund.ticker, fund.page_url),)
+    extra = tuple(StaticListingTarget(fund.ticker, url) for url in fund.extra_page_urls)
+    return main + extra
+
+
 def _percent_encode(url: str) -> str:
     """Percent-encode a URL's path/query so it's safe to put on an HTTP
     request line. Confirmed live (18/09/2026): a handful of hrefs on
@@ -138,19 +218,26 @@ def _percent_encode(url: str) -> str:
 
 def _title_from_url(url: str) -> str:
     name = url.split("?", 1)[0].rsplit("/", 1)[-1]
-    if name.lower().endswith(".pdf"):
-        name = name[: -len(".pdf")]
+    for extension in (".pdf", ".xlsx"):
+        if name.lower().endswith(extension):
+            name = name[: -len(extension)]
+            break
     name = re.sub(r"[_-]+", " ", name).strip()
     return name or "documento"
 
 
-def parse_pdf_links(html: str, base_url: str, ticker: str) -> tuple[StaticDocument, ...]:
-    """Extract every unique ``.pdf`` link from a fund's document-listing
-    page. Relative hrefs are resolved against ``base_url`` (the page's
-    own final URL, after any redirect)."""
+def parse_pdf_links(
+    html: str,
+    base_url: str,
+    ticker: str,
+    extensions: tuple[str, ...] = DEFAULT_EXTENSIONS,
+) -> tuple[StaticDocument, ...]:
+    """Extract every unique document link (``.pdf`` unless ``extensions`` says
+    otherwise) from a document-listing page. Relative hrefs are resolved against
+    ``base_url`` (the page's own final URL, after any redirect)."""
     seen: set[str] = set()
     documents: list[StaticDocument] = []
-    for match in _PDF_HREF_RE.finditer(html):
+    for match in _href_re(tuple(extensions)).finditer(html):
         resolved = urljoin(base_url, match.group(1))
         if resolved in seen:
             continue
