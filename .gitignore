@@ -52,6 +52,12 @@ demo_vault/
 portfolio_snapshots/
 logs_atualizacao/
 
+# Dashboard gerado todo dia as 18:00 pelo motor de demonstracao (tarefa agendada
+# IIP_Engine_Daily_Sync -> run_iip_task.bat -> run_iip_engine.py, que grava no vault
+# de demonstracao MeuVaultFinanceiro). So a saida gerada; as notas de exemplo
+# versionadas em MeuVaultFinanceiro/00 e /01 continuam rastreadas.
+/MeuVaultFinanceiro/02_Portfolio/
+
 # OS files
 .DS_Store
 Thumbs.db
