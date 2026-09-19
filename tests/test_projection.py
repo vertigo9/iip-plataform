@@ -83,7 +83,9 @@ def test_project_frontmatter_creates_frontmatter_when_absent(tmp_path: Path):
 
 def test_project_frontmatter_merges_and_preserves_other_keys(tmp_path: Path):
     path = tmp_path / "BBSE3.md"
-    path.write_text("---\nticker: BBSE3\nasset_class: equity\n---\ncorpo\n", encoding="utf-8")
+    path.write_text(
+        "---\nticker: BBSE3\nasset_class: equity\n---\ncorpo\n", encoding="utf-8"
+    )
     projector = AssetNoteProjector(tmp_path / "vault")
 
     projector.project_frontmatter(path, {"score": 82.5})
@@ -126,7 +128,10 @@ def test_project_asset_frontmatter_targets_canonical_note(tmp_path: Path):
         "bbse3", "equity", "scoring", {"score": 55.0}
     )
 
-    assert path == vault / "01_Assets" / "Equities" / "BBSE3" / "BBSE3 - Score e Ranking.md"
+    assert (
+        path
+        == vault / "01_Assets" / "Equities" / "BBSE3" / "BBSE3 - Score e Ranking.md"
+    )
     assert "score: 55.0" in path.read_text(encoding="utf-8")
 
 

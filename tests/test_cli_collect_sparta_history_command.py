@@ -69,7 +69,9 @@ def test_collect_sparta_history_persists_series_and_prints_table(monkeypatch, tm
     assert [o["period"] for o in data["observations"]] == ["2026-02-01", "2026-03-01"]
 
 
-def test_collect_sparta_history_skips_unpublished_month_without_failing(monkeypatch, tmp_path):
+def test_collect_sparta_history_skips_unpublished_month_without_failing(
+    monkeypatch, tmp_path
+):
     monkeypatch.setattr(
         SpartaReportsHTTPHarvester, "fetch", _fake_fetch({(2026, 3): 101.64})
     )
@@ -134,7 +136,9 @@ def test_collect_sparta_history_rejects_desde_after_ate(tmp_path):
     assert result.exit_code != 0
 
 
-def test_collect_sparta_history_persists_atlas_evidence_by_default(monkeypatch, tmp_path):
+def test_collect_sparta_history_persists_atlas_evidence_by_default(
+    monkeypatch, tmp_path
+):
     monkeypatch.setattr(
         SpartaReportsHTTPHarvester, "fetch", _fake_fetch({(2026, 3): 101.64})
     )

@@ -31,7 +31,11 @@ class _FakeResponse:
         return False
 
 
-def _fake_document(category="lvbi11_relatorio_de_gestao", doc_id="doc-1", url="https://filemanager-cdn.mziq.com/published/x/y.pdf"):
+def _fake_document(
+    category="lvbi11_relatorio_de_gestao",
+    doc_id="doc-1",
+    url="https://filemanager-cdn.mziq.com/published/x/y.pdf",
+):
     return MziqDocument(
         id=doc_id,
         company_id="ef0151fe-a22e-456d-8cc4-55ef365d7e3b",
@@ -47,13 +51,18 @@ def _fake_document(category="lvbi11_relatorio_de_gestao", doc_id="doc-1", url="h
     )
 
 
-def test_collect_patria_documents_downloads_and_persists_evidence(monkeypatch, tmp_path):
-    monkeypatch.setattr(MziqHTTPHarvester, "fetch_years", lambda self, target: (2026, 2025))
+def test_collect_patria_documents_downloads_and_persists_evidence(
+    monkeypatch, tmp_path
+):
+    monkeypatch.setattr(
+        MziqHTTPHarvester, "fetch_years", lambda self, target: (2026, 2025)
+    )
     monkeypatch.setattr(
         MziqHTTPHarvester, "fetch_documents", lambda self, target: (_fake_document(),)
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -94,7 +103,8 @@ def test_collect_patria_documents_filters_by_categoria(monkeypatch, tmp_path):
         ),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -121,12 +131,11 @@ def test_collect_patria_documents_respects_limite(monkeypatch, tmp_path):
     monkeypatch.setattr(
         MziqHTTPHarvester,
         "fetch_documents",
-        lambda self, target: tuple(
-            _fake_document(doc_id=str(i)) for i in range(5)
-        ),
+        lambda self, target: tuple(_fake_document(doc_id=str(i)) for i in range(5)),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()

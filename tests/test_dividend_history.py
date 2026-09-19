@@ -29,37 +29,72 @@ CNPJ_B = "22.222.222/0001-22"
 CNPJ_Z = "99.999.999/0001-99"
 
 
-def _dfc(cnpj, year, valor, *, ordem="ÚLTIMO", code="6.03.08", label="Dividendos pagos"):
+def _dfc(
+    cnpj, year, valor, *, ordem="ÚLTIMO", code="6.03.08", label="Dividendos pagos"
+):
     return DfpRow(
-        cnpj_cia=cnpj, ordem_exerc=ordem, dt_fim_exerc=f"{year}-12-31",
-        cd_conta=code, ds_conta=label, vl_conta=valor, escala="MIL",
+        cnpj_cia=cnpj,
+        ordem_exerc=ordem,
+        dt_fim_exerc=f"{year}-12-31",
+        cd_conta=code,
+        ds_conta=label,
+        vl_conta=valor,
+        escala="MIL",
     )
 
 
 # --- payout ratio ----------------------------------------------------------------
 
 
-def test_payout_ratio_is_paid_dividends_over_net_income_in_percent(parsed):  # noqa: F811
+def test_payout_ratio_is_paid_dividends_over_net_income_in_percent(
+    parsed,
+):  # noqa: F811
     dfc = (_dfc(NON_FINANCIAL_CNPJ, 2025, -957000.0),)
 
     result = extract_fundamentals(2025, NON_FINANCIAL_CNPJ, dfc_con=dfc, **parsed)
 
     assert result.lucro_liquido_brl == 1_678_211_000.0  # DRE scale MIL -> BRL
-    assert result.payout_ratio_pct == pytest.approx(957_000_000 / 1_678_211_000 * 100, abs=0.01)
+    assert result.payout_ratio_pct == pytest.approx(
+        957_000_000 / 1_678_211_000 * 100, abs=0.01
+    )
 
 
 def test_payout_ratio_is_not_capped_and_guards_missing_or_non_positive_income():
     base = {
-        "cnpj_cia": "x", "ano_referencia": 2025, "consolidado": True, "ativo_total": 1.0,
-        "patrimonio_liquido": 1.0, "receita": 1.0, "lucro_liquido": 1.0, "ebit": 1.0,
-        "passivo_nao_circulante": 1.0, "dividendos_pagos": 150.0, "lucro_liquido_brl": 100.0,
+        "cnpj_cia": "x",
+        "ano_referencia": 2025,
+        "consolidado": True,
+        "ativo_total": 1.0,
+        "patrimonio_liquido": 1.0,
+        "receita": 1.0,
+        "lucro_liquido": 1.0,
+        "ebit": 1.0,
+        "passivo_nao_circulante": 1.0,
+        "dividendos_pagos": 150.0,
+        "lucro_liquido_brl": 100.0,
     }
-    assert CompanyFundamentals(**base).payout_ratio_pct == 150.0  # paid out more than earned
-    assert CompanyFundamentals(**{**base, "dividendos_pagos": 0.0}).payout_ratio_pct == 0.0
-    assert CompanyFundamentals(**{**base, "dividendos_pagos": None}).payout_ratio_pct is None
-    assert CompanyFundamentals(**{**base, "lucro_liquido_brl": None}).payout_ratio_pct is None
-    assert CompanyFundamentals(**{**base, "lucro_liquido_brl": 0.0}).payout_ratio_pct is None
-    assert CompanyFundamentals(**{**base, "lucro_liquido_brl": -50.0}).payout_ratio_pct is None
+    assert (
+        CompanyFundamentals(**base).payout_ratio_pct == 150.0
+    )  # paid out more than earned
+    assert (
+        CompanyFundamentals(**{**base, "dividendos_pagos": 0.0}).payout_ratio_pct == 0.0
+    )
+    assert (
+        CompanyFundamentals(**{**base, "dividendos_pagos": None}).payout_ratio_pct
+        is None
+    )
+    assert (
+        CompanyFundamentals(**{**base, "lucro_liquido_brl": None}).payout_ratio_pct
+        is None
+    )
+    assert (
+        CompanyFundamentals(**{**base, "lucro_liquido_brl": 0.0}).payout_ratio_pct
+        is None
+    )
+    assert (
+        CompanyFundamentals(**{**base, "lucro_liquido_brl": -50.0}).payout_ratio_pct
+        is None
+    )
 
 
 # --- history and streak ----------------------------------------------------------
@@ -77,8 +112,13 @@ def test_dividend_history_prefers_consolidated_and_omits_years_without_a_line():
     ind = (_dfc(CNPJ_A, 2025, -999.0), _dfc(CNPJ_A, 2024, -999.0))
     other_company = (_dfc(CNPJ_B, 2024, -1.0),)
 
-    assert dividend_history(CNPJ_A, dfc_con=con + other_company, dfc_ind=ind) == {2025: 300_000.0}
-    assert dividend_history(CNPJ_A, dfc_con=(), dfc_ind=ind) == {2025: 999_000.0, 2024: 999_000.0}
+    assert dividend_history(CNPJ_A, dfc_con=con + other_company, dfc_ind=ind) == {
+        2025: 300_000.0
+    }
+    assert dividend_history(CNPJ_A, dfc_con=(), dfc_ind=ind) == {
+        2025: 999_000.0,
+        2024: 999_000.0,
+    }
     assert dividend_history(CNPJ_Z, dfc_con=con, dfc_ind=ind) == {}
 
 
@@ -86,8 +126,13 @@ def test_consecutive_dividend_years_counts_back_and_stops_at_zero_or_unknown():
     full = {2025: 1.0, 2024: 1.0, 2023: 1.0, 2022: 1.0, 2021: 1.0, 2020: 1.0}
     assert consecutive_dividend_years(full, 2025) == 5  # capped by the 5-year window
     assert consecutive_dividend_years(full, 2025, window=3) == 3
-    assert consecutive_dividend_years({2025: 1.0, 2024: 1.0, 2023: 0.0, 2022: 1.0}, 2025) == 2
-    assert consecutive_dividend_years({2025: 1.0, 2024: 1.0, 2022: 1.0}, 2025) == 2  # unknown != paid
+    assert (
+        consecutive_dividend_years({2025: 1.0, 2024: 1.0, 2023: 0.0, 2022: 1.0}, 2025)
+        == 2
+    )
+    assert (
+        consecutive_dividend_years({2025: 1.0, 2024: 1.0, 2022: 1.0}, 2025) == 2
+    )  # unknown != paid
     assert consecutive_dividend_years({2025: 0.0, 2024: 1.0}, 2025) == 0
     assert consecutive_dividend_years({2024: 1.0}, 2025) is None  # latest year unknown
     assert consecutive_dividend_years({}, 2025) is None
@@ -103,8 +148,15 @@ def test_cached_harvester_downloads_each_fiscal_year_once_and_drops_the_body():
         def fetch(self, target):
             calls.append(target.ano)
             return FetchedDfpYear(
-                target=target, status_code=200, bpa_con=(), bpa_ind=(), bpp_con=(),
-                bpp_ind=(), dre_con=(), dre_ind=(), body=b"x" * 1000,
+                target=target,
+                status_code=200,
+                bpa_con=(),
+                bpa_ind=(),
+                bpp_con=(),
+                bpp_ind=(),
+                dre_con=(),
+                dre_ind=(),
+                body=b"x" * 1000,
             )
 
     cached = CachedCvmDfpHarvester(Inner())
@@ -141,10 +193,14 @@ def _mock_dfp_years(monkeypatch, paid_by_year, *, fail_years=(), calls=None):
             rows.append(_dfc(NON_FINANCIAL_CNPJ, target.ano, -paid_by_year[target.ano]))
         rows.append(_dfc(NON_FINANCIAL_CNPJ, target.ano - 1, 0.0, ordem="PENÚLTIMO"))
         return mod.FetchedDfpYear(
-            target=target, status_code=200,
-            bpa_con=mod.parse_bpa_con(body), bpa_ind=mod.parse_bpa_ind(body),
-            bpp_con=mod.parse_bpp_con(body), bpp_ind=mod.parse_bpp_ind(body),
-            dre_con=mod.parse_dre_con(body), dre_ind=mod.parse_dre_ind(body),
+            target=target,
+            status_code=200,
+            bpa_con=mod.parse_bpa_con(body),
+            bpa_ind=mod.parse_bpa_ind(body),
+            bpp_con=mod.parse_bpp_con(body),
+            bpp_ind=mod.parse_bpp_ind(body),
+            dre_con=mod.parse_dre_con(body),
+            dre_ind=mod.parse_dre_ind(body),
             dfc_con=tuple(rows),
         )
 
@@ -156,9 +212,12 @@ def _live(monkeypatch, **kwargs):
         BolsaiHTTPHarvester,
         "fetch",
         lambda self, target: FetchedFundamentals(
-            target=target, status_code=200,
+            target=target,
+            status_code=200,
             fundamentals=make_bolsai_fundamentals(
-                shares_outstanding=1_000_000_000.0, close_price=10.0, dividend_yield=None
+                shares_outstanding=1_000_000_000.0,
+                close_price=10.0,
+                dividend_yield=None,
             ),
         ),
     )
@@ -177,7 +236,9 @@ def test_template_fills_payout_ratio_percent(monkeypatch):
     assert "payout_ratio" in resultado.fetched_fields
 
 
-def test_template_counts_five_paying_years_reading_each_year_from_its_own_file(monkeypatch):
+def test_template_counts_five_paying_years_reading_each_year_from_its_own_file(
+    monkeypatch,
+):
     calls = []
     _mock_dfp_years(monkeypatch, dict.fromkeys(range(2021, 2026), 1000.0), calls=calls)
 
@@ -202,12 +263,16 @@ def test_template_streak_stops_at_a_year_that_paid_nothing(monkeypatch):
 
 
 def test_template_missing_history_file_warns_and_never_assumes_a_paid_year(monkeypatch):
-    _mock_dfp_years(monkeypatch, dict.fromkeys(range(2021, 2026), 1000.0), fail_years=(2023,))
+    _mock_dfp_years(
+        monkeypatch, dict.fromkeys(range(2021, 2026), 1000.0), fail_years=(2023,)
+    )
 
     template, resultado = _live(monkeypatch)
 
     assert template["financials"]["dividend_consistency_years"] == 2  # 2025, 2024 only
-    assert any("2023" in w and "histórico de dividendos" in w for w in resultado.warnings)
+    assert any(
+        "2023" in w and "histórico de dividendos" in w for w in resultado.warnings
+    )
 
 
 def test_template_without_a_current_year_dividend_line_leaves_streak_unset(monkeypatch):
@@ -217,7 +282,9 @@ def test_template_without_a_current_year_dividend_line_leaves_streak_unset(monke
 
     # the key exists as an analyzer default; what matters is it was not "fetched"
     assert "dividend_consistency_years" not in resultado.fetched_fields
-    assert template["financials"]["dividend_consistency_years"] == 0  # default untouched
+    assert (
+        template["financials"]["dividend_consistency_years"] == 0
+    )  # default untouched
 
 
 def test_template_uses_a_shared_dfp_harvester_when_given(monkeypatch):
@@ -227,7 +294,9 @@ def test_template_uses_a_shared_dfp_harvester_when_given(monkeypatch):
     class Recorder:
         def fetch(self, target):
             seen.append(target.ano)
-            return CvmDfpHTTPHarvester.fetch(None, target)  # the mocked class-level fetch
+            return CvmDfpHTTPHarvester.fetch(
+                None, target
+            )  # the mocked class-level fetch
 
     _live(monkeypatch, dfp_harvester=Recorder())
 
@@ -248,7 +317,13 @@ def test_shared_dfp_cache_downloads_each_year_once_across_equities(monkeypatch):
         _live(monkeypatch)
     assert active_dfp_cache() is None  # scoped: not leaked past the block
 
-    assert sorted(calls) == [2021, 2022, 2023, 2024, 2025]  # 5 files for 3 equities, not 15
+    assert sorted(calls) == [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025,
+    ]  # 5 files for 3 equities, not 15
 
 
 def test_without_the_shared_cache_each_equity_downloads_on_its_own(monkeypatch):
@@ -285,7 +360,9 @@ def test_template_flags_a_zero_year_between_paying_years(monkeypatch):
 
 
 def test_template_does_not_flag_a_genuine_lapse_with_nothing_paid_before(monkeypatch):
-    _mock_dfp_years(monkeypatch, {2025: 1000.0, 2024: 1000.0, 2023: 0.0, 2022: 0.0, 2021: 0.0})
+    _mock_dfp_years(
+        monkeypatch, {2025: 1000.0, 2024: 1000.0, 2023: 0.0, 2022: 0.0, 2021: 0.0}
+    )
 
     template, resultado = _live(monkeypatch)
 

@@ -133,7 +133,9 @@ def test_etf_analyzer_low_expense_ratio_helps_management_pillar():
     cheap_report = analyzer.analyze(cheap)
     expensive_report = analyzer.analyze(expensive)
 
-    cheap_mgmt = next(p for p in cheap_report.pillar_scores if p.pillar == Pillar.MANAGEMENT)
+    cheap_mgmt = next(
+        p for p in cheap_report.pillar_scores if p.pillar == Pillar.MANAGEMENT
+    )
     expensive_mgmt = next(
         p for p in expensive_report.pillar_scores if p.pillar == Pillar.MANAGEMENT
     )

@@ -22,9 +22,7 @@ def _decision(
         score=score,
         confidence=confidence,
         reasons=("reason",),
-        evidence=tuple(
-            EvidenceRef(evidence_id, 1.0) for evidence_id in evidence_ids
-        ),
+        evidence=tuple(EvidenceRef(evidence_id, 1.0) for evidence_id in evidence_ids),
     )
 
 
@@ -55,12 +53,16 @@ def test_compose_uses_portfolio_asset_class_from_registry():
 
 
 def test_compose_rejects_missing_portfolio_asset():
-    with pytest.raises(PortfolioCompositionError, match="portfolio_asset_not_found:BBSE3"):
+    with pytest.raises(
+        PortfolioCompositionError, match="portfolio_asset_not_found:BBSE3"
+    ):
         compose((_decision(),), ())
 
 
 def test_compose_rejects_duplicate_portfolio_asset():
-    with pytest.raises(PortfolioCompositionError, match="duplicate_portfolio_asset:BBSE3"):
+    with pytest.raises(
+        PortfolioCompositionError, match="duplicate_portfolio_asset:BBSE3"
+    ):
         compose((_decision(),), (_asset(), _asset()))
 
 

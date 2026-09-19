@@ -26,8 +26,16 @@ def test_fund_for_ticker_alias_matches_company_for_ticker():
 
 def test_ten_confirmed_companies_registered():
     assert set(EQUITY_MZIQ_COMPANIES) == {
-        "ABCB4", "BBSE3", "CXSE3", "SAUD3", "ALOS3",
-        "VBBR3", "KLBN4", "FESA4", "LEVE3", "PASS3",
+        "ABCB4",
+        "BBSE3",
+        "CXSE3",
+        "SAUD3",
+        "ALOS3",
+        "VBBR3",
+        "KLBN4",
+        "FESA4",
+        "LEVE3",
+        "PASS3",
     }
 
 

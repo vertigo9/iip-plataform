@@ -31,7 +31,6 @@ def _clear_settings_cache(monkeypatch):
     get_settings.cache_clear()
 
 
-
 def make_fake_diario_fetch():
     informes = (
         InformeDiario(
@@ -56,7 +55,9 @@ def make_fake_diario_fetch():
 
 def test_fetch_template_etf_works_without_brapi_token(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch())
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch()
+    )
 
     runner = CliRunner()
     out_file = tmp_path / "bova11.json"
@@ -87,7 +88,9 @@ def test_fetch_template_etf_works_without_brapi_token(monkeypatch, tmp_path):
 
 def test_fetch_template_etf_uses_brapi_price_when_token_present(monkeypatch, tmp_path):
     monkeypatch.setenv("IIP_BRAPI_TOKEN", "fake-token")
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch())
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch()
+    )
 
     def fake_fetch(self, target):
         return FetchedQuotes(
@@ -134,7 +137,9 @@ def test_fetch_template_etf_uses_brapi_price_when_token_present(monkeypatch, tmp
 
 def test_fetch_template_etf_continues_when_brapi_fetch_fails(monkeypatch, tmp_path):
     monkeypatch.setenv("IIP_BRAPI_TOKEN", "fake-token")
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch())
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch()
+    )
 
     def failing_fetch(self, target):
         raise RuntimeError("simulated brapi outage")
@@ -182,7 +187,9 @@ def test_fetch_template_etf_exits_nonzero_on_cvm_error(monkeypatch):
 
 def test_fetch_template_etf_output_is_directly_usable_by_analyze(monkeypatch, tmp_path):
     monkeypatch.delenv("IIP_BRAPI_TOKEN", raising=False)
-    monkeypatch.setattr(CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch())
+    monkeypatch.setattr(
+        CvmRendaFixaHTTPHarvester, "fetch_diario", make_fake_diario_fetch()
+    )
 
     runner = CliRunner()
     out_file = tmp_path / "bova11.json"

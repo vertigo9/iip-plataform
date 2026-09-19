@@ -8,7 +8,9 @@ from iip.sources.cvm_fii import FiiComplemento
 CNPJ = "11.839.593/0001-09"
 
 
-def make_complemento(data_referencia, dy_mes=None, pl=None, vp_cota=None, cotas=None, cnpj=CNPJ):
+def make_complemento(
+    data_referencia, dy_mes=None, pl=None, vp_cota=None, cotas=None, cnpj=CNPJ
+):
     valores = {}
     if dy_mes is not None:
         valores["Percentual_Dividend_Yield_Mes"] = dy_mes
@@ -46,15 +48,18 @@ BTLG11_MESES_2026 = [
 
 def test_compute_dividend_yield_ttm_sums_available_months():
     dy_pct, months_used = compute_dividend_yield_ttm(BTLG11_MESES_2026)
-    esperado = sum(
-        [0.009116, 0.005334, 0.007456, 0.011364, 0.002987, 0.008562, 0.009476]
-    ) * 100
+    esperado = (
+        sum([0.009116, 0.005334, 0.007456, 0.011364, 0.002987, 0.008562, 0.009476])
+        * 100
+    )
     assert months_used == 7
     assert round(dy_pct, 4) == round(esperado, 4)
 
 
 def test_compute_dividend_yield_ttm_caps_at_twelve_months():
-    treze_meses = [make_complemento(f"2025-{m:02d}-01", dy_mes=0.01) for m in range(1, 13)]
+    treze_meses = [
+        make_complemento(f"2025-{m:02d}-01", dy_mes=0.01) for m in range(1, 13)
+    ]
     treze_meses.append(make_complemento("2026-01-01", dy_mes=0.01))
     _dy_pct, months_used = compute_dividend_yield_ttm(treze_meses)
     assert months_used == 12
@@ -191,7 +196,11 @@ def make_geral(**overrides):
 
 def test_build_fii_template_fills_sector_from_segmento_atuacao():
     template, resultado = build_fii_template(
-        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50,
+        "BTLG11",
+        CNPJ,
+        BTLG11_MESES_2026,
+        DEFAULT_FINANCIALS,
+        price=95.50,
         geral=[make_geral()],
     )
     assert template["sector"] == "Logistica"
@@ -207,7 +216,11 @@ def test_build_fii_template_sector_stays_placeholder_without_geral():
 
 def test_build_fii_template_sector_stays_placeholder_when_cnpj_not_in_geral():
     template, _ = build_fii_template(
-        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50,
+        "BTLG11",
+        CNPJ,
+        BTLG11_MESES_2026,
+        DEFAULT_FINANCIALS,
+        price=95.50,
         geral=[make_geral(cnpj_fundo_classe="00.000.000/0001-00")],
     )
     assert template["sector"] == "REPLACE_WITH_SECTOR"
@@ -215,7 +228,11 @@ def test_build_fii_template_sector_stays_placeholder_when_cnpj_not_in_geral():
 
 def test_build_fii_template_sector_picks_most_recent_geral_row():
     template, _ = build_fii_template(
-        "BTLG11", CNPJ, BTLG11_MESES_2026, DEFAULT_FINANCIALS, price=95.50,
+        "BTLG11",
+        CNPJ,
+        BTLG11_MESES_2026,
+        DEFAULT_FINANCIALS,
+        price=95.50,
         geral=[
             make_geral(data_referencia="2026-01-01", segmento_atuacao="Antigo"),
             make_geral(data_referencia="2026-07-01", segmento_atuacao="Logistica"),

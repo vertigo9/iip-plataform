@@ -10,7 +10,9 @@ from iip.portfolio.registry import PortfolioAsset
 from iip.portfolio_data.valuation import ValuationMethod
 from iip.sources.tesouro_direto import NtnbRate
 
-RATE = NtnbRate(reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073)
+RATE = NtnbRate(
+    reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073
+)
 
 
 @pytest.fixture(autouse=True)
@@ -25,9 +27,12 @@ def _clear_settings_cache(monkeypatch):
 
 def _equity(ticker, **kw):
     return PortfolioAsset(
-        ticker, "equity", cnpj="00.000.000/0000-00",
+        ticker,
+        "equity",
+        cnpj="00.000.000/0000-00",
         sector=kw.pop("sector", "Materiais Básicos"),
-        industry=kw.pop("industry", "Madeiras e Papel"), **kw,
+        industry=kw.pop("industry", "Madeiras e Papel"),
+        **kw,
     )
 
 
@@ -52,8 +57,13 @@ def _template(price=20.0, **financials):
 def _run(positions, templates, *, rate=RATE, **kw):
     fetch = _fake_fetch(templates)
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token=None, positions=tuple(positions),
-        fetch_equity=fetch, fetch_rate=lambda: rate, ano=2025, **kw,
+        bolsai_api_key="k",
+        brapi_token=None,
+        positions=tuple(positions),
+        fetch_equity=fetch,
+        fetch_rate=lambda: rate,
+        ano=2025,
+        **kw,
     )
     return result, fetch
 
@@ -80,9 +90,15 @@ def test_the_ntnb_rate_is_fetched_once_for_the_whole_run():
         fetched.append(1)
         return RATE
 
-    fetch = _fake_fetch({t: _template(dividend_per_share=1.0) for t in ("A3", "B3", "C3")})
+    fetch = _fake_fetch(
+        {t: _template(dividend_per_share=1.0) for t in ("A3", "B3", "C3")}
+    )
     value_portfolio(
-        bolsai_api_key="k", brapi_token=None, ano=2025, fetch_equity=fetch, fetch_rate=fetch_rate,
+        bolsai_api_key="k",
+        brapi_token=None,
+        ano=2025,
+        fetch_equity=fetch,
+        fetch_rate=fetch_rate,
         positions=tuple(_equity(t) for t in ("A3", "B3", "C3")),
     )
 
@@ -110,7 +126,11 @@ def test_rate_lookup_failure_is_a_note_not_a_crash():
 
     fetch = _fake_fetch({"KLBN4": _template(lpa=0.24, vpa=1.52)})
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token=None, ano=2025, fetch_equity=fetch, fetch_rate=boom,
+        bolsai_api_key="k",
+        brapi_token=None,
+        ano=2025,
+        fetch_equity=fetch,
+        fetch_rate=boom,
         positions=(_equity("KLBN4"),),
     )
 
@@ -119,7 +139,10 @@ def test_rate_lookup_failure_is_a_note_not_a_crash():
 
 
 def test_position_with_no_producible_method_is_skipped_with_reasons():
-    result, _ = _run([_equity("SAUD3")], {"SAUD3": _template(lpa=-0.4, vpa=3.0, dividend_per_share=0.0)})
+    result, _ = _run(
+        [_equity("SAUD3")],
+        {"SAUD3": _template(lpa=-0.4, vpa=3.0, dividend_per_share=0.0)},
+    )
 
     outcome = result.outcomes[0]
     assert outcome.status == "pulado"
@@ -129,7 +152,13 @@ def test_position_with_no_producible_method_is_skipped_with_reasons():
 
 def test_technology_equity_is_valued_only_by_the_methods_that_fit():
     result, _ = _run(
-        [_equity("CSUD3", sector="Utilidade Pública / Tecnologia", industry="Processamento de Dados")],
+        [
+            _equity(
+                "CSUD3",
+                sector="Utilidade Pública / Tecnologia",
+                industry="Processamento de Dados",
+            )
+        ],
         {"CSUD3": _template(lpa=2.0, vpa=11.0, dividend_per_share=0.87)},
     )
 
@@ -139,8 +168,12 @@ def test_technology_equity_is_valued_only_by_the_methods_that_fit():
 
 
 def test_classes_without_an_implemented_method_and_missing_sector_are_skipped_without_fetching():
-    etf = PortfolioAsset("LFTB11", "etf", cnpj="1")  # a class with no implemented method
-    no_sector = PortfolioAsset("XXXX3", "equity", cnpj="1")  # no sector/industry in the registry
+    etf = PortfolioAsset(
+        "LFTB11", "etf", cnpj="1"
+    )  # a class with no implemented method
+    no_sector = PortfolioAsset(
+        "XXXX3", "equity", cnpj="1"
+    )  # no sector/industry in the registry
 
     result, fetch = _run([etf, no_sector], {})
 
@@ -174,7 +207,9 @@ def test_persist_writes_only_the_first_method_that_produced_a_value():
     result, _ = _run(
         [_equity("CXSE3")],
         {"CXSE3": _template(lpa=1.51, vpa=4.60, dividend_per_share=1.26)},
-        persist=True, vault_path="/vault", bridge_cls=FakeBridge,
+        persist=True,
+        vault_path="/vault",
+        bridge_cls=FakeBridge,
     )
 
     assert written == [("CXSE3", "equity", ValuationMethod.GRAHAM)]
@@ -187,7 +222,9 @@ def test_nothing_is_written_without_persist():
             raise AssertionError("must not touch the vault")
 
     result, _ = _run(
-        [_equity("CXSE3")], {"CXSE3": _template(lpa=1.51, vpa=4.60)}, bridge_cls=ExplodingBridge
+        [_equity("CXSE3")],
+        {"CXSE3": _template(lpa=1.51, vpa=4.60)},
+        bridge_cls=ExplodingBridge,
     )
 
     assert result.outcomes[0].status == "ok"
@@ -196,8 +233,12 @@ def test_nothing_is_written_without_persist():
 def test_persist_requires_a_vault_path():
     with pytest.raises(ValueError, match="vault_path"):
         value_portfolio(
-            bolsai_api_key="k", brapi_token=None, positions=(), persist=True,
-            fetch_equity=_fake_fetch({}), fetch_rate=lambda: RATE,
+            bolsai_api_key="k",
+            brapi_token=None,
+            positions=(),
+            persist=True,
+            fetch_equity=_fake_fetch({}),
+            fetch_rate=lambda: RATE,
         )
 
 
@@ -209,14 +250,22 @@ def test_value_portfolio_command_prints_side_by_side_table(monkeypatch):
     import iip.portfolio.batch_value as bv
 
     monkeypatch.setattr(
-        bv, "assets_refreshable_now",
-        lambda: (_equity("CXSE3", sector="Financeiro", industry="Seguros"), _equity("BTLG11x"),
-                 PortfolioAsset("LFTB11", "etf", cnpj="1")),
+        bv,
+        "assets_refreshable_now",
+        lambda: (
+            _equity("CXSE3", sector="Financeiro", industry="Seguros"),
+            _equity("BTLG11x"),
+            PortfolioAsset("LFTB11", "etf", cnpj="1"),
+        ),
     )
     monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
     monkeypatch.setattr(
-        ft, "fetch_equity_template_live",
-        lambda symbol, cnpj, ano, b, r: (_template(price=20.54, lpa=1.43, vpa=4.6, dividend_per_share=1.26), object()),
+        ft,
+        "fetch_equity_template_live",
+        lambda symbol, cnpj, ano, b, r: (
+            _template(price=20.54, lpa=1.43, vpa=4.6, dividend_per_share=1.26),
+            object(),
+        ),
     )
 
     result = CliRunner().invoke(cli, ["value-portfolio"])
@@ -230,7 +279,9 @@ def test_value_portfolio_command_prints_side_by_side_table(monkeypatch):
     assert "pulado (1)" in result.output  # not wrapped-line sensitive
     assert "LFTB11" in result.output
     assert "principal" in result.output  # header may wrap in a narrow table
-    assert "Bazin" in result.output  # lead for the insurer, with Graham among the others
+    assert (
+        "Bazin" in result.output
+    )  # lead for the insurer, with Graham among the others
     assert "não é recomendação" in result.output
 
 
@@ -253,35 +304,53 @@ def test_value_portfolio_command_exits_nonzero_when_a_position_errors(monkeypatc
 
 def test_fiagro_paper_fund_is_valued_by_nav_only_through_the_fiagro_fetch():
     craa = PortfolioAsset(
-        "CRAA11", "fund", subtype="FI-Agro", structure="Papel",
-        segment="Crédito Agrícola", cnpj="48.903.610/0001-21",
+        "CRAA11",
+        "fund",
+        subtype="FI-Agro",
+        structure="Papel",
+        segment="Crédito Agrícola",
+        cnpj="48.903.610/0001-21",
     )
     calls = []
 
     def fetch_fiagro(symbol, cnpj, ano, mes, brapi_token, bolsai_api_key=None):
         calls.append((symbol, brapi_token, bolsai_api_key))
-        return _template(
-            price=90.99, nav_per_share=100.96, dividend_yield_ttm=15.66,
-            dividend_per_share=15.81,
-        ), object()
+        return (
+            _template(
+                price=90.99,
+                nav_per_share=100.96,
+                dividend_yield_ttm=15.66,
+                dividend_per_share=15.81,
+            ),
+            object(),
+        )
 
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token="b", positions=(craa,),
-        fetch_fiagro=fetch_fiagro, fetch_rate=lambda: RATE,
+        bolsai_api_key="k",
+        brapi_token="b",
+        positions=(craa,),
+        fetch_fiagro=fetch_fiagro,
+        fetch_rate=lambda: RATE,
     )
 
     outcome = result.outcomes[0]
     assert outcome.status == "ok" and outcome.asset_class == "fiagro"
     by_method = {a.method: a for a in outcome.attempts}
     assert by_method[ValuationMethod.NAV].snapshot.fair_value == 100.96
-    assert by_method[ValuationMethod.YIELD].status == "not_applicable"  # papel: CDI, not real
+    assert (
+        by_method[ValuationMethod.YIELD].status == "not_applicable"
+    )  # papel: CDI, not real
     assert calls == [("CRAA11", "b", "k")]
 
 
 def _fi_infra(ticker="CDII11"):
     return PortfolioAsset(
-        ticker, "fund", subtype="FI-Infra", structure="Papel",
-        segment="Infraestrutura", cnpj="48.973.783/0001-16",
+        ticker,
+        "fund",
+        subtype="FI-Infra",
+        structure="Papel",
+        segment="Infraestrutura",
+        cnpj="48.973.783/0001-16",
     )
 
 
@@ -293,35 +362,50 @@ def test_listed_fi_infra_is_valued_by_nav_with_brapi_price():
         return _template(price=95.2, nav_per_share=101.17), object()
 
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token="b", positions=(_fi_infra(),),
-        fetch_fixed_income=fetch_fixed_income, fetch_rate=lambda: RATE,
+        bolsai_api_key="k",
+        brapi_token="b",
+        positions=(_fi_infra(),),
+        fetch_fixed_income=fetch_fixed_income,
+        fetch_rate=lambda: RATE,
     )
 
     outcome = result.outcomes[0]
     assert outcome.status == "ok" and outcome.asset_class == "fi_infra"
     assert outcome.attempts[0].snapshot.fair_value == 101.17
-    assert outcome.attempts[0].snapshot.margin_of_safety == pytest.approx(101.17 / 95.2 - 1)
+    assert outcome.attempts[0].snapshot.margin_of_safety == pytest.approx(
+        101.17 / 95.2 - 1
+    )
     assert calls == [("CDII11", "b")]
 
 
 def test_fi_infra_with_failed_price_fetch_is_an_error():
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token="b", positions=(_fi_infra(),),
-        fetch_fixed_income=lambda *a, **kw: (_template(price=None, nav_per_share=101.17), object()),
+        bolsai_api_key="k",
+        brapi_token="b",
+        positions=(_fi_infra(),),
+        fetch_fixed_income=lambda *a, **kw: (
+            _template(price=None, nav_per_share=101.17),
+            object(),
+        ),
         fetch_rate=lambda: RATE,
     )
     assert result.outcomes[0].status == "erro"
 
 
 def test_unlisted_fixed_income_like_axia3_is_still_skipped_without_fetching():
-    axia = PortfolioAsset("AXIA3", "fixed_income", subtype="Daycoval FMP FGTS", cnpj="1")
+    axia = PortfolioAsset(
+        "AXIA3", "fixed_income", subtype="Daycoval FMP FGTS", cnpj="1"
+    )
 
     def fetch_fixed_income(*a, **kw):
         raise AssertionError("must not fetch: no market ticker to price against")
 
     result = value_portfolio(
-        bolsai_api_key="k", brapi_token="b", positions=(axia,),
-        fetch_fixed_income=fetch_fixed_income, fetch_rate=lambda: RATE,
+        bolsai_api_key="k",
+        brapi_token="b",
+        positions=(axia,),
+        fetch_fixed_income=fetch_fixed_income,
+        fetch_rate=lambda: RATE,
     )
     assert result.outcomes[0].status == "pulado"
     assert "fixed_income" in result.outcomes[0].detail

@@ -8,8 +8,20 @@ from iip.reports.pdf_exporter import generate_html_report
 
 def test_generate_html_report_creates_file():
     summary = [
-        {"ticker": "HGLG11", "asset_class": "FII", "spot_price_brl": 160.50, "score": 8.5, "verdict": "COMPRAR"},
-        {"ticker": "AAPL", "asset_class": "STOCKS", "spot_price_brl": 900.00, "score": 7.0, "verdict": "REDUZIR"},
+        {
+            "ticker": "HGLG11",
+            "asset_class": "FII",
+            "spot_price_brl": 160.50,
+            "score": 8.5,
+            "verdict": "COMPRAR",
+        },
+        {
+            "ticker": "AAPL",
+            "asset_class": "STOCKS",
+            "spot_price_brl": 900.00,
+            "score": 7.0,
+            "verdict": "REDUZIR",
+        },
     ]
 
     with tempfile.TemporaryDirectory() as tmpdir:

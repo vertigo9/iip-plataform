@@ -260,8 +260,14 @@ def _credito_workbook(*, c0: int = 2, carteira_prazo=3.67):
     ws.cell(row=8, column=c0 + 8, value=100000)
 
     ws.cell(row=11, column=c0, value="Tabela de Sensibilidade")
-    headers = ["% PL", "Yield \nNominal", "IPCA\n Ref.", "Yield \n(IPCA +)",
-               "Prazo Médio (Anos)", "Spread"]
+    headers = [
+        "% PL",
+        "Yield \nNominal",
+        "IPCA\n Ref.",
+        "Yield \n(IPCA +)",
+        "Prazo Médio (Anos)",
+        "Spread",
+    ]
     for i, h in enumerate(headers):
         ws.cell(row=12, column=c0 + 6 + i, value=h)
     table = [

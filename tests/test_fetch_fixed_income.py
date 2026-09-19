@@ -118,8 +118,11 @@ def test_fetch_fixed_income_fetches_price_only_when_brapi_token_is_passed(monkey
     def fake_brapi(self, target):
         symbols.append(target)
         quote = BrapiQuote(
-            symbol="CDII11", short_name="CDII", currency="BRL",
-            regular_market_price=95.2, regular_market_change_percent=0.1,
+            symbol="CDII11",
+            short_name="CDII",
+            currency="BRL",
+            regular_market_price=95.2,
+            regular_market_change_percent=0.1,
         )
         return FetchedQuotes(target=target, status_code=200, quotes=(quote,))
 

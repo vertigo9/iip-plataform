@@ -83,6 +83,7 @@ def write_csv(tmp_path, rows: list[dict[str, str]]):
 # _clean / _read_csv
 # ---------------------------------------------------------------------------
 
+
 def test_clean_strips_and_handles_none():
     assert _clean("  value  ") == "value"
     assert _clean(None) == ""
@@ -102,6 +103,7 @@ def test_read_csv_returns_rows_with_bom_handled(tmp_path):
 # _ticker_from_identity
 # ---------------------------------------------------------------------------
 
+
 def test_ticker_from_identity_splits_on_underscore():
     assert _ticker_from_identity("CVBI11_HISTORICAL") == "CVBI11"
     assert _ticker_from_identity("ABC11_HISTORICAL") == "ABC11"
@@ -119,6 +121,7 @@ def test_ticker_from_identity_without_underscore_returns_whole_value():
 # ---------------------------------------------------------------------------
 # _tickers_from_lineage
 # ---------------------------------------------------------------------------
+
 
 def test_tickers_from_lineage_resolves_original_and_canonical():
     assert _tickers_from_lineage("CVBI11 -> PCIP11") == ("CVBI11", "PCIP11")
@@ -146,8 +149,11 @@ def test_tickers_from_lineage_only_separator_returns_empty_pair():
 # _resolve_tickers
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_tickers_prefers_explicit_columns():
-    row = make_row(Original_Ticker="CVBI11", Canonical_Ticker="PCIP11", Lineage="X -> Y")
+    row = make_row(
+        Original_Ticker="CVBI11", Canonical_Ticker="PCIP11", Lineage="X -> Y"
+    )
     assert _resolve_tickers(row) == ("CVBI11", "PCIP11")
 
 
@@ -175,6 +181,7 @@ def test_resolve_tickers_canonical_falls_back_to_original_when_missing():
 # _resolve_value
 # ---------------------------------------------------------------------------
 
+
 def test_resolve_value_prefers_value_parsed():
     row = make_row(Value_Parsed="1.05", Value="1.0")
     assert _resolve_value(row) == "1.05"
@@ -188,6 +195,7 @@ def test_resolve_value_falls_back_to_value():
 # ---------------------------------------------------------------------------
 # _identity_from_row
 # ---------------------------------------------------------------------------
+
 
 def test_identity_from_row_builds_expected_identity():
     identity = _identity_from_row(make_row())
@@ -213,13 +221,17 @@ def test_identity_from_row_semantic_dimension_priority_r4_then_r3_then_plain():
     assert identity_r3.semantic_dimension == "NAV"
 
     identity_plain = _identity_from_row(
-        make_row(Semantic_Dimension_R4="", Semantic_Dimension_R3="", Semantic_Dimension="LTM")
+        make_row(
+            Semantic_Dimension_R4="", Semantic_Dimension_R3="", Semantic_Dimension="LTM"
+        )
     )
     assert identity_plain.semantic_dimension == "LTM"
 
 
 def test_identity_from_row_missing_optional_fields_become_none():
-    row = make_row(Resolved_Unit="", Scale="", Document_ID="", Source_Locator="", Lineage="")
+    row = make_row(
+        Resolved_Unit="", Scale="", Document_ID="", Source_Locator="", Lineage=""
+    )
     identity = _identity_from_row(row)
 
     assert identity.unit is None
@@ -233,15 +245,22 @@ def test_identity_from_row_missing_optional_fields_become_none():
 # _derive_status — every gate branch
 # ---------------------------------------------------------------------------
 
+
 def test_derive_status_blocks_when_final_gate_not_pass():
-    row = make_row(Final_Promotion_Gate="FAIL", Final_Promotion_Gate_Reason="scale_conflict")
+    row = make_row(
+        Final_Promotion_Gate="FAIL", Final_Promotion_Gate_Reason="scale_conflict"
+    )
     status, reason = _derive_status(row, _identity_from_row(row))
     assert status == "BLOCKED"
     assert reason == "scale_conflict"
 
 
 def test_derive_status_blocks_when_final_gate_not_pass_uses_default_reason():
-    row = make_row(Final_Promotion_Gate="FAIL", Final_Promotion_Gate_Reason="", Validation_Reason="")
+    row = make_row(
+        Final_Promotion_Gate="FAIL",
+        Final_Promotion_Gate_Reason="",
+        Validation_Reason="",
+    )
     status, reason = _derive_status(row, _identity_from_row(row))
     assert status == "BLOCKED"
     assert reason == "final_promotion_gate_not_pass"
@@ -291,7 +310,15 @@ def test_derive_status_blocks_when_scale_not_resolved():
 @pytest.mark.parametrize(
     ("row_overrides", "expected_reason"),
     [
-        ({"Original_Ticker": "", "Canonical_Ticker": "", "Lineage": "", "Original_Identity": ""}, "missing_canonical_ticker"),
+        (
+            {
+                "Original_Ticker": "",
+                "Canonical_Ticker": "",
+                "Lineage": "",
+                "Original_Identity": "",
+            },
+            "missing_canonical_ticker",
+        ),
         ({"Metric": ""}, "missing_metric"),
         ({"Value": "", "Value_Parsed": ""}, "missing_value"),
         ({"Resolved_Period": ""}, "missing_period"),
@@ -299,7 +326,9 @@ def test_derive_status_blocks_when_scale_not_resolved():
         ({"Resolved_Unit": ""}, "missing_resolved_unit"),
     ],
 )
-def test_derive_status_blocks_on_missing_required_fields(row_overrides, expected_reason):
+def test_derive_status_blocks_on_missing_required_fields(
+    row_overrides, expected_reason
+):
     row = make_row(**row_overrides)
     status, reason = _derive_status(row, _identity_from_row(row))
     assert status == "BLOCKED"
@@ -323,6 +352,7 @@ def test_derive_status_ready_with_semantic_dimension():
 # ---------------------------------------------------------------------------
 # inspect_final_gate — end to end over a CSV file
 # ---------------------------------------------------------------------------
+
 
 def test_inspect_final_gate_counts_ready_and_blocked_rows(tmp_path):
     rows = [
@@ -355,7 +385,9 @@ def test_inspect_final_gate_deduplicates_exact_duplicate_rows(tmp_path):
     assert result.blocked_rows == 0
 
 
-def test_inspect_final_gate_same_key_different_value_is_not_counted_as_exact_duplicate(tmp_path):
+def test_inspect_final_gate_same_key_different_value_is_not_counted_as_exact_duplicate(
+    tmp_path,
+):
     rows = [make_row(), make_row(Value="1.10", Value_Parsed="1.10")]
     path = write_csv(tmp_path, rows)
 
@@ -382,6 +414,7 @@ def test_inspect_final_gate_knowledge_evidence_is_attached_to_each_candidate(tmp
 # DryRunPersistenceAdapter
 # ---------------------------------------------------------------------------
 
+
 def test_dry_run_adapter_delegates_to_inspect_final_gate(tmp_path):
     path = write_csv(tmp_path, [make_row()])
 
@@ -395,6 +428,7 @@ def test_dry_run_adapter_delegates_to_inspect_final_gate(tmp_path):
 # SimulatedKnowledgeBridgeAdapter — error path not covered by
 # tests/integration/test_persistence_contract.py
 # ---------------------------------------------------------------------------
+
 
 class _NoIdEvidence:
     evidence_id = None
@@ -432,7 +466,10 @@ def test_to_knowledge_evidence_converts_dict_facts_to_key_value_tuple(tmp_path):
     assert evidence.evidence_id == candidate.knowledge_evidence.evidence_id
     assert evidence.ticker == "PCIP11"
     assert all("=" in fact for fact in evidence.relevant_facts)
-    assert any(fact.startswith("metric=Distribuicao_Mensal") for fact in evidence.relevant_facts)
+    assert any(
+        fact.startswith("metric=Distribuicao_Mensal")
+        for fact in evidence.relevant_facts
+    )
 
 
 def test_to_knowledge_evidence_drops_blank_facts(tmp_path):
@@ -441,13 +478,18 @@ def test_to_knowledge_evidence_drops_blank_facts(tmp_path):
     batch = PersistenceBatch(result.candidates)
     evidence = to_knowledge_evidence(batch.ready[0].knowledge_evidence)
 
-    assert not any(fact.startswith("legacy_period=") for fact in evidence.relevant_facts)
+    assert not any(
+        fact.startswith("legacy_period=") for fact in evidence.relevant_facts
+    )
 
 
 def test_persist_ready_batch_persists_only_ready_candidates(tmp_path):
     path = write_csv(
         tmp_path,
-        [make_row(), make_row(Metric="Cota_Patrimonial", Final_Promotion_Gate="BLOCKED")],
+        [
+            make_row(),
+            make_row(Metric="Cota_Patrimonial", Final_Promotion_Gate="BLOCKED"),
+        ],
     )
     result = inspect_final_gate(path)
     batch = PersistenceBatch(result.candidates)

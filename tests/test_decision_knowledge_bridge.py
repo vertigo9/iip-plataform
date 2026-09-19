@@ -123,7 +123,6 @@ def test_to_knowledge_decision_explicit_change_type_overrides_inference():
     assert knowledge_decision.change_type == DecisionChange.THESIS_CHANGE
 
 
-
 def make_thesis_exit_assessment():
     return assess_thesis_exit(
         fundamentals=GateStatus.FAIL,

@@ -81,7 +81,9 @@ def test_bolsai_equity_adapter_preserves_raw_response_for_atlas():
 
     class Response:
         status = 200
-        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/json; charset=utf-8"}
+        headers: ClassVar[dict[str, str]] = {
+            "Content-Type": "application/json; charset=utf-8"
+        }
 
         def read(self):
             return b'{"ticker":"BBSE3","close_price":41.69}'
@@ -166,9 +168,9 @@ def test_cvm_fii_adapter_filters_bulk_report_by_cnpj():
         def geturl(self):
             return target.url
 
-    report = CvmFiiHTTPHarvester(
-        opener=lambda request, timeout: Response()
-    ).fetch(target)
+    report = CvmFiiHTTPHarvester(opener=lambda request, timeout: Response()).fetch(
+        target
+    )
     document = adapt_fii_report(report)
 
     assert document.ticker == "BTLG11"
@@ -193,9 +195,9 @@ def test_cvm_fii_adapter_rejects_unmatched_cnpj():
         def geturl(self):
             return target.url
 
-    report = CvmFiiHTTPHarvester(
-        opener=lambda request, timeout: Response()
-    ).fetch(target)
+    report = CvmFiiHTTPHarvester(opener=lambda request, timeout: Response()).fetch(
+        target
+    )
     with pytest.raises(ValueError, match="CNPJ not found"):
         adapt_fii_report(report)
 

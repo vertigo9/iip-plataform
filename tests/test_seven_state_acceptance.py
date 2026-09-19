@@ -209,7 +209,9 @@ def test_full_journey_produces_all_seven_states(tmp_path):
         date=data_referencia,
         source_type=evidence_link.provider,
         source_url=evidence_link.source_url,
-        relevant_facts=(f"Documento classificado como {staged.classified.document_type.name}",),
+        relevant_facts=(
+            f"Documento classificado como {staged.classified.document_type.name}",
+        ),
     )
     bridge.persist_evidence(persisted_evidence)
 

@@ -5,7 +5,9 @@ from iip.portfolio_decision.opportunity import build
 
 
 def test_format_opportunity_note_includes_all_components():
-    opportunity = build("pcip11", intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5)
+    opportunity = build(
+        "pcip11", intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5
+    )
 
     note = format_opportunity_note(opportunity, as_of=date(2026, 7, 31))
 

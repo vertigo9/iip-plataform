@@ -119,7 +119,9 @@ def _fake_zip(lines: list[str]) -> bytes:
 
 
 def test_harvester_downloads_extracts_and_filters():
-    body = _fake_zip([_record("BBSE3", "20260917", close=40.41), _record("PETR4", "20260917")])
+    body = _fake_zip(
+        [_record("BBSE3", "20260917", close=40.41), _record("PETR4", "20260917")]
+    )
 
     def fake_opener(request, timeout):
         assert "COTAHIST_A2026" in request.full_url

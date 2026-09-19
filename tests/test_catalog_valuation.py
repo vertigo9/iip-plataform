@@ -9,7 +9,9 @@ from iip.config import get_settings
 from iip.decision.catalog_valuation import catalog_valuation_for_decision
 from iip.sources.tesouro_direto import NtnbRate
 
-RATE = NtnbRate(reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073)
+RATE = NtnbRate(
+    reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073
+)
 
 
 @pytest.fixture(autouse=True)
@@ -24,8 +26,12 @@ def _clear_settings_cache(monkeypatch):
 
 def _value(**overrides):
     kwargs = {
-        "ticker": "KLBN4", "asset_class": "equity", "sector": "Materiais Básicos",
-        "industry": "Madeiras e Papel", "price": 2.0, "ntnb_real_yield": 0.073,
+        "ticker": "KLBN4",
+        "asset_class": "equity",
+        "sector": "Materiais Básicos",
+        "industry": "Madeiras e Papel",
+        "price": 2.0,
+        "ntnb_real_yield": 0.073,
         "financials": {"lpa": 0.24, "vpa": 1.52},
     }
     kwargs.update(overrides)
@@ -51,10 +57,19 @@ def test_score_is_clamped_to_the_zero_ten_scale():
 
 
 def test_lead_method_follows_the_sector():
-    financials = {"lpa": 4.97, "vpa": 19.72, "dividend_per_share": 3.05,
-                  "dividend_consistency_years": 5, "payout_ratio": 61.0}
-    utility = _value(sector="Utilidade Pública", industry="Energia Elétrica", price=45.0,
-                     financials=financials)
+    financials = {
+        "lpa": 4.97,
+        "vpa": 19.72,
+        "dividend_per_share": 3.05,
+        "dividend_consistency_years": 5,
+        "payout_ratio": 61.0,
+    }
+    utility = _value(
+        sector="Utilidade Pública",
+        industry="Energia Elétrica",
+        price=45.0,
+        financials=financials,
+    )
     industrial = _value(price=45.0, financials=financials)
 
     assert utility.method == "Bazin"
@@ -86,7 +101,9 @@ def test_class_without_an_implemented_method_gives_no_score():
 
 def test_missing_ntnb_rate_never_invents_a_bazin_ceiling():
     result = _value(
-        sector="Utilidade Pública", industry="Gás", ntnb_real_yield=None,
+        sector="Utilidade Pública",
+        industry="Gás",
+        ntnb_real_yield=None,
         financials={"dividend_per_share": 1.0, "dividend_consistency_years": 5},
     )
 
@@ -97,8 +114,14 @@ def test_missing_ntnb_rate_never_invents_a_bazin_ceiling():
 # --- CLI: analyze --decide --auto-valuation -----------------------------------------
 
 
-def _equity_file(tmp_path, *, sector="Materiais Básicos", industry="Madeiras e Papel",
-                 price=2.0, **financials):
+def _equity_file(
+    tmp_path,
+    *,
+    sector="Materiais Básicos",
+    industry="Madeiras e Papel",
+    price=2.0,
+    **financials,
+):
     runner = CliRunner()
     path = tmp_path / "eq.json"
     runner.invoke(cli, ["analyze-template", "--type", "equity", "-o", str(path)])
@@ -116,8 +139,18 @@ def _analyze(tmp_path, monkeypatch, *extra, rate=RATE, **file_kwargs):
     path = _equity_file(tmp_path, **file_kwargs)
     return CliRunner().invoke(
         cli,
-        ["analyze", "KLBN4", "--type", "equity", "--data-file", str(path), "--decide",
-         "--evidence-id", "ev-1", *extra],
+        [
+            "analyze",
+            "KLBN4",
+            "--type",
+            "equity",
+            "--data-file",
+            str(path),
+            "--decide",
+            "--evidence-id",
+            "ev-1",
+            *extra,
+        ],
     )
 
 
@@ -138,20 +171,31 @@ def test_without_the_flag_valuation_stays_neutral(tmp_path, monkeypatch):
 
 
 def test_explicit_valuation_score_takes_precedence(tmp_path, monkeypatch):
-    result = _analyze(tmp_path, monkeypatch, "--auto-valuation", "--valuation-score", "7",
-                      lpa=0.24, vpa=1.52)
+    result = _analyze(
+        tmp_path,
+        monkeypatch,
+        "--auto-valuation",
+        "--valuation-score",
+        "7",
+        lpa=0.24,
+        vpa=1.52,
+    )
 
     assert result.exit_code == 0, result.output
     assert "ignorado" in result.output
     assert "Valuation automático" not in result.output
 
 
-def test_auto_valuation_without_a_producible_method_warns_and_stays_neutral(tmp_path, monkeypatch):
+def test_auto_valuation_without_a_producible_method_warns_and_stays_neutral(
+    tmp_path, monkeypatch
+):
     result = _analyze(tmp_path, monkeypatch, "--auto-valuation", lpa=-1.0, vpa=1.52)
 
     assert result.exit_code == 0, result.output
     assert "valuation automático sem valor" in result.output
-    assert "valuation_score não fornecido" in result.output  # neutral fallback, with its own warning
+    assert (
+        "valuation_score não fornecido" in result.output
+    )  # neutral fallback, with its own warning
 
 
 def test_a_ntnb_failure_does_not_stop_the_decision(tmp_path, monkeypatch):
@@ -164,8 +208,18 @@ def test_a_ntnb_failure_does_not_stop_the_decision(tmp_path, monkeypatch):
     path = _equity_file(tmp_path, lpa=0.24, vpa=1.52)
     result = CliRunner().invoke(
         cli,
-        ["analyze", "KLBN4", "--type", "equity", "--data-file", str(path), "--decide",
-         "--evidence-id", "ev-1", "--auto-valuation"],
+        [
+            "analyze",
+            "KLBN4",
+            "--type",
+            "equity",
+            "--data-file",
+            str(path),
+            "--decide",
+            "--evidence-id",
+            "ev-1",
+            "--auto-valuation",
+        ],
     )
 
     assert result.exit_code == 0, result.output
@@ -176,7 +230,9 @@ def test_a_ntnb_failure_does_not_stop_the_decision(tmp_path, monkeypatch):
 # --- FIIs through the same flag ------------------------------------------------------
 
 
-def _fii_file(tmp_path, *, structure="Tijolo", segment="Logístico", price=99.78, **financials):
+def _fii_file(
+    tmp_path, *, structure="Tijolo", segment="Logístico", price=99.78, **financials
+):
     runner = CliRunner()
     path = tmp_path / "fii.json"
     runner.invoke(cli, ["analyze-template", "--type", "fii", "-o", str(path)])
@@ -194,13 +250,25 @@ def _analyze_fii(tmp_path, monkeypatch, *extra, **file_kwargs):
     path = _fii_file(tmp_path, **file_kwargs)
     return CliRunner().invoke(
         cli,
-        ["analyze", "BTLG11", "--type", "fii", "--data-file", str(path), "--decide",
-         "--evidence-id", "ev-1", *extra],
+        [
+            "analyze",
+            "BTLG11",
+            "--type",
+            "fii",
+            "--data-file",
+            str(path),
+            "--decide",
+            "--evidence-id",
+            "ev-1",
+            *extra,
+        ],
     )
 
 
 def test_auto_valuation_uses_the_nav_for_a_fii(tmp_path, monkeypatch):
-    result = _analyze_fii(tmp_path, monkeypatch, "--auto-valuation", nav_per_share=106.86)
+    result = _analyze_fii(
+        tmp_path, monkeypatch, "--auto-valuation", nav_per_share=106.86
+    )
 
     assert result.exit_code == 0, result.output
     assert "Valuation automático: NAV" in result.output
@@ -209,8 +277,13 @@ def test_auto_valuation_uses_the_nav_for_a_fii(tmp_path, monkeypatch):
 
 def test_a_paper_fund_is_still_valued_by_the_nav_only(tmp_path, monkeypatch):
     result = _analyze_fii(
-        tmp_path, monkeypatch, "--auto-valuation", structure="Papel",
-        segment="Crédito Imobiliário", nav_per_share=97.4, dividend_per_share=11.99,
+        tmp_path,
+        monkeypatch,
+        "--auto-valuation",
+        structure="Papel",
+        segment="Crédito Imobiliário",
+        nav_per_share=97.4,
+        dividend_per_share=11.99,
         dividend_yield_ttm=12.31,
     )
 
@@ -247,15 +320,31 @@ def _analyze_typed(tmp_path, monkeypatch, symbol, asset_type, **file_kwargs):
     path = _typed_file(tmp_path, asset_type, **file_kwargs)
     return CliRunner().invoke(
         cli,
-        ["analyze", symbol, "--type", asset_type, "--data-file", str(path), "--decide",
-         "--evidence-id", "ev-1", "--auto-valuation"],
+        [
+            "analyze",
+            symbol,
+            "--type",
+            asset_type,
+            "--data-file",
+            str(path),
+            "--decide",
+            "--evidence-id",
+            "ev-1",
+            "--auto-valuation",
+        ],
     )
 
 
 def test_auto_valuation_uses_the_nav_for_a_fiagro(tmp_path, monkeypatch):
     result = _analyze_typed(
-        tmp_path, monkeypatch, "CRAA11", "agro", sector="Papel",
-        industry="Crédito Agrícola", price=90.99, nav_per_share=100.96,
+        tmp_path,
+        monkeypatch,
+        "CRAA11",
+        "agro",
+        sector="Papel",
+        industry="Crédito Agrícola",
+        price=90.99,
+        nav_per_share=100.96,
     )
 
     assert result.exit_code == 0, result.output
@@ -265,8 +354,14 @@ def test_auto_valuation_uses_the_nav_for_a_fiagro(tmp_path, monkeypatch):
 
 def test_auto_valuation_uses_the_nav_for_a_listed_fi_infra(tmp_path, monkeypatch):
     result = _analyze_typed(
-        tmp_path, monkeypatch, "CDII11", "fixed_income", sector="Papel",
-        industry="Infraestrutura", price=95.2, nav_per_share=101.17,
+        tmp_path,
+        monkeypatch,
+        "CDII11",
+        "fixed_income",
+        sector="Papel",
+        industry="Infraestrutura",
+        price=95.2,
+        nav_per_share=101.17,
     )
 
     assert result.exit_code == 0, result.output
@@ -274,11 +369,19 @@ def test_auto_valuation_uses_the_nav_for_a_listed_fi_infra(tmp_path, monkeypatch
     assert "valuation_score não fornecido" not in result.output
 
 
-def test_fixed_income_without_a_market_price_stays_neutral_and_says_why(tmp_path, monkeypatch):
+def test_fixed_income_without_a_market_price_stays_neutral_and_says_why(
+    tmp_path, monkeypatch
+):
     # AXIA3 case: the data file has a cota but no price to compare it with.
     result = _analyze_typed(
-        tmp_path, monkeypatch, "AXIA3", "fixed_income", sector="Utilities",
-        industry="Electric Utilities", price=None, nav_per_share=1.89,
+        tmp_path,
+        monkeypatch,
+        "AXIA3",
+        "fixed_income",
+        sector="Utilities",
+        industry="Electric Utilities",
+        price=None,
+        nav_per_share=1.89,
     )
 
     assert result.exit_code == 0, result.output
@@ -307,21 +410,34 @@ def _fetch_template_fixed_income(monkeypatch, tmp_path, *extra, token="tok"):
     try:
         result = CliRunner().invoke(
             cli,
-            ["fetch-template", "CDII11", "--type", "fixed_income",
-             "--cnpj", "48.973.783/0001-16", "-o", str(tmp_path / "t.json"), *extra],
+            [
+                "fetch-template",
+                "CDII11",
+                "--type",
+                "fixed_income",
+                "--cnpj",
+                "48.973.783/0001-16",
+                "-o",
+                str(tmp_path / "t.json"),
+                *extra,
+            ],
         )
     finally:
         get_settings.cache_clear()
     return result, calls
 
 
-def test_fetch_template_fixed_income_never_prices_without_the_flag(monkeypatch, tmp_path):
+def test_fetch_template_fixed_income_never_prices_without_the_flag(
+    monkeypatch, tmp_path
+):
     result, calls = _fetch_template_fixed_income(monkeypatch, tmp_path)
     assert result.exit_code == 0, result.output
     assert calls == [None]
 
 
 def test_fetch_template_fixed_income_prices_only_with_the_flag(monkeypatch, tmp_path):
-    result, calls = _fetch_template_fixed_income(monkeypatch, tmp_path, "--preco-mercado")
+    result, calls = _fetch_template_fixed_income(
+        monkeypatch, tmp_path, "--preco-mercado"
+    )
     assert result.exit_code == 0, result.output
     assert calls == ["tok"]

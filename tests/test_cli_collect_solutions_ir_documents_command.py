@@ -1,4 +1,3 @@
-
 import pytest
 from click.testing import CliRunner
 
@@ -50,7 +49,9 @@ def _fake_docs(count=2):
     )
 
 
-def test_collect_solutions_ir_documents_downloads_and_persists_evidence(monkeypatch, tmp_path):
+def test_collect_solutions_ir_documents_downloads_and_persists_evidence(
+    monkeypatch, tmp_path
+):
     monkeypatch.setattr(
         SolutionsIrHTTPHarvester,
         "fetch",
@@ -59,7 +60,8 @@ def test_collect_solutions_ir_documents_downloads_and_persists_evidence(monkeypa
         ),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -97,7 +99,8 @@ def test_collect_solutions_ir_documents_filters_by_categoria(monkeypatch, tmp_pa
         ),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()
@@ -128,7 +131,8 @@ def test_collect_solutions_ir_documents_filters_by_ano(monkeypatch, tmp_path):
         ),
     )
     monkeypatch.setattr(
-        "urllib.request.urlopen", lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake")
+        "urllib.request.urlopen",
+        lambda request, timeout=30.0: _FakeResponse(b"%PDF-fake"),
     )
 
     runner = CliRunner()

@@ -145,7 +145,9 @@ def test_fetch_fiagro_warns_when_cnpj_not_found(monkeypatch):
     )
 
     assert any("Nenhum registro CVM FIAGRO encontrado" in w for w in resultado.warnings)
-    assert template["financials"]["dividend_yield_pct"] == 11.5  # default do AgroAnalyzer
+    assert (
+        template["financials"]["dividend_yield_pct"] == 11.5
+    )  # default do AgroAnalyzer
 
 
 def test_fetch_fiagro_does_not_call_brapi_without_a_token(monkeypatch):
@@ -229,10 +231,18 @@ def _bolsai_fii(**kw):
     from iip.sources.b3_bolsai import BolsaiFiiData
 
     base = {
-        "ticker": "CRAA11", "name": "SPARTA", "reference_date": "2026-08-01", "close_price": 90.99,
-        "book_value_per_share": 100.96, "pvp": 0.9, "dividend_yield_ttm": 15.66,
-        "net_asset_value": 239_259_457.21, "shares_outstanding": 2_369_836.0,
-        "total_shareholders": 10_889.0, "segment": None, "management_type": None,
+        "ticker": "CRAA11",
+        "name": "SPARTA",
+        "reference_date": "2026-08-01",
+        "close_price": 90.99,
+        "book_value_per_share": 100.96,
+        "pvp": 0.9,
+        "dividend_yield_ttm": 15.66,
+        "net_asset_value": 239_259_457.21,
+        "shares_outstanding": 2_369_836.0,
+        "total_shareholders": 10_889.0,
+        "segment": None,
+        "management_type": None,
     }
     base.update(kw)
     return BolsaiFiiData(**base)
@@ -267,7 +277,9 @@ def test_fetch_fiagro_adds_valuation_inputs_from_bolsai_when_key_given(monkeypat
     assert fin["dividend_yield_ttm"] == 15.66
     assert fin["dividend_per_share"] == round(15.66 / 100 * 100.96, 4)
     assert "nav_per_share" in resultado.fetched_fields
-    assert fin["dividend_yield_pct"] == round(1.2 + 0.9 + 1.59, 4)  # analyzer input untouched
+    assert fin["dividend_yield_pct"] == round(
+        1.2 + 0.9 + 1.59, 4
+    )  # analyzer input untouched
 
 
 def test_fetch_fiagro_does_not_call_bolsai_without_key(monkeypatch):

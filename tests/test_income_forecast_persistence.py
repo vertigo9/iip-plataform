@@ -11,7 +11,9 @@ from iip.knowledge.bridge import KnowledgeBridge
 from iip.portfolio_data.income_forecast import IncomeForecast
 
 
-def make_metric_candidate(ticker: str, status: str = "IDENTITY_READY") -> PersistenceCandidate:
+def make_metric_candidate(
+    ticker: str, status: str = "IDENTITY_READY"
+) -> PersistenceCandidate:
     observation = MetricObservationIdentity(
         canonical_ticker=ticker,
         original_ticker=ticker,

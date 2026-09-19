@@ -11,7 +11,9 @@ from iip.intelligence.metric_persistence import (
 from iip.knowledge.bridge import KnowledgeBridge
 
 
-def make_metric_candidate(ticker: str, status: str = "IDENTITY_READY") -> PersistenceCandidate:
+def make_metric_candidate(
+    ticker: str, status: str = "IDENTITY_READY"
+) -> PersistenceCandidate:
     observation = MetricObservationIdentity(
         canonical_ticker=ticker,
         original_ticker=ticker,
@@ -35,7 +37,9 @@ def make_metric_candidate(ticker: str, status: str = "IDENTITY_READY") -> Persis
 
 def test_eligible_candidates_are_persisted_with_correct_asset_class(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path / "vault"))
-    batch = PersistenceBatch([make_metric_candidate("PCIP11"), make_metric_candidate("XPML11")])
+    batch = PersistenceBatch(
+        [make_metric_candidate("PCIP11"), make_metric_candidate("XPML11")]
+    )
     candidates = (
         ContributionCandidate(ticker="PCIP11", score=8.5, monthly_budget_share=0.6),
         ContributionCandidate(ticker="XPML11", score=6.0, monthly_budget_share=0.4),
@@ -52,7 +56,9 @@ def test_eligible_candidates_are_persisted_with_correct_asset_class(tmp_path):
     assert len(outcomes) == 2
     assert all(o.persisted for o in outcomes)
     assert all(o.note_path.exists() for o in outcomes)
-    pcip11_content = next(o for o in outcomes if o.ticker == "PCIP11").note_path.read_text("utf-8")
+    pcip11_content = next(
+        o for o in outcomes if o.ticker == "PCIP11"
+    ).note_path.read_text("utf-8")
     assert "60.00%" in pcip11_content
 
 

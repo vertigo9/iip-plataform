@@ -45,7 +45,10 @@ def test_fetch_parses_documents_from_json_body():
         return _FakeResponse(json.dumps(payload).encode("utf-8"))
 
     harvester = SolutionsIrHTTPHarvester(opener=fake_opener)
-    target = SolutionsIrTarget(ticker="BTCI11", url="https://api.solutions-ir.com/v2/asset/296809/documents/09552812000114")
+    target = SolutionsIrTarget(
+        ticker="BTCI11",
+        url="https://api.solutions-ir.com/v2/asset/296809/documents/09552812000114",
+    )
 
     result = harvester.fetch(target)
 
@@ -60,7 +63,10 @@ def test_fetch_returns_empty_documents_when_no_files():
         return _FakeResponse(json.dumps({"files": []}).encode("utf-8"))
 
     harvester = SolutionsIrHTTPHarvester(opener=fake_opener)
-    target = SolutionsIrTarget(ticker="BTCI11", url="https://api.solutions-ir.com/v2/asset/296809/documents/09552812000114")
+    target = SolutionsIrTarget(
+        ticker="BTCI11",
+        url="https://api.solutions-ir.com/v2/asset/296809/documents/09552812000114",
+    )
 
     result = harvester.fetch(target)
 

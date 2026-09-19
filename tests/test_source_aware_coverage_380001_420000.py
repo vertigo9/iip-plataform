@@ -375,7 +375,9 @@ def test_source_ingestion_service_reuses_same_path_for_other_provider(tmp_path):
         provider_name = "btg"
 
         def supports(self, asset):
-            return any(source.provider == self.provider_name for source in asset.sources)
+            return any(
+                source.provider == self.provider_name for source in asset.sources
+            )
 
         def discover(self, asset, years):
             return (SimpleNamespace(ticker=asset.ticker, year=2026),)
@@ -436,7 +438,9 @@ def test_harvester_and_adapter():
 
     class Response:
         status = None
-        headers: ClassVar[dict[str, str]] = {"Content-Type": "application/pdf; charset=utf-8"}
+        headers: ClassVar[dict[str, str]] = {
+            "Content-Type": "application/pdf; charset=utf-8"
+        }
 
         def read(self):
             return b"abc"

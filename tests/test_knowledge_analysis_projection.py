@@ -81,8 +81,7 @@ def test_sync_analysis_projection_preserves_human_content_around_it(tmp_path):
     result = bridge.sync_analysis_projection(report, "BTLG11", "FII")
     result.path.write_text(
         "# Notas minhas\n\n"
-        "Comprei mais cotas em agosto.\n\n"
-        + result.path.read_text(encoding="utf-8"),
+        "Comprei mais cotas em agosto.\n\n" + result.path.read_text(encoding="utf-8"),
         encoding="utf-8",
     )
 

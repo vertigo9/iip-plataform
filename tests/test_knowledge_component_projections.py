@@ -31,7 +31,9 @@ def _asset(**overrides) -> PortfolioAsset:
     return PortfolioAsset(**defaults)
 
 
-def _observation(period, valor=10.0, pl=1_000_000.0, dy=None, cotistas=100.0, valor_ativo=1_100_000.0):
+def _observation(
+    period, valor=10.0, pl=1_000_000.0, dy=None, cotistas=100.0, valor_ativo=1_100_000.0
+):
     return HistoricalObservation(
         period=period,
         patrimonio_liquido=pl,
@@ -74,7 +76,9 @@ def test_sync_identity_projection_handles_missing_fields_honestly(tmp_path):
 def test_sync_portfolio_composition_projection_uses_latest_observation(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="BTCI11", cnpj="09552812000114", provider="cvm",
+        ticker="BTCI11",
+        cnpj="09552812000114",
+        provider="cvm",
         observations=(_observation("2026-07-01", pl=500_000.0, cotistas=200.0),),
         source_documents=(),
     )
@@ -89,7 +93,13 @@ def test_sync_portfolio_composition_projection_uses_latest_observation(tmp_path)
 
 def test_sync_portfolio_composition_projection_handles_empty_series(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
-    series = HistoricalSeries(ticker="LFTB11", cnpj="", provider="b3_cotahist", observations=(), source_documents=())
+    series = HistoricalSeries(
+        ticker="LFTB11",
+        cnpj="",
+        provider="b3_cotahist",
+        observations=(),
+        source_documents=(),
+    )
 
     result = bridge.sync_portfolio_composition_projection(series, "LFTB11", "etf")
     content = result.path.read_text(encoding="utf-8")
@@ -97,11 +107,19 @@ def test_sync_portfolio_composition_projection_handles_empty_series(tmp_path):
     assert "Sem série histórica persistida" in content
 
 
-def test_sync_portfolio_composition_projection_handles_source_without_pl_fields(tmp_path):
+def test_sync_portfolio_composition_projection_handles_source_without_pl_fields(
+    tmp_path,
+):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="BBSE3", cnpj="", provider="b3_cotahist",
-        observations=(_observation("2026-09-17", valor=40.0, pl=None, cotistas=None, valor_ativo=None),),
+        ticker="BBSE3",
+        cnpj="",
+        provider="b3_cotahist",
+        observations=(
+            _observation(
+                "2026-09-17", valor=40.0, pl=None, cotistas=None, valor_ativo=None
+            ),
+        ),
         source_documents=(),
     )
 
@@ -114,8 +132,12 @@ def test_sync_portfolio_composition_projection_handles_source_without_pl_fields(
 def test_sync_distributions_projection_computes_ttm_from_fii_series(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="BTCI11", cnpj="09552812000114", provider="cvm",
-        observations=tuple(_observation(f"2026-{m:02d}-01", dy=0.01) for m in range(1, 8)),
+        ticker="BTCI11",
+        cnpj="09552812000114",
+        provider="cvm",
+        observations=tuple(
+            _observation(f"2026-{m:02d}-01", dy=0.01) for m in range(1, 8)
+        ),
         source_documents=(),
     )
 
@@ -129,7 +151,9 @@ def test_sync_distributions_projection_computes_ttm_from_fii_series(tmp_path):
 def test_sync_distributions_projection_uses_snapshot_yield_for_equity(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
 
-    result = bridge.sync_distributions_projection("BBSE3", "equity", snapshot_yield_pct=4.2)
+    result = bridge.sync_distributions_projection(
+        "BBSE3", "equity", snapshot_yield_pct=4.2
+    )
     content = result.path.read_text(encoding="utf-8")
 
     assert "Dividend yield (snapshot, bolsai): 4.20%" in content
@@ -147,10 +171,19 @@ def test_sync_distributions_projection_honest_when_nothing_available(tmp_path):
 def test_sync_events_projection_lists_real_adjustments(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="BTCI11", cnpj="09552812000114", provider="cvm",
+        ticker="BTCI11",
+        cnpj="09552812000114",
+        provider="cvm",
         observations=(_observation("2023-01-01"),),
         source_documents=(),
-        adjustments=({"period": "2023-01-01", "field": "valor_patrimonial_cotas", "factor": 8.99717, "reason": "quota split/grouping confirmed via patrimonio_liquido continuity"},),
+        adjustments=(
+            {
+                "period": "2023-01-01",
+                "field": "valor_patrimonial_cotas",
+                "factor": 8.99717,
+                "reason": "quota split/grouping confirmed via patrimonio_liquido continuity",
+            },
+        ),
     )
 
     result = bridge.sync_events_projection(series, "BTCI11", "fii")
@@ -163,8 +196,11 @@ def test_sync_events_projection_lists_real_adjustments(tmp_path):
 def test_sync_events_projection_includes_user_confirmed_manual_events(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="PCIP11", cnpj="28729197000113", provider="cvm",
-        observations=(_observation("2026-01-01"),), source_documents=(),
+        ticker="PCIP11",
+        cnpj="28729197000113",
+        provider="cvm",
+        observations=(_observation("2026-01-01"),),
+        source_documents=(),
     )
 
     result = bridge.sync_events_projection(
@@ -185,8 +221,11 @@ def test_sync_events_projection_includes_user_confirmed_manual_events(tmp_path):
 def test_sync_events_projection_reports_no_events_honestly(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="BTCI11", cnpj="09552812000114", provider="cvm",
-        observations=(_observation("2026-01-01"),), source_documents=(),
+        ticker="BTCI11",
+        cnpj="09552812000114",
+        provider="cvm",
+        observations=(_observation("2026-01-01"),),
+        source_documents=(),
     )
 
     result = bridge.sync_events_projection(series, "BTCI11", "fii")
@@ -198,8 +237,13 @@ def test_sync_events_projection_reports_no_events_honestly(tmp_path):
 def test_sync_performance_projection_shows_real_range(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     series = HistoricalSeries(
-        ticker="BTCI11", cnpj="09552812000114", provider="cvm",
-        observations=(_observation("2021-01-01", valor=90.5), _observation("2026-07-01", valor=10.08)),
+        ticker="BTCI11",
+        cnpj="09552812000114",
+        provider="cvm",
+        observations=(
+            _observation("2021-01-01", valor=90.5),
+            _observation("2026-07-01", valor=10.08),
+        ),
         source_documents=(),
     )
 
@@ -213,15 +257,17 @@ def test_sync_performance_projection_shows_real_range(tmp_path):
 
 def test_sync_sources_summary_projection_lists_real_evidence(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
-    bridge.persist_evidence(Evidence(
-        evidence_id="cvm:BTCI11:2026:abc123",
-        ticker="BTCI11",
-        date=__import__("datetime").date(2026, 9, 1),
-        source_type="atlas",
-        source_url="https://dados.cvm.gov.br/x.zip",
-        title="CVM FII Informe Mensal 2026",
-        document_hash="abc123",
-    ))
+    bridge.persist_evidence(
+        Evidence(
+            evidence_id="cvm:BTCI11:2026:abc123",
+            ticker="BTCI11",
+            date=__import__("datetime").date(2026, 9, 1),
+            source_type="atlas",
+            source_url="https://dados.cvm.gov.br/x.zip",
+            title="CVM FII Informe Mensal 2026",
+            document_hash="abc123",
+        )
+    )
 
     result = bridge.sync_sources_summary_projection("BTCI11", "fii")
     content = result.path.read_text(encoding="utf-8")

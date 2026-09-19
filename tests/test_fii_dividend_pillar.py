@@ -17,12 +17,20 @@ from iip.sources.tesouro_direto_harvester import (
     long_ntnb_rate_cached as real_long_ntnb_rate_cached,  # the conftest stubs the module attribute
 )
 
-RATE = NtnbRate(reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073)
+RATE = NtnbRate(
+    reference_date=date(2026, 9, 17), maturity=date(2060, 8, 15), real_yield=0.073
+)
 CNPJ = "11.839.593/0001-09"
 
 
 def _dividends_pillar(**financials):
-    data = AssetData(symbol="X", sector="Tijolo", industry="Logístico", price=100.0, financials=financials)
+    data = AssetData(
+        symbol="X",
+        sector="Tijolo",
+        industry="Logístico",
+        price=100.0,
+        financials=financials,
+    )
     report = FIIAnalyzer().analyze(data)
     return next(p for p in report.pillar_scores if p.pillar == Pillar.DIVIDENDS)
 
@@ -30,10 +38,14 @@ def _dividends_pillar(**financials):
 # --- the pillar: legacy calibration is untouched -----------------------------------
 
 
-@pytest.mark.parametrize(("dy", "expected"), [(0, 26.67), (4, 42.67), (8.33, 60.0), (12, 60.0), (20, 60.0)])
+@pytest.mark.parametrize(
+    ("dy", "expected"), [(0, 26.67), (4, 42.67), (8.33, 60.0), (12, 60.0), (20, 60.0)]
+)
 def test_without_a_risk_free_rate_the_original_formula_is_unchanged(dy, expected):
     # (min(dy*12,100) + min(yoc*12,100) + 80) / 3 with yoc = 0: saturates at 60
-    assert _dividends_pillar(dividend_yield=dy).score == pytest.approx(expected, abs=0.01)
+    assert _dividends_pillar(dividend_yield=dy).score == pytest.approx(
+        expected, abs=0.01
+    )
 
 
 def test_a_risk_free_of_none_or_zero_falls_back_to_the_original_formula():
@@ -45,8 +57,12 @@ def test_a_risk_free_of_none_or_zero_falls_back_to_the_original_formula():
 
 
 def test_yield_equal_to_the_risk_free_scores_fifty_and_twice_it_scores_a_hundred():
-    at_par = _dividends_pillar(dividend_yield=7.3, risk_free_real_yield=7.3, payout_sustainability_score=100)
-    double = _dividends_pillar(dividend_yield=14.6, risk_free_real_yield=7.3, payout_sustainability_score=100)
+    at_par = _dividends_pillar(
+        dividend_yield=7.3, risk_free_real_yield=7.3, payout_sustainability_score=100
+    )
+    double = _dividends_pillar(
+        dividend_yield=14.6, risk_free_real_yield=7.3, payout_sustainability_score=100
+    )
 
     assert at_par.score == pytest.approx((50 + 100) / 2)
     assert double.score == pytest.approx(100.0)
@@ -54,41 +70,65 @@ def test_yield_equal_to_the_risk_free_scores_fifty_and_twice_it_scores_a_hundred
 
 def test_the_yield_term_no_longer_saturates_where_real_fii_yields_live():
     scores = [
-        _dividends_pillar(dividend_yield=dy, risk_free_real_yield=7.3, payout_sustainability_score=80).score
+        _dividends_pillar(
+            dividend_yield=dy, risk_free_real_yield=7.3, payout_sustainability_score=80
+        ).score
         for dy in (7.6, 9.3, 10.8, 12.3, 14.0)
     ]
 
-    assert scores == sorted(scores) and len(set(scores)) == len(scores)  # strictly increasing
+    assert scores == sorted(scores) and len(set(scores)) == len(
+        scores
+    )  # strictly increasing
     assert scores[-1] - scores[0] > 20  # a real spread, not a tie at 60
 
 
 def test_yield_above_twice_the_risk_free_is_capped_not_rewarded_further():
-    at_cap = _dividends_pillar(dividend_yield=14.6, risk_free_real_yield=7.3, payout_sustainability_score=80)
-    extreme = _dividends_pillar(dividend_yield=25.0, risk_free_real_yield=7.3, payout_sustainability_score=80)
+    at_cap = _dividends_pillar(
+        dividend_yield=14.6, risk_free_real_yield=7.3, payout_sustainability_score=80
+    )
+    extreme = _dividends_pillar(
+        dividend_yield=25.0, risk_free_real_yield=7.3, payout_sustainability_score=80
+    )
 
     assert extreme.score == at_cap.score
 
 
 def test_sustainability_now_moves_the_pillar():
-    steady = _dividends_pillar(dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=100)
-    eroding = _dividends_pillar(dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=0)
+    steady = _dividends_pillar(
+        dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=100
+    )
+    eroding = _dividends_pillar(
+        dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=0
+    )
 
     assert steady.score - eroding.score == pytest.approx(50.0)
 
 
 def test_yield_on_cost_only_counts_when_supplied_in_the_new_calibration():
-    without = _dividends_pillar(dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=80)
-    zero = _dividends_pillar(dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=80,
-                             yield_on_cost=0)
-    given = _dividends_pillar(dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=80,
-                              yield_on_cost=12)
+    without = _dividends_pillar(
+        dividend_yield=10, risk_free_real_yield=7.3, payout_sustainability_score=80
+    )
+    zero = _dividends_pillar(
+        dividend_yield=10,
+        risk_free_real_yield=7.3,
+        payout_sustainability_score=80,
+        yield_on_cost=0,
+    )
+    given = _dividends_pillar(
+        dividend_yield=10,
+        risk_free_real_yield=7.3,
+        payout_sustainability_score=80,
+        yield_on_cost=12,
+    )
 
     assert zero.score == without.score  # a constant 0 no longer drags the average down
     assert given.score != without.score  # but a real value is used
 
 
 def test_negative_yield_scores_zero_on_that_term_never_below():
-    pillar = _dividends_pillar(dividend_yield=-1.59, risk_free_real_yield=7.3, payout_sustainability_score=80)
+    pillar = _dividends_pillar(
+        dividend_yield=-1.59, risk_free_real_yield=7.3, payout_sustainability_score=80
+    )
 
     assert pillar.score == pytest.approx(40.0)  # (0 + 80) / 2
 
@@ -98,7 +138,15 @@ def test_negative_yield_scores_zero_on_that_term_never_below():
 
 @pytest.mark.parametrize(
     ("change", "expected"),
-    [(3.0, 100.0), (0.0, 100.0), (-1.0, 80.0), (-2.5, 50.0), (-4.7, 6.0), (-5.0, 0.0), (-6.1, 0.0)],
+    [
+        (3.0, 100.0),
+        (0.0, 100.0),
+        (-1.0, 80.0),
+        (-2.5, 50.0),
+        (-4.7, 6.0),
+        (-5.0, 0.0),
+        (-6.1, 0.0),
+    ],
 )
 def test_nav_preservation_score(change, expected):
     assert nav_preservation_score(change) == pytest.approx(expected)
@@ -106,8 +154,13 @@ def test_nav_preservation_score(change, expected):
 
 def _row(month, vp, *, amort=0.0, cnpj=CNPJ, versao="1"):
     return FiiComplemento(
-        cnpj_fundo_classe=cnpj, data_referencia=month, versao=versao,
-        valores={"Valor_Patrimonial_Cotas": vp, "Percentual_Amortizacao_Cotas_Mes": amort},
+        cnpj_fundo_classe=cnpj,
+        data_referencia=month,
+        versao=versao,
+        valores={
+            "Valor_Patrimonial_Cotas": vp,
+            "Percentual_Amortizacao_Cotas_Mes": amort,
+        },
     )
 
 
@@ -164,14 +217,20 @@ def test_pillar_inputs_carry_the_rate_and_a_real_sustainability_score(monkeypatc
     monkeypatch.setattr(harvester_module, "long_ntnb_rate_cached", lambda: RATE)
 
     financials, fetched, warnings = _fii_dividend_pillar_inputs(
-        {"dividend_yield": 10.0, "payout_sustainability_score": 80}, CNPJ,
-        _series(now_vp=97.0, ago_vp=100.0), lambda: [],
+        {"dividend_yield": 10.0, "payout_sustainability_score": 80},
+        CNPJ,
+        _series(now_vp=97.0, ago_vp=100.0),
+        lambda: [],
     )
 
     assert financials["risk_free_real_yield"] == 7.3
     assert financials["nav_change_12m_pct"] == -3.0
     assert financials["payout_sustainability_score"] == 40.0
-    assert fetched == ["risk_free_real_yield", "nav_change_12m_pct", "payout_sustainability_score"]
+    assert fetched == [
+        "risk_free_real_yield",
+        "nav_change_12m_pct",
+        "payout_sustainability_score",
+    ]
     assert any("NTN-B longa" in w for w in warnings)
     assert any("proxy" in w and "-3.0%" in w for w in warnings)
 
@@ -198,7 +257,9 @@ def test_without_a_rate_the_pillar_keeps_its_old_calibration_and_says_so(monkeyp
     assert any("calibração antiga" in w for w in warnings)
 
 
-def test_a_rate_failure_and_a_missing_previous_year_are_warnings_not_crashes(monkeypatch):
+def test_a_rate_failure_and_a_missing_previous_year_are_warnings_not_crashes(
+    monkeypatch,
+):
     def rate_boom():
         raise OSError("sem rede")
 
@@ -213,7 +274,9 @@ def test_a_rate_failure_and_a_missing_previous_year_are_warnings_not_crashes(mon
 
     assert financials["payout_sustainability_score"] == 80  # default untouched
     assert fetched == []
-    assert any("sem rede" in w for w in warnings) and any("cvm fora" in w for w in warnings)
+    assert any("sem rede" in w for w in warnings) and any(
+        "cvm fora" in w for w in warnings
+    )
     assert any("continua no valor-padrão" in w for w in warnings)
 
 
@@ -237,7 +300,9 @@ def _fake_harvester(monkeypatch, outcomes):
     return calls
 
 
-def test_the_rate_is_fetched_once_inside_a_shared_block_and_not_memoized_outside(monkeypatch):
+def test_the_rate_is_fetched_once_inside_a_shared_block_and_not_memoized_outside(
+    monkeypatch,
+):
     calls = _fake_harvester(monkeypatch, [RATE])
 
     with shared_fetch_caches():

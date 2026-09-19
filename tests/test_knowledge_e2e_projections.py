@@ -68,13 +68,30 @@ def test_sync_quantitative_projection_writes_frontmatter_and_section(tmp_path):
 def test_sync_cross_asset_projection_filters_to_own_dimensions(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     concentrations = (
-        ConcentrationItem(dimension="manager", value="BTG Pactual", weight=0.047, limit=0.2, breached=False),
-        ConcentrationItem(dimension="manager", value="Sparta", weight=0.25, limit=0.2, breached=True),
-        ConcentrationItem(dimension="segment", value="Credito Imobiliario", weight=0.09, limit=0.3, breached=False),
+        ConcentrationItem(
+            dimension="manager",
+            value="BTG Pactual",
+            weight=0.047,
+            limit=0.2,
+            breached=False,
+        ),
+        ConcentrationItem(
+            dimension="manager", value="Sparta", weight=0.25, limit=0.2, breached=True
+        ),
+        ConcentrationItem(
+            dimension="segment",
+            value="Credito Imobiliario",
+            weight=0.09,
+            limit=0.3,
+            breached=False,
+        ),
     )
 
     result = bridge.sync_cross_asset_projection(
-        concentrations, "BTCI11", "fii", own_dimensions=("BTG Pactual", "Credito Imobiliario")
+        concentrations,
+        "BTCI11",
+        "fii",
+        own_dimensions=("BTG Pactual", "Credito Imobiliario"),
     )
     content = result.path.read_text(encoding="utf-8")
 
@@ -87,7 +104,9 @@ def test_sync_cross_asset_projection_filters_to_own_dimensions(tmp_path):
 def test_sync_cross_asset_projection_flags_breach_in_frontmatter(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     concentrations = (
-        ConcentrationItem(dimension="manager", value="Sparta", weight=0.25, limit=0.2, breached=True),
+        ConcentrationItem(
+            dimension="manager", value="Sparta", weight=0.25, limit=0.2, breached=True
+        ),
     )
 
     result = bridge.sync_cross_asset_projection(
@@ -102,7 +121,9 @@ def test_sync_cross_asset_projection_flags_breach_in_frontmatter(tmp_path):
 def test_sync_cross_asset_projection_handles_no_own_dimensions(tmp_path):
     bridge = KnowledgeBridge(str(tmp_path))
     concentrations = (
-        ConcentrationItem(dimension="manager", value="Sparta", weight=0.25, limit=0.2, breached=True),
+        ConcentrationItem(
+            dimension="manager", value="Sparta", weight=0.25, limit=0.2, breached=True
+        ),
     )
 
     result = bridge.sync_cross_asset_projection(concentrations, "XYZ11", "fii")

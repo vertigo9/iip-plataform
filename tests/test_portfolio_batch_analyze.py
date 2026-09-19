@@ -5,7 +5,11 @@ from iip.portfolio.registry import PortfolioAsset
 
 def fake_fetch_equity_ok(symbol, cnpj, ano, bolsai_api_key, brapi_token):
     return (
-        {"price": 33.81, "market_cap": 25_000_000_000.0, "financials": {"dividend_yield": 7.5}},
+        {
+            "price": 33.81,
+            "market_cap": 25_000_000_000.0,
+            "financials": {"dividend_yield": 7.5},
+        },
         FetchResult(fetched_fields=("price",)),
     )
 
@@ -103,7 +107,9 @@ def test_analyze_portfolio_prefers_explicit_sector_industry_over_structure_segme
 
     class CapturingBridge(FakeKnowledgeBridge):
         def sync_analysis_projection(self, report, ticker, asset_type):
-            captured["sector"] = report.notes  # AnalysisReport nao expoe sector diretamente
+            captured["sector"] = (
+                report.notes
+            )  # AnalysisReport nao expoe sector diretamente
             return super().sync_analysis_projection(report, ticker, asset_type)
 
     result = analyze_portfolio(
