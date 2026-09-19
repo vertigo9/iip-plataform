@@ -58,9 +58,9 @@ class KnowledgeEventAdapter:
             date=date.fromisoformat(
                 str(p.get("date", event.timestamp.date().isoformat()))
             ),
-            previous_verdict=Verdict(p["previous_verdict"])
-            if p.get("previous_verdict")
-            else None,
+            previous_verdict=(
+                Verdict(p["previous_verdict"]) if p.get("previous_verdict") else None
+            ),
             new_verdict=Verdict(p["new_verdict"]),
             change_type=DecisionChange(p.get("change_type", "NO_CHANGE")),
             confidence=float(p.get("confidence", 0.0)),

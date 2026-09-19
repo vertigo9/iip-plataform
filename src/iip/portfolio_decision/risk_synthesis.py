@@ -43,11 +43,11 @@ def synthesize(
         sorted(
             results,
             key=lambda item: (
-                0
-                if item.review_required and item.adjusted_risk < 7
-                else 1
-                if item.review_required
-                else 2,
+                (
+                    0
+                    if item.review_required and item.adjusted_risk < 7
+                    else 1 if item.review_required else 2
+                ),
                 -item.adjusted_risk,
                 item.ticker,
             ),

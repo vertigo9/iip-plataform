@@ -60,7 +60,10 @@ class ObsidianRepository:
         if not safe:
             safe = "record"
         if safe.upper() in {
-            "CON", "PRN", "AUX", "NUL",
+            "CON",
+            "PRN",
+            "AUX",
+            "NUL",
             *(f"COM{i}" for i in range(1, 10)),
             *(f"LPT{i}" for i in range(1, 10)),
         }:
@@ -97,9 +100,7 @@ class ObsidianRepository:
 
     def _write_once(self, path: Path, content: str) -> Path:
         if path.exists():
-            raise FileExistsError(
-                f"append-only record already exists: {path.name}"
-            )
+            raise FileExistsError(f"append-only record already exists: {path.name}")
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
@@ -107,10 +108,12 @@ class ObsidianRepository:
     def _read_matching(self, directory: Path, ticker: str) -> tuple[Path, ...]:
         if not directory.exists():
             return ()
-        return tuple(sorted(
-            (p for p in directory.glob("*.md") if self._ticker_match(p, ticker)),
-            key=lambda p: p.name,
-        ))
+        return tuple(
+            sorted(
+                (p for p in directory.glob("*.md") if self._ticker_match(p, ticker)),
+                key=lambda p: p.name,
+            )
+        )
 
     def list_decisions(self, ticker: str) -> tuple[Path, ...]:
         return self._read_matching(self.vault_path / "03_Decisions", ticker)
@@ -128,8 +131,10 @@ class ObsidianRepository:
         return tuple(p for p in paths if self._ticker_match(p, ticker))
 
     def save_evidence(self, evidence: Evidence) -> Path:
-        path = self.vault_path / "04_Evidence" / (
-            f"{self._safe_filename(evidence.evidence_id)}.md"
+        path = (
+            self.vault_path
+            / "04_Evidence"
+            / (f"{self._safe_filename(evidence.evidence_id)}.md")
         )
         content = (
             "---\n"
@@ -148,8 +153,10 @@ class ObsidianRepository:
         return self._write_once(path, content)
 
     def save_decision(self, decision: Decision) -> Path:
-        path = self.vault_path / "03_Decisions" / (
-            f"{self._safe_filename(decision.decision_id)}.md"
+        path = (
+            self.vault_path
+            / "03_Decisions"
+            / (f"{self._safe_filename(decision.decision_id)}.md")
         )
         content = (
             "---\n"
@@ -165,20 +172,13 @@ class ObsidianRepository:
             content += (
                 f"thesis_exit_state: {decision.thesis_exit_state}\n"
                 "thesis_exit_failed_gates:\n"
-                + "".join(
-                    f"- {gate}\n"
-                    for gate in decision.thesis_exit_failed_gates
-                )
+                + "".join(f"- {gate}\n" for gate in decision.thesis_exit_failed_gates)
                 + "thesis_exit_attention_gates:\n"
                 + "".join(
-                    f"- {gate}\n"
-                    for gate in decision.thesis_exit_attention_gates
+                    f"- {gate}\n" for gate in decision.thesis_exit_attention_gates
                 )
                 + "thesis_exit_unknown_gates:\n"
-                + "".join(
-                    f"- {gate}\n"
-                    for gate in decision.thesis_exit_unknown_gates
-                )
+                + "".join(f"- {gate}\n" for gate in decision.thesis_exit_unknown_gates)
                 + f"thesis_exit_critical_failure: "
                 f"{decision.thesis_exit_critical_failure}\n"
             )
@@ -203,8 +203,11 @@ class ObsidianRepository:
         return "".join(lines)
 
     def save_snapshot(self, snapshot: PortfolioSnapshot) -> Path:
-        path = self.vault_path / "02_Portfolio" / "Snapshots" / (
-            f"{self._safe_filename(snapshot.snapshot_id)}.md"
+        path = (
+            self.vault_path
+            / "02_Portfolio"
+            / "Snapshots"
+            / (f"{self._safe_filename(snapshot.snapshot_id)}.md")
         )
         content = (
             "---\n"
@@ -212,8 +215,6 @@ class ObsidianRepository:
             f"snapshot_id: {snapshot.snapshot_id}\n"
             f"created_at: {snapshot.created_at.isoformat()}\n"
             f"portfolio_value: {snapshot.portfolio_value}\n"
-            "positions:\n"
-            + self._position_lines(snapshot.positions)
-            + "---\n"
+            "positions:\n" + self._position_lines(snapshot.positions) + "---\n"
         )
         return self._write_once(path, content)

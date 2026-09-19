@@ -47,7 +47,9 @@ class ValuationOutcome:
     detail: str
     price: float | None = None
     attempts: tuple[MethodAttempt, ...] = field(default_factory=tuple)
-    asset_class: str | None = None  # the catalog class ("equity", "fii", "fiagro", "fi_infra")
+    asset_class: str | None = (
+        None  # the catalog class ("equity", "fii", "fiagro", "fi_infra")
+    )
     segment: str | None = None  # "sector / industry" as used to pick the methods
 
 
@@ -115,7 +117,9 @@ def value_portfolio(
     # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
     # previous-year CVM file, NAV trend): skip them -- fewer downloads, and fewer
     # calls to spend the daily provider quota on.
-    fetch_fii = fetch_fii or functools.partial(fetch_fii_template_live, analysis_inputs=False)
+    fetch_fii = fetch_fii or functools.partial(
+        fetch_fii_template_live, analysis_inputs=False
+    )
     fetch_rate = fetch_rate or _default_fetch_rate
 
     rate: NtnbRate | None = None
@@ -133,7 +137,9 @@ def value_portfolio(
             )
     # a taxa é uma consulta de mercado opcional; falhar aqui não pode derrubar a rodada
     except Exception as exc:  # noqa: BLE001
-        ntnb_note = f"não consegui buscar a taxa da NTN-B: {exc} — Bazin fica sem valor."
+        ntnb_note = (
+            f"não consegui buscar a taxa da NTN-B: {exc} — Bazin fica sem valor."
+        )
 
     bridge = None
     if persist:
@@ -180,17 +186,26 @@ def value_portfolio(
 
         try:
             if template_type == "fii":
-                template, _ = fetch_fii(position.ticker, position.cnpj, ano_fii, bolsai_api_key)
+                template, _ = fetch_fii(
+                    position.ticker, position.cnpj, ano_fii, bolsai_api_key
+                )
             elif template_type == "fi_infra":
                 # Only listed FI-Infra reach here, so ``symbol`` is the fund's own
                 # B3 ticker and the price lookup is safe (unlike AXIA3's).
                 template, _ = fetch_fixed_income(
-                    position.ticker, position.cnpj, ano_fii, hoje.month,
+                    position.ticker,
+                    position.cnpj,
+                    ano_fii,
+                    hoje.month,
                     brapi_token=brapi_token,
                 )
             elif template_type == "fiagro":
                 template, _ = fetch_fiagro(
-                    position.ticker, position.cnpj, ano_fii, hoje.month, brapi_token,
+                    position.ticker,
+                    position.cnpj,
+                    ano_fii,
+                    hoje.month,
+                    brapi_token,
                     bolsai_api_key=bolsai_api_key,
                 )
             else:
@@ -198,7 +213,10 @@ def value_portfolio(
                     position.ticker, position.cnpj, ano_dfp, bolsai_api_key, brapi_token
                 )
             incomplete = missing_required_market_data(
-                template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+                template_type,
+                template,
+                bolsai_api_key=bolsai_api_key,
+                brapi_token=brapi_token,
             )
             if incomplete:
                 outcomes.append(ValuationOutcome(position.ticker, "erro", incomplete))
@@ -219,29 +237,48 @@ def value_portfolio(
 
         snapshot = first_valuation(attempts)
         if snapshot is None:
-            why = "; ".join(f"{a.method.value}: {a.reason}" for a in attempts if a.status != "not_implemented")
+            why = "; ".join(
+                f"{a.method.value}: {a.reason}"
+                for a in attempts
+                if a.status != "not_implemented"
+            )
             outcomes.append(
                 ValuationOutcome(
-                    position.ticker, "pulado", f"nenhum método produziu valor — {why}",
-                    price=price, attempts=attempts, asset_class=template_type,
+                    position.ticker,
+                    "pulado",
+                    f"nenhum método produziu valor — {why}",
+                    price=price,
+                    attempts=attempts,
+                    asset_class=template_type,
                     segment=f"{sector} / {industry}",
                 )
             )
             continue
 
         detail = ", ".join(
-            f"{a.method.value}={a.snapshot.fair_value:.2f}" for a in attempts if a.snapshot
+            f"{a.method.value}={a.snapshot.fair_value:.2f}"
+            for a in attempts
+            if a.snapshot
         )
         if bridge is not None:
             try:
-                bridge.sync_valuation_projection(snapshot, position.ticker, template_type)
+                bridge.sync_valuation_projection(
+                    snapshot, position.ticker, template_type
+                )
                 detail += f" (persistido: {snapshot.method.value})"
             except Exception as exc:  # noqa: BLE001 — isolamento por posição
-                outcomes.append(ValuationOutcome(position.ticker, "erro", str(exc), price, attempts))
+                outcomes.append(
+                    ValuationOutcome(position.ticker, "erro", str(exc), price, attempts)
+                )
                 continue
         outcomes.append(
             ValuationOutcome(
-                position.ticker, "ok", detail, price, attempts, template_type,
+                position.ticker,
+                "ok",
+                detail,
+                price,
+                attempts,
+                template_type,
                 f"{sector} / {industry}",
             )
         )

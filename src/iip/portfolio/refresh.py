@@ -230,11 +230,16 @@ def refresh_portfolio(
             continue
 
         incomplete = missing_required_market_data(
-            template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+            template_type,
+            template,
+            bolsai_api_key=bolsai_api_key,
+            brapi_token=brapi_token,
         )
         if incomplete:
             outcomes.append(
-                PositionOutcome(ticker=position.ticker, status="erro", detail=incomplete)
+                PositionOutcome(
+                    ticker=position.ticker, status="erro", detail=incomplete
+                )
             )
             continue
 
@@ -251,7 +256,9 @@ def refresh_portfolio(
             )
         )
 
-    skipped_tickers = {p.ticker for p in all_positions} - {p.ticker for p in refreshable}
+    skipped_tickers = {p.ticker for p in all_positions} - {
+        p.ticker for p in refreshable
+    }
     for ticker in sorted(skipped_tickers):
         outcomes.append(
             PositionOutcome(

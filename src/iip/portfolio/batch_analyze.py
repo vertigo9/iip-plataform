@@ -161,7 +161,11 @@ def analyze_portfolio(
                 )
             elif template_type == "etf":
                 template, _ = fetch_etf(
-                    position.ticker, position.cnpj, ano_efetivo, mes_efetivo, brapi_token
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
+                    brapi_token,
                 )
             elif template_type == "equity":
                 template, _ = fetch_equity(
@@ -173,7 +177,11 @@ def analyze_portfolio(
                 )
             elif template_type == "fiagro":
                 template, _ = fetch_fiagro(
-                    position.ticker, position.cnpj, ano_efetivo, mes_efetivo, brapi_token
+                    position.ticker,
+                    position.cnpj,
+                    ano_efetivo,
+                    mes_efetivo,
+                    brapi_token,
                 )
             else:  # fixed_income
                 template, _ = fetch_fixed_income(
@@ -187,11 +195,16 @@ def analyze_portfolio(
             continue
 
         incomplete = missing_required_market_data(
-            template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+            template_type,
+            template,
+            bolsai_api_key=bolsai_api_key,
+            brapi_token=brapi_token,
         )
         if incomplete:
             outcomes.append(
-                PositionOutcome(ticker=position.ticker, status="erro", detail=incomplete)
+                PositionOutcome(
+                    ticker=position.ticker, status="erro", detail=incomplete
+                )
             )
             continue
 

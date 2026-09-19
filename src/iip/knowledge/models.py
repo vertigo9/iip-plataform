@@ -40,6 +40,7 @@ class Decision:
     thesis_exit_unknown_gates: tuple[str, ...] = ()
     thesis_exit_critical_failure: bool | None = None
 
+
 @dataclass(frozen=True)
 class Evidence:
     evidence_id: str

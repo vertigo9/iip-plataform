@@ -236,15 +236,20 @@ class KnowledgeBridge:
         )
         return result
 
-    def sync_identity_projection(self, asset, ticker: str, asset_class: str) -> ProjectionSyncResult:
+    def sync_identity_projection(
+        self, asset, ticker: str, asset_class: str
+    ) -> ProjectionSyncResult:
         """Project the verified registry record (``iip.portfolio.registry.
         PortfolioAsset``) into the identity note -- already-real, already-
         verified fields (CNPJ, manager, structure...), just never
         surfaced into the vault before."""
-        provenance = getattr(asset.classification_provenance, "value", asset.classification_provenance)
+        provenance = getattr(
+            asset.classification_provenance, "value", asset.classification_provenance
+        )
         lines = [
             f"Ticker: {asset.ticker}",
-            f"Classe: {asset.asset_class}" + (f" ({asset.subtype})" if asset.subtype else ""),
+            f"Classe: {asset.asset_class}"
+            + (f" ({asset.subtype})" if asset.subtype else ""),
             f"Estrutura: {asset.structure or 'não informado'}",
             f"Segmento: {asset.segment or 'não informado'}",
             f"Gestora/Administrador: {asset.manager or 'não informado'}",
@@ -274,7 +279,9 @@ class KnowledgeBridge:
             latest = series.observations[-1]
             lines = []
             if latest.patrimonio_liquido is not None:
-                lines.append(f"Patrimônio líquido ({latest.period}): R$ {latest.patrimonio_liquido:,.2f}")
+                lines.append(
+                    f"Patrimônio líquido ({latest.period}): R$ {latest.patrimonio_liquido:,.2f}"
+                )
             if latest.valor_ativo is not None:
                 lines.append(f"Valor do ativo: R$ {latest.valor_ativo:,.2f}")
             if latest.total_numero_cotistas is not None:
@@ -318,11 +325,17 @@ class KnowledgeBridge:
                 f"Dividend yield TTM (CVM, soma dos últimos {len(recent)} mês(es) com dado): {ttm:.2f}%"
             )
             lines.append("")
-            lines.extend(f"- {period}: {value * 100:.4f}%" for period, value in monthly[-6:])
+            lines.extend(
+                f"- {period}: {value * 100:.4f}%" for period, value in monthly[-6:]
+            )
         if snapshot_yield_pct is not None:
-            lines.append(f"Dividend yield (snapshot, bolsai): {snapshot_yield_pct:.2f}%")
+            lines.append(
+                f"Dividend yield (snapshot, bolsai): {snapshot_yield_pct:.2f}%"
+            )
         if not lines:
-            lines.append("Sem dado de distribuição disponível para este ativo nas fontes atuais.")
+            lines.append(
+                "Sem dado de distribuição disponível para este ativo nas fontes atuais."
+            )
         return self.sync_asset_section(
             ticker, asset_class, "distributions", "IIP:distributions", "\n".join(lines)
         )
@@ -358,7 +371,9 @@ class KnowledgeBridge:
             ticker, asset_class, "events", "IIP:events", content
         )
 
-    def sync_performance_projection(self, series, ticker: str, asset_class: str) -> ProjectionSyncResult:
+    def sync_performance_projection(
+        self, series, ticker: str, asset_class: str
+    ) -> ProjectionSyncResult:
         """Project the persisted series' real extent (period range,
         endpoints, observation count) -- full return/volatility stats
         live in IIP:quantitative on the scoring note already, not
@@ -383,7 +398,9 @@ class KnowledgeBridge:
             ticker, asset_class, "performance", "IIP:performance", content
         )
 
-    def sync_sources_summary_projection(self, ticker: str, asset_class: str) -> ProjectionSyncResult:
+    def sync_sources_summary_projection(
+        self, ticker: str, asset_class: str
+    ) -> ProjectionSyncResult:
         """Project a real list of this ticker's Atlas evidence entries
         (04_Evidence/), reusing ObsidianRepository.list_evidence -- a
         plain enumeration of what's already persisted, not a new
@@ -391,7 +408,9 @@ class KnowledgeBridge:
         paths = self.repository.list_evidence(ticker)
         entries = []
         for path in paths:
-            fields, _ = self.projector._parse_frontmatter(path.read_text(encoding="utf-8"))
+            fields, _ = self.projector._parse_frontmatter(
+                path.read_text(encoding="utf-8")
+            )
             entries.append(fields)
         if not entries:
             content = "Nenhuma evidência registrada no Atlas para este ativo ainda."
@@ -402,7 +421,9 @@ class KnowledgeBridge:
                 f"{e.get('title') or (e.get('document_hash', '') or '')[:12]} · {e.get('source_url', '')}"
                 for e in shown
             ]
-            content = f"Total de evidências no Atlas: {len(entries)}\n\n" + "\n".join(lines)
+            content = f"Total de evidências no Atlas: {len(entries)}\n\n" + "\n".join(
+                lines
+            )
             if len(entries) > len(shown):
                 content += f"\n... e mais {len(entries) - len(shown)} entrada(s)."
         return self.sync_asset_section(

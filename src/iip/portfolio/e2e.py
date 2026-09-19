@@ -98,10 +98,14 @@ class AssetE2ERunner:
                 financials=template.get("financials", {}),
             )
             analysis = self.analyzer_factory().analyze(data)
-            projection = self.bridge.sync_analysis_projection(analysis, ticker, asset_class)
+            projection = self.bridge.sync_analysis_projection(
+                analysis, ticker, asset_class
+            )
             steps.append(E2EStep("fundamental_analysis", "ok", str(projection.path)))
         except Exception as exc:  # noqa: BLE001
-            steps.append(E2EStep("fundamental_analysis", "error", f"{type(exc).__name__}: {exc}"))
+            steps.append(
+                E2EStep("fundamental_analysis", "error", f"{type(exc).__name__}: {exc}")
+            )
 
         if fair_value is None:
             # No caller-supplied fair value: let the catalog pick the methods
@@ -118,7 +122,9 @@ class AssetE2ERunner:
             )
             valuation = first_valuation(attempts)
             if valuation is None:
-                why = "; ".join(f"{a.method.value}={a.status} ({a.reason})" for a in attempts)
+                why = "; ".join(
+                    f"{a.method.value}={a.status} ({a.reason})" for a in attempts
+                )
                 steps.append(
                     E2EStep(
                         "valuation",
@@ -128,7 +134,9 @@ class AssetE2ERunner:
                 )
             else:
                 try:
-                    self.bridge.sync_valuation_projection(valuation, ticker, asset_class)
+                    self.bridge.sync_valuation_projection(
+                        valuation, ticker, asset_class
+                    )
                     steps.append(
                         E2EStep(
                             "valuation",
@@ -137,25 +145,49 @@ class AssetE2ERunner:
                         )
                     )
                 except Exception as exc:  # noqa: BLE001
-                    steps.append(E2EStep("valuation", "error", f"{type(exc).__name__}: {exc}"))
+                    steps.append(
+                        E2EStep("valuation", "error", f"{type(exc).__name__}: {exc}")
+                    )
         else:
             try:
-                valuation = build_snapshot(ticker, valuation_method, fair_value, template.get("price"))
+                valuation = build_snapshot(
+                    ticker, valuation_method, fair_value, template.get("price")
+                )
                 self.bridge.sync_valuation_projection(valuation, ticker, asset_class)
-                steps.append(E2EStep("valuation", "ok", f"margin_of_safety={valuation.margin_of_safety}"))
+                steps.append(
+                    E2EStep(
+                        "valuation",
+                        "ok",
+                        f"margin_of_safety={valuation.margin_of_safety}",
+                    )
+                )
             except Exception as exc:  # noqa: BLE001
-                steps.append(E2EStep("valuation", "error", f"{type(exc).__name__}: {exc}"))
+                steps.append(
+                    E2EStep("valuation", "error", f"{type(exc).__name__}: {exc}")
+                )
 
         if historical_series is None:
-            steps.append(E2EStep("quantitative", "blocked", "historical_series is required"))
+            steps.append(
+                E2EStep("quantitative", "blocked", "historical_series is required")
+            )
         else:
-            if len(historical_series) < 2 or any(value <= 0 for value in historical_series):
-                steps.append(E2EStep("quantitative", "blocked", "at least two positive observations are required"))
+            if len(historical_series) < 2 or any(
+                value <= 0 for value in historical_series
+            ):
+                steps.append(
+                    E2EStep(
+                        "quantitative",
+                        "blocked",
+                        "at least two positive observations are required",
+                    )
+                )
             else:
                 try:
                     returns = tuple(
                         (current / previous) - 1.0
-                        for previous, current in zip(historical_series, historical_series[1:])
+                        for previous, current in zip(
+                            historical_series, historical_series[1:]
+                        )
                     )
                     quantitative = {
                         "observations": float(len(historical_series)),
@@ -163,15 +195,28 @@ class AssetE2ERunner:
                         "price_volatility": pstdev(historical_series),
                         "mean_return": mean(returns),
                         "return_volatility": pstdev(returns),
-                        "total_return": (historical_series[-1] / historical_series[0]) - 1.0,
+                        "total_return": (historical_series[-1] / historical_series[0])
+                        - 1.0,
                     }
-                    self.bridge.sync_quantitative_projection(quantitative, ticker, asset_class)
-                    steps.append(E2EStep("quantitative", "ok", f"observations={len(historical_series)}; total_return={quantitative['total_return']:.6f}"))
+                    self.bridge.sync_quantitative_projection(
+                        quantitative, ticker, asset_class
+                    )
+                    steps.append(
+                        E2EStep(
+                            "quantitative",
+                            "ok",
+                            f"observations={len(historical_series)}; total_return={quantitative['total_return']:.6f}",
+                        )
+                    )
                 except Exception as exc:  # noqa: BLE001
-                    steps.append(E2EStep("quantitative", "error", f"{type(exc).__name__}: {exc}"))
+                    steps.append(
+                        E2EStep("quantitative", "error", f"{type(exc).__name__}: {exc}")
+                    )
 
         if portfolio_state is None:
-            steps.append(E2EStep("cross_asset", "blocked", "portfolio_state is required"))
+            steps.append(
+                E2EStep("cross_asset", "blocked", "portfolio_state is required")
+            )
         else:
             try:
                 concentrations = all_concentrations(portfolio_state.positions)
@@ -190,9 +235,15 @@ class AssetE2ERunner:
                 self.bridge.sync_cross_asset_projection(
                     concentrations, ticker, asset_class, own_dimensions=own_dimensions
                 )
-                steps.append(E2EStep("cross_asset", "ok", f"concentrations={len(concentrations)}"))
+                steps.append(
+                    E2EStep(
+                        "cross_asset", "ok", f"concentrations={len(concentrations)}"
+                    )
+                )
             except Exception as exc:  # noqa: BLE001
-                steps.append(E2EStep("cross_asset", "error", f"{type(exc).__name__}: {exc}"))
+                steps.append(
+                    E2EStep("cross_asset", "error", f"{type(exc).__name__}: {exc}")
+                )
 
         try:
             import datetime as _dt
@@ -214,7 +265,15 @@ class AssetE2ERunner:
         except Exception:  # noqa: BLE001, S110
             pass
 
-        return AssetE2EResult(ticker, template, analysis, valuation, concentrations, quantitative, tuple(steps))
+        return AssetE2EResult(
+            ticker,
+            template,
+            analysis,
+            valuation,
+            concentrations,
+            quantitative,
+            tuple(steps),
+        )
 
     def run_with_persisted_series(
         self,
@@ -242,13 +301,15 @@ class AssetE2ERunner:
                 market_inputs=market_inputs,
             )
             steps = tuple(
-                E2EStep(
-                    "quantitative",
-                    "blocked",
-                    f"NAV scale break requires normalization: {series.scale_breaks}",
+                (
+                    E2EStep(
+                        "quantitative",
+                        "blocked",
+                        f"NAV scale break requires normalization: {series.scale_breaks}",
+                    )
+                    if step.name == "quantitative"
+                    else step
                 )
-                if step.name == "quantitative"
-                else step
                 for step in result.steps
             )
             return AssetE2EResult(
