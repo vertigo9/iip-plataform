@@ -1,8 +1,10 @@
-﻿from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
-from iip.analysis.infra_analyzer import InfraAnalyzer
+﻿from pathlib import Path
+
 from iip.analysis.agro_analyzer import AgroAnalyzer
-from iip.export import ReportExporter, BatchExporter
-from pathlib import Path
+from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
+from iip.analysis.infra_analyzer import InfraAnalyzer
+from iip.export import BatchExporter, ReportExporter
+
 
 def main():
     print("=" * 70)

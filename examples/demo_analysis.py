@@ -1,12 +1,13 @@
 ﻿#!/usr/bin/env python3
 """IIP Atlas Monitor — Exemplos Práticos com Dados Reais Simulados"""
 
-from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
-from iip.analysis.infra_analyzer import InfraAnalyzer
-from iip.analysis.agro_analyzer import AgroAnalyzer
-from iip.analysis import AnalysisReport
 import json
 from datetime import datetime
+
+from iip.analysis.agro_analyzer import AgroAnalyzer
+from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
+from iip.analysis.infra_analyzer import InfraAnalyzer
+
 
 def create_equity_examples():
     """Exemplos de análise de ações B3."""

@@ -1,6 +1,8 @@
 import json
 from types import SimpleNamespace
+
 from iip.operational.portfolio_runner import run_portfolio_cycle
+
 
 # Função auxiliar para simular o payload (FetchedData) retornado pelos harvesters
 def make_mock(ticker, body_dict):

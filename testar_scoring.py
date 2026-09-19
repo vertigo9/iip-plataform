@@ -26,7 +26,6 @@ from iip.knowledge.bridge import KnowledgeBridge
 from iip.knowledge.models import Evidence
 from iip.portfolio_decision.opportunity import build
 
-
 VAULT_PATH = Path(__file__).parent / "demo_vault"
 TICKER = "PCIP11"
 ASSET_CLASS = "FII"

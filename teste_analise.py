@@ -1,8 +1,8 @@
-﻿from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
-from iip.analysis.infra_analyzer import InfraAnalyzer
-from iip.analysis.agro_analyzer import AgroAnalyzer
+﻿from pathlib import Path
+
+from iip.analysis.framework import AssetData, EquityAnalyzer, FIIAnalyzer
 from iip.export import ReportExporter
-from pathlib import Path
+
 
 def analisar_acao():
     print("=" * 60)
@@ -101,7 +101,7 @@ def main():
     petr4_report = analisar_acao()
     
     # Analisar FII
-    hlgg11_report = analisar_fii()
+    analisar_fii()
     
     # Exportar PETR4
     filename = exportar_relatorio(petr4_report)

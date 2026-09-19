@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 from playwright.sync_api import sync_playwright
-
 
 DEFAULT_BASE = "https://realestate.patria.com/papel/{ticker}/documentos/"
 

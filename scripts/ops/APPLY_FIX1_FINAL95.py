@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 
 path = Path("tests/test_final95_behavior_460001_500000.py")
 if not path.exists():
