@@ -16,7 +16,7 @@ htmlcov/
 *.temp
 
 # Generated reports and local data
-reports/
+/reports/
 data/*
 !data/.gitkeep
 
