@@ -53,6 +53,42 @@ class RefreshRunResult:
         return tuple(o for o in self.outcomes if o.status == "pulado")
 
 
+def missing_required_market_data(
+    template_type: str | None,
+    template: dict,
+    *,
+    bolsai_api_key: str | None,
+    brapi_token: str | None,
+) -> str | None:
+    """Why a freshly fetched template must NOT be persisted, or ``None``.
+
+    The live fetchers are best-effort: when a market-data provider fails (rate
+    limit, outage) they keep going and fold the failure into a warning, leaving
+    ``price`` unset. Persisting that as if it were a full analysis writes a
+    decision built on incomplete data (this happened when bolsai's daily quota ran
+    out mid-batch: 8 FIIs were saved without price, NAV or 12-month yield).
+
+    So: a price that is missing although its provider WAS configured means the
+    fetch failed. With no credential at all the run is offline on purpose (see
+    ``refresh-portfolio``'s own notice) and nothing is flagged. Classes with no
+    price in their template (fixed income) are never flagged.
+    """
+    credential = {
+        "fii": ("bolsai", bolsai_api_key),
+        "equity": ("bolsai/brapi", bolsai_api_key or brapi_token),
+        "etf": ("brapi", brapi_token),
+        "fiagro": ("brapi", brapi_token),
+    }.get(template_type or "")
+    if credential is None:
+        return None
+    provider, key = credential
+    if key and template.get("price") is None:
+        # Short on purpose: the batch tables truncate this column at 80 chars and
+        # "nothing was written" is the part that must survive.
+        return f"preço indisponível ({provider}: falha/limite diário) — nada gravado"
+    return None
+
+
 def _template_type_for(position: PortfolioAsset) -> str | None:
     """Which live-fetch function a position should use.
 
@@ -187,6 +223,15 @@ def refresh_portfolio(
                     status="erro",
                     detail=str(exc),
                 )
+            )
+            continue
+
+        incomplete = missing_required_market_data(
+            template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+        )
+        if incomplete:
+            outcomes.append(
+                PositionOutcome(ticker=position.ticker, status="erro", detail=incomplete)
             )
             continue
 

@@ -6,7 +6,13 @@ from click.testing import CliRunner
 from iip.cli.main import cli
 from iip.config import get_settings
 from iip.sources.b3_bolsai import BolsaiFiiData
-from iip.sources.b3_bolsai_harvester import BolsaiHTTPHarvester, FetchedFii
+from iip.sources.b3_bolsai_harvester import (
+    BolsaiHTTPHarvester,
+    FetchedFii,
+    FetchedFundamentals,
+)
+from iip.sources.b3_brapi import BrapiQuote
+from iip.sources.b3_brapi_harvester import BrapiHTTPHarvester, FetchedQuotes
 from iip.sources.cvm_dfp_harvester import CvmDfpHTTPHarvester, FetchedDfpYear
 from iip.sources.cvm_fiagro_harvester import CvmFiagroHTTPHarvester, FetchedFiagroReport
 from iip.sources.cvm_fii import FiiComplemento
@@ -16,6 +22,7 @@ from iip.sources.cvm_renda_fixa_harvester import (
     CvmRendaFixaHTTPHarvester,
     FetchedDiario,
 )
+from tests.test_fetch_equity import make_bolsai_fundamentals
 
 
 @pytest.fixture(autouse=True)
@@ -160,13 +167,39 @@ def test_refresh_portfolio_uses_bolsai_and_brapi_when_credentials_present(
         )
 
     monkeypatch.setattr(BolsaiHTTPHarvester, "fetch_fii", fake_fetch_fii)
+    # With both credentials configured, EVERY class that carries a price must get
+    # one (a missing price now fails the position instead of being saved), so the
+    # stock and quote providers are simulated too -- otherwise the equities and
+    # ETFs would hit the real network with a fake key.
+    monkeypatch.setattr(
+        BolsaiHTTPHarvester,
+        "fetch",
+        lambda self, target: FetchedFundamentals(
+            target=target, status_code=200, fundamentals=make_bolsai_fundamentals()
+        ),
+    )
+    monkeypatch.setattr(
+        BrapiHTTPHarvester,
+        "fetch",
+        lambda self, target: FetchedQuotes(
+            target=target,
+            status_code=200,
+            quotes=tuple(
+                BrapiQuote(
+                    symbol=s, short_name=None, currency="BRL",
+                    regular_market_price=10.0, regular_market_change_percent=0.0,
+                )
+                for s in target.symbols
+            ),
+        ),
+    )
 
     runner = CliRunner()
     result = runner.invoke(
         cli, ["refresh-portfolio", "--output-dir", str(tmp_path), "--ano", "2026", "--mes", "8"]
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     snapshot_dirs = list(tmp_path.iterdir())
     btlg_data = json.loads((snapshot_dirs[0] / "BTLG11.json").read_text(encoding="utf-8"))
     assert btlg_data["price"] == 95.50

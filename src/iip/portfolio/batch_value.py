@@ -25,7 +25,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from iip.portfolio.batch_analyze import _sector_industry_for
-from iip.portfolio.refresh import _template_type_for
+from iip.portfolio.refresh import _template_type_for, missing_required_market_data
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
 from iip.portfolio_data.valuation_methods import (
     MethodAttempt,
@@ -161,6 +161,12 @@ def value_portfolio(
                 template, _ = fetch_equity(
                     position.ticker, position.cnpj, ano_dfp, bolsai_api_key, brapi_token
                 )
+            incomplete = missing_required_market_data(
+                template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+            )
+            if incomplete:
+                outcomes.append(ValuationOutcome(position.ticker, "erro", incomplete))
+                continue
             price = template.get("price")
             attempts = evaluate_valuations(
                 ticker=position.ticker,

@@ -18,7 +18,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from iip.portfolio.refresh import PositionOutcome, _template_type_for
+from iip.portfolio.refresh import (
+    PositionOutcome,
+    _template_type_for,
+    missing_required_market_data,
+)
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
 from iip.sources.shared_caches import with_shared_fetch_caches
 
@@ -177,6 +181,15 @@ def analyze_portfolio(
         except Exception as exc:  # noqa: BLE001 — isolamento por posição, mesmo padrão de refresh_portfolio
             outcomes.append(
                 PositionOutcome(ticker=position.ticker, status="erro", detail=str(exc))
+            )
+            continue
+
+        incomplete = missing_required_market_data(
+            template_type, template, bolsai_api_key=bolsai_api_key, brapi_token=brapi_token
+        )
+        if incomplete:
+            outcomes.append(
+                PositionOutcome(ticker=position.ticker, status="erro", detail=incomplete)
             )
             continue
 
