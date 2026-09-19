@@ -314,6 +314,34 @@ def _fii_valuation_inputs(
     return financials, fetched, warnings
 
 
+def _use_ttm_dividend_yield(
+    financials: dict[str, Any], fii: Any
+) -> tuple[dict[str, Any], bool, str | None]:
+    """Set the analyzer's ``dividend_yield`` to bolsai's 12-month figure.
+
+    The value this template used to carry is summed from CVM's monthly
+    ``Percentual_Dividend_Yield_Mes`` over the months of the CURRENT year only
+    (7 in September, so it read as a partial year) and that CVM field is itself
+    unreliable (checked live: 0.0 for funds that distribute -- BTCI11, VGIP11,
+    AFHI11 -- and negative for XPML11). bolsai's 12-month yield matches
+    independent data (HGCR11: 12.31% vs 12 x R$ 1.00 / R$ 97.40 from the
+    manager's sheet) and uses the same basis (net asset value per share) and unit
+    (annual percent) the analyzer expects. Without it the CVM value stays, as
+    before.
+    """
+    if fii is None or fii.dividend_yield_ttm is None:
+        return financials, False, None
+    financials = dict(financials)
+    financials["dividend_yield"] = fii.dividend_yield_ttm
+    return (
+        financials,
+        True,
+        "dividend_yield = TTM de 12 meses do bolsai (sobre o patrimônio por cota, "
+        f"ref. {fii.reference_date}); substitui o valor somado da CVM, que cobria só "
+        "os meses do ano corrente e é pouco confiável (0 em fundos que distribuem).",
+    )
+
+
 def fetch_fii_template_live(
     symbol: str,
     cnpj: str,
@@ -379,17 +407,35 @@ def fetch_fii_template_live(
     )
     template["financials"] = valuation_financials
 
+    # The analyzer's dividend_yield: prefer bolsai's 12-month figure over the
+    # one summed from CVM's current-year months (see _use_ttm_dividend_yield).
+    ttm_financials, ttm_used, ttm_warning = _use_ttm_dividend_yield(
+        template["financials"], bolsai_fii
+    )
+    template["financials"] = ttm_financials
+    base_warnings = resultado.warnings
+    base_fetched = resultado.fetched_fields
+    months_used = resultado.dividend_yield_months_used
+    if ttm_used:
+        base_warnings = tuple(
+            w for w in base_warnings if not w.startswith("dividend_yield calculado com apenas")
+        )
+        if "dividend_yield" not in base_fetched:
+            base_fetched = (*base_fetched, "dividend_yield")
+        months_used = 12
+
     extra_warnings = (
         *([bolsai_warning] if bolsai_warning else []),
         *patria_warnings,
         *valuation_warnings,
+        *([ttm_warning] if ttm_warning else []),
     )
     patria_fetched = [*patria_fetched, *valuation_fetched]
-    if patria_fetched or extra_warnings:
+    if patria_fetched or extra_warnings or ttm_used:
         resultado = FetchResult(
-            fetched_fields=(*resultado.fetched_fields, *patria_fetched),
-            dividend_yield_months_used=resultado.dividend_yield_months_used,
-            warnings=(*resultado.warnings, *extra_warnings),
+            fetched_fields=(*base_fetched, *patria_fetched),
+            dividend_yield_months_used=months_used,
+            warnings=(*base_warnings, *extra_warnings),
         )
     return template, resultado
 
