@@ -61,6 +61,45 @@ class ConfigurationHealthCheck:
             return HealthResult(name=self.name, healthy=False, message=str(exc))
 
 
+class PluginsHealthCheck:
+    """Unhealthy when a plugin named in ``IIP_PLUGINS`` failed to load (see
+    ``iip.providers.registry.load_plugins``). No plugins configured is healthy."""
+
+    @property
+    def name(self) -> str:
+        return "plugins"
+
+    def check(self, settings: IIPSettings) -> HealthResult:
+        from iip.providers.registry import last_plugin_report, load_plugins
+
+        report = last_plugin_report() or load_plugins()
+        metadata = {
+            "loaded": ",".join(report.loaded),
+            "failed": ",".join(f.module for f in report.failures),
+        }
+        if report.failures:
+            details = "; ".join(f"{f.module} ({f.reason})" for f in report.failures)
+            return HealthResult(
+                name=self.name,
+                healthy=False,
+                message=f"{len(report.failures)} plugin(s) failed to load: {details}",
+                metadata=metadata,
+            )
+        if not report.configured:
+            return HealthResult(
+                name=self.name,
+                healthy=True,
+                message="no plugins configured (IIP_PLUGINS)",
+                metadata=metadata,
+            )
+        return HealthResult(
+            name=self.name,
+            healthy=True,
+            message=f"{len(report.loaded)} plugin(s) loaded: {', '.join(report.loaded)}",
+            metadata=metadata,
+        )
+
+
 class FileSystemHealthCheck:
     @property
     def name(self) -> str:

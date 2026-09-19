@@ -23,6 +23,7 @@ from iip.core import Runtime
 from iip.export import ReportExporter
 from iip.health import (
     ModuleCountHealthCheck,
+    PluginsHealthCheck,
     PythonVersionHealthCheck,
     ReplicationStatusHealthCheck,
     SynchronizationHealthCheck,
@@ -57,12 +58,27 @@ ANALYZERS: dict[str, type] = {
 }
 
 
+def _load_plugins_or_warn() -> None:
+    """Load the provider plugins named in IIP_PLUGINS (env or .env). Silent when none
+    are configured or all load; a plugin that fails is reported on stderr (so
+    ``--format json`` output on stdout stays clean) and the command still runs."""
+    from iip.providers.registry import load_plugins
+
+    for failure in load_plugins().failures:
+        click.echo(
+            f"aviso: plugin {failure.module!r} não carregou ({failure.reason})",
+            err=True,
+        )
+
+
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
     """IIP Platform CLI — Institutional Investment Platform."""
     if ctx.invoked_subcommand is None:
         click.echo(cli.get_help(ctx))
+        return
+    _load_plugins_or_warn()
 
 
 @cli.command()
@@ -116,6 +132,7 @@ def health(sources: bool) -> None:
         console.print("[red]Runtime not initialized[/]")
         raise SystemExit(1)
 
+    ctx.health_engine.register(PluginsHealthCheck())
     ctx.health_engine.register(PythonVersionHealthCheck())
     ctx.health_engine.register(ModuleCountHealthCheck())
     ctx.health_engine.register(VersionCompatibilityHealthCheck())

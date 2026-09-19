@@ -119,7 +119,9 @@ def test_health_reports_healthy_system(runner, monkeypatch):
 
     assert result.exit_code == 0
     assert "HEALTHY" in result.output
-    assert ctx.health_engine.register.call_count == 5
+    # python_version, module_count, version_compatibility, replication,
+    # synchronization and plugins
+    assert ctx.health_engine.register.call_count == 6
 
 
 def test_health_exits_with_error_when_unhealthy(runner, monkeypatch):
