@@ -22,6 +22,12 @@ if (-not (Test-Path $LogDir)) {
     New-Item -ItemType Directory -Path $LogDir | Out-Null
 }
 
+# Cache das respostas do bolsai SO neste processo (o plano gratuito permite 200
+# chamadas/dia e o refresh + o valuation buscam dados em comum). O TTL curto garante
+# que nenhum preco fique mais velho que 2 h. Nao mexe no .env.
+$env:IIP_BOLSAI_CACHE_DIR = Join-Path $ProjetoDir "data\cache\bolsai"
+$env:IIP_BOLSAI_CACHE_TTL_MINUTES = "120"
+
 $DataHoje = Get-Date -Format "yyyy-MM-dd_HHmmss"
 $LogFile = Join-Path $LogDir "atualizacao_$DataHoje.log"
 
@@ -51,7 +57,13 @@ Write-Output "--- Atualizando carteira ---" | Tee-Object -FilePath $LogFile -App
 python -m iip.cli.main refresh-portfolio 2>&1 | Tee-Object -FilePath $LogFile -Append
 $RefreshExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode ===" | Tee-Object -FilePath $LogFile -Append
+# Valuation da carteira -> vault/02_Portfolio/Valuation.md (e destaques do Dashboard).
+# Se nenhuma posicao for avaliada (ex.: cota do bolsai esgotada) a nota anterior e mantida.
+Write-Output "--- Valuation da carteira ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main value-portfolio --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$ValueExitCode = $LASTEXITCODE
+
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     $msg1 = "Uma ou mais fontes de dado (CVM, BACEN, bolsai, etc.) nao responderam hoje. Veja " + $LogFile
@@ -63,7 +75,12 @@ if ($RefreshExitCode -ne 0) {
     Notificar-Windows "IIP: falha na atualizacao da carteira" $msg2 "Error"
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0) {
+if ($ValueExitCode -ne 0) {
+    $msg3 = "O valuation da carteira teve posicoes com erro hoje (a nota Valuation.md pode estar parcial ou desatualizada). Veja " + $LogFile
+    Notificar-Windows "IIP: falha no valuation da carteira" $msg3 "Warning"
+}
+
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0) {
     exit 0
 }
 exit 1

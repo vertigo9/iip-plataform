@@ -718,7 +718,8 @@ def _lead_and_others(attempts) -> tuple[str, str, str]:
     default=False,
     help="Grava a nota 02_Portfolio/Valuation.md no vault com todos os métodos por "
     "ativo (tabelas por classe, motivos dos métodos sem valor, guia de leitura). "
-    "Sobrescrita a cada execução; independente de --persist.",
+    "Sobrescrita a cada execução (exceto se nenhuma posição foi avaliada — aí a "
+    "nota anterior é mantida); independente de --persist.",
 )
 def value_portfolio_command(
     vault: str | None, ano: int | None, persist: bool, report: bool
@@ -802,7 +803,14 @@ def value_portfolio_command(
         "NTN-B real + prêmio de 3 p.p. (só FIIs de tijolo).[/]"
     )
 
-    if report:
+    if report and not resultado.succeeded:
+        # Nothing was valued (typically the bolsai daily quota): overwriting the note
+        # would replace the last good valuation with a page of errors.
+        console.print(
+            "[yellow]Relatório de valuation NÃO gravado: nenhuma posição foi avaliada "
+            "nesta rodada; a nota anterior foi mantida.[/]"
+        )
+    elif report:
         import datetime as _dt
 
         from iip.obsidian.valuation_report import write_valuation_report

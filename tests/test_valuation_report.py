@@ -243,3 +243,27 @@ def test_the_cli_writes_the_report_only_when_asked(tmp_path, monkeypatch):
     assert with_report.exit_code == 0, with_report.output
     assert report.is_file() and "Valuation da Carteira" in report.read_text(encoding="utf-8")
     assert "Relatório de valuation" in with_report.output
+
+
+def test_the_cli_keeps_the_previous_report_when_nothing_was_valued(tmp_path, monkeypatch):
+    import iip.cli.fetch_template as ft
+    import iip.portfolio.batch_value as bv
+
+    monkeypatch.setattr(bv, "assets_refreshable_now", lambda: (
+        PortfolioAsset("KLBN4", "equity", sector="Materiais Básicos", industry="Madeiras e Papel", cnpj="1"),
+    ))
+    monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
+    report = tmp_path / "02_Portfolio" / "Valuation.md"
+    report.parent.mkdir(parents=True)
+    report.write_text("nota boa de ontem", encoding="utf-8")
+
+    def _quota_exhausted(*args, **kwargs):
+        raise RuntimeError("limite diario atingido")
+
+    monkeypatch.setattr(ft, "fetch_equity_template_live", _quota_exhausted)
+
+    result = CliRunner().invoke(cli, ["value-portfolio", "--vault", str(tmp_path), "--report"])
+
+    assert result.exit_code == 1  # the failed position still fails the run
+    assert report.read_text(encoding="utf-8") == "nota boa de ontem"
+    assert "NÃO gravado" in result.output
