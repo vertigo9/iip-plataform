@@ -5,7 +5,7 @@ Primeiro extrator de PDF de FII de tijolo fora da Pátria (item 6 do roadmap,
 e PVBI11 (planilha da Pátria); nos demais fundos de tijolo ficava no valor-padrão
 do ``FIIAnalyzer``.
 
-Cada gestora escreve a vacância de um jeito, e os cinco layouts abaixo foram
+Cada gestora escreve a vacância de um jeito, e os sete layouts abaixo foram
 lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
 
   - TRXF11 (Investor Report, em inglês): ``Vacancy Physical 0.67% and Financial
@@ -16,7 +16,6 @@ lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
   - HGBS11 (Relatório de Gestão da Hedge, shopping): ``VACÂNCIA: O Fundo
     encerrou jul/26 com 4,4% da ABL vaga`` -- só a FÍSICA (ABL), que é a medida
     padrão de shopping; o relatório não informa a financeira.
-
   - RBVA11 (Relatório Gerencial da Rio Bravo): caixa "PRINCIPAIS NÚMEROS" com o
     valor ANTES do rótulo (``8,3%`` e depois ``Vacância Física``) -- o inverso do
     BTLG11. Só a física.
@@ -25,6 +24,20 @@ lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
     5,14% (...)``, com número de nota de rodapé colado à palavra (``física2``). O
     texto traz ainda a financeira "ajustada pelas carências", que NÃO é lida: é
     outra medida.
+  - HSML11 (Relatório Gerencial da HSI, shopping): a taxa de ocupação do FUNDO vem
+    num gráfico de barras: uma linha com 12 percentuais (``96,6% ... 96,4%``), a
+    linha dos 12 meses (``ago-25 ... jul-26``) e o título ``Taxa de Ocupação (%)``,
+    com a nota "ponderada pela participação do Fundo nos shoppings". Vale o último
+    par (aqui 96,4% em jul-26), e só se a quantidade de percentuais for igual à de
+    meses. O relatório não diz a base; para shopping a taxa de ocupação é a da
+    ABL, então entra como vacância FÍSICA (100 - taxa) e o aviso de base física
+    aparece. ``Custo de Ocupação`` é outro gráfico e não é lido.
+  - XPML11 (Relatório Gerencial da XP Asset, shopping): tabela "Indicadores
+    Operacionais e Financeiros" com colunas ``Jul-26 | Ano (2026) | 12 meses`` e a
+    linha ``Vacância (% ABL) média 4,7% 4,0% 3,9%``; vale a coluna do mês (a
+    primeira), o mesmo número do texto corrido ("a vacância ... encerrou o período em
+    4,7%"). O glossário do relatório define vacância como "ABL próprio total vago
+    dividido pela ABL próprio total": é FÍSICA, com a base declarada.
 
 Base da medida. A Pátria usa ``1 - vacância financeira`` (ponderada por receita)
 como ``occupancy_rate``. Aqui a financeira também vem primeiro; só quando o
@@ -100,6 +113,50 @@ _KNRI = re.compile(
     r"vacancia fisica\d* ao final do mes de ([a-z]+) foi de (\d+,\d+)% "
     r"\(ante [^)]*\), a vacancia financeira\d* (\d+,\d+)%"
 )
+
+
+_HSI = re.compile(r"((?:\d+,\d+% ){6,})((?:[a-z]{3}-\d{2} ){6,})taxa de ocupacao \(%\)")
+
+
+def parse_hsi(text: str) -> VacanciaReading | None:
+    match = _HSI.search(_normalize(text))
+    if match is None:
+        return None
+    rates = re.findall(r"(\d+,\d+)%", match.group(1))
+    months = re.findall(r"([a-z]{3}-\d{2})", match.group(2))
+    if len(rates) != len(months):
+        # o gráfico não casou (uma barra sem rótulo ou o contrário): melhor nada
+        return None
+    occupancy = _pct(rates[-1], decimal_comma=True)
+    if occupancy is None:
+        return None
+    return VacanciaReading(
+        "hsi_relatorio_gerencial",
+        physical_vacancy_pct=round(100.0 - occupancy, 4),
+        reference=months[-1],
+    )
+
+
+_XP_HEADER = re.compile(r"operacionais ([a-z]{3}-\d{2}) ano \(\d{4}\) 12 meses")
+_XP_ROW = re.compile(r"vacancia \(% abl\) media (\d+,\d+)% \d+,\d+% \d+,\d+%")
+
+
+def parse_xp(text: str) -> VacanciaReading | None:
+    normalized = _normalize(text)
+    header = _XP_HEADER.search(normalized)
+    row = _XP_ROW.search(normalized)
+    # a coluna do mês só é a primeira se o cabeçalho a rotula assim, e a linha tem de
+    # vir depois dele; sem os dois, melhor nada
+    if header is None or row is None or row.start() < header.start():
+        return None
+    physical = _pct(row.group(1), decimal_comma=True)
+    if physical is None:
+        return None
+    return VacanciaReading(
+        "xp_relatorio_gerencial",
+        physical_vacancy_pct=physical,
+        reference=header.group(1),
+    )
 
 
 def parse_rbva(text: str) -> VacanciaReading | None:
@@ -185,6 +242,8 @@ PROFILES: dict[str, VacanciaProfile] = {
     "HGBS11": VacanciaProfile("hedge_relatorio_gestao", parse_hedge, max_pages=10),
     "RBVA11": VacanciaProfile("rio_bravo_relatorio_gerencial", parse_rbva, max_pages=6),
     "KNRI11": VacanciaProfile("kinea_carta_do_gestor", parse_knri, max_pages=6),
+    "HSML11": VacanciaProfile("hsi_relatorio_gerencial", parse_hsi, max_pages=15),
+    "XPML11": VacanciaProfile("xp_relatorio_gerencial", parse_xp, max_pages=21),
 }
 
 

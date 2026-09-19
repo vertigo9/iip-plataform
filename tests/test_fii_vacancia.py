@@ -1,4 +1,5 @@
-"""Vacância lida do relatório gerencial da gestora (TRXF11, BTLG11, HGBS11).
+"""Vacância lida do relatório gerencial da gestora (TRXF11, BTLG11, HGBS11, RBVA11,
+KNRI11, HSML11, XPML11).
 
 Os trechos de texto abaixo foram capturados dos PDFs reais de 19/09/2026 (texto
 do pypdf), preservando a ordem em que o pypdf os devolve."""
@@ -6,6 +7,7 @@ do pypdf), preservando a ordem em que o pypdf os devolve."""
 import pytest
 
 from iip.cli.fetch_template import _enrich_fii_with_vacancia_report
+from iip.sources import hsi_mziq, xp_mziq
 from iip.sources.fii_vacancia import (
     VacanciaReading,
     latest_hedge_url,
@@ -14,9 +16,11 @@ from iip.sources.fii_vacancia import (
     latest_trx_url,
     parse_btg,
     parse_hedge,
+    parse_hsi,
     parse_knri,
     parse_rbva,
     parse_trx,
+    parse_xp,
     profile_for_ticker,
 )
 from iip.sources.fii_vacancia_harvester import (
@@ -80,6 +84,30 @@ sofrerão uma redução importante estimada em 2,17% (vacância física) e 0,74%
 (vacância financeira)."""
 
 
+# capturado na importação do módulo, antes de o conftest trocar o ``fetch`` por um stub
+_REAL_FETCH = FiiVacanciaHTTPHarvester.fetch
+
+HSI_TEXT = """HSI MallsFII - Relatório Gerencial – Agosto 2026
+96,6% 96,7% 96,7% 96,6% 97,4% 97,2% 96,7% 96,8% 96,2% 96,3% 96,2% 96,4%
+ago-25 set-25 out-25 nov-25 dez-25 jan-26 fev-26 mar-26 abr-26 mai-26 jun-26 jul-26
+Taxa de Ocupação (%)
+Notas: Considera contratos assinados e aprovados em comitê. Ponderada pela participação do Fundo nos shoppings."""
+
+HSI_COST_CHART = """ago-25 set-25 out-25 nov-25 dez-25 jan-26 fev-26 mar-26 abr-26 mai-26
+Custo de Ocupação (%)
+2,9% 2,9% 4,4% 3,6%
+-3,5%"""
+
+
+XP_TEXT = """Indicadores
+Operacionais Jul-26 Ano (2026) 12 meses
+ABL Total (m2) 1.063.027   1.093.460  1.070.606
+Custo de Ocupação médio (%) 11,7% 12,2% 11,9%
+Descontos / Faturamento médio (%) 3,0% 3,1% 2,8%
+Vacância (% ABL) média 4,7% 4,0% 3,9%
+Inadimplência Líquida (%) 2,2% 2,5% 2,0%"""
+
+
 def test_trx_reads_both_measures_and_prefers_financial():
     reading = parse_trx(TRX_TEXT)
     assert reading.physical_vacancy_pct == 0.67
@@ -131,8 +159,46 @@ def test_rbva_does_not_read_a_percentage_from_prose_about_vacancy():
     assert parse_rbva(prose) is None
 
 
+def test_hsi_reads_the_last_bar_of_the_occupancy_chart_as_physical_vacancy():
+    reading = parse_hsi(HSI_TEXT)
+    assert reading.physical_vacancy_pct == 3.6  # 100 - 96,4
+    assert reading.financial_vacancy_pct is None
+    assert reading.reference == "jul-26"
+    assert reading.basis == "física"
+    assert reading.occupancy_rate == pytest.approx(0.964)
+
+
+def test_hsi_refuses_a_chart_whose_bars_and_months_do_not_line_up():
+    eleven_months = HSI_TEXT.replace("ago-25 ", "")
+    assert parse_hsi(eleven_months) is None
+
+
+def test_hsi_does_not_read_the_neighbouring_occupancy_cost_chart():
+    assert parse_hsi(HSI_COST_CHART) is None
+
+
+def test_xp_reads_the_month_column_of_the_abl_vacancy_row():
+    reading = parse_xp(XP_TEXT)
+    assert reading.physical_vacancy_pct == 4.7  # not 4,0 (ano) nor 3,9 (12 meses)
+    assert reading.financial_vacancy_pct is None
+    assert reading.reference == "jul-26"
+    assert reading.basis == "física"
+    assert reading.occupancy_rate == pytest.approx(0.953)
+
+
+def test_xp_needs_the_column_header_to_trust_the_first_value():
+    assert parse_xp(XP_TEXT.replace("Jul-26 Ano (2026) 12 meses", "12 meses")) is None
+
+
+def test_xp_ignores_a_vacancy_row_that_comes_before_the_header():
+    row = "Vacância (% ABL) média 4,7% 4,0% 3,9%"
+    header = "Operacionais Jul-26 Ano (2026) 12 meses"
+    assert parse_xp(" ".join([row, header])) is None
+
+
 @pytest.mark.parametrize(
-    "parser", [parse_trx, parse_btg, parse_hedge, parse_rbva, parse_knri]
+    "parser",
+    [parse_trx, parse_btg, parse_hedge, parse_rbva, parse_knri, parse_hsi, parse_xp],
 )
 def test_parsers_return_none_when_layout_does_not_match(parser):
     assert parser("Relatório sem a seção de vacância") is None
@@ -202,17 +268,29 @@ def test_latest_knri_url_picks_the_newest_carta_do_gestor():
 def test_only_verified_layouts_have_a_profile():
     assert {
         t
-        for t in ("TRXF11", "BTLG11", "HGBS11", "RBVA11", "KNRI11", "XPML11", "ALZR11")
+        for t in (
+            "TRXF11",
+            "BTLG11",
+            "HGBS11",
+            "RBVA11",
+            "KNRI11",
+            "HSML11",
+            "XPML11",
+            "ALZR11",
+        )
         if profile_for_ticker(t)
-    } == {"TRXF11", "BTLG11", "HGBS11", "RBVA11", "KNRI11"}
+    } == {"TRXF11", "BTLG11", "HGBS11", "RBVA11", "KNRI11", "HSML11", "XPML11"}
     assert profile_for_ticker(" btlg11 ") is not None
 
 
-def test_harvester_returns_none_without_a_profile_and_never_downloads():
+def test_harvester_returns_none_without_a_profile_and_never_downloads(monkeypatch):
+    # o conftest troca ``fetch`` por um stub; aqui vale a implementação real
+    monkeypatch.setattr(FiiVacanciaHTTPHarvester, "fetch", _REAL_FETCH)
+
     def opener(*args, **kwargs):
         raise AssertionError("no network for a ticker without a profile")
 
-    assert FiiVacanciaHTTPHarvester(opener).fetch("XPML11") is None
+    assert FiiVacanciaHTTPHarvester(opener).fetch("ALZR11") is None
 
 
 def _stub_fetch(monkeypatch, result):
@@ -263,4 +341,100 @@ def test_enrichment_never_raises_when_the_download_fails(monkeypatch):
 
 
 def test_enrichment_is_a_silent_no_op_for_a_ticker_without_a_profile():
-    assert _enrich_fii_with_vacancia_report({"a": 1}, "XPML11") == ({"a": 1}, [], [])
+    assert _enrich_fii_with_vacancia_report({"a": 1}, "ALZR11") == ({"a": 1}, [], [])
+
+
+def test_hsi_mziq_config_is_registered_for_hsml11_only():
+    fund = hsi_mziq.fund_for_ticker(" hsml11 ")
+    assert fund.company_id == "1bea7b91-2f45-4c39-99ab-5856eff6841b"
+    assert "relatorio-gerencial" in fund.category_internal_names
+    assert hsi_mziq.fund_for_ticker("BTLG11") is None
+    with pytest.raises(ValueError):
+        hsi_mziq.build_years_target("BTLG11")
+
+
+def _mziq_doc(category, date, url, *, published=True):
+    from iip.sources.mziq import MziqDocument
+
+    return MziqDocument(
+        id=url,
+        company_id="c",
+        file_name_original=None,
+        file_title=None,
+        url=url,
+        file_size=None,
+        file_date=date,
+        file_quarter=None,
+        file_year=int(date[:4]),
+        category=category,
+        is_published=published,
+    )
+
+
+def _patch_mziq(monkeypatch, docs_by_year):
+    from iip.sources.mziq_harvester import MziqHTTPHarvester
+
+    monkeypatch.setattr(
+        MziqHTTPHarvester, "fetch_years", lambda self, target: tuple(docs_by_year)
+    )
+    monkeypatch.setattr(
+        MziqHTTPHarvester,
+        "fetch_documents",
+        lambda self, target: docs_by_year[int(target.body["year"])],
+    )
+
+
+@pytest.mark.parametrize(
+    "ticker, category",
+    [
+        ("HSML11", "relatorio-gerencial"),
+        ("BTLG11", "relatorios_gerenciais"),
+        ("XPML11", "relatorios_gerenciais"),
+    ],
+)
+def test_latest_mziq_report_uses_each_managers_category_and_the_newest_published(
+    monkeypatch, ticker, category
+):
+    _patch_mziq(
+        monkeypatch,
+        {
+            2026: [
+                _mziq_doc(category, "2026-07-08T00:00:00.000Z", "https://r/jul.pdf"),
+                _mziq_doc(category, "2026-09-08T00:00:00.000Z", "https://r/ago.pdf"),
+                _mziq_doc(
+                    category,
+                    "2026-10-08T00:00:00.000Z",
+                    "https://r/rascunho.pdf",
+                    published=False,
+                ),
+                _mziq_doc("xml-5.0", "2026-09-30T00:00:00.000Z", "https://r/xml.pdf"),
+            ],
+        },
+    )
+    assert FiiVacanciaHTTPHarvester()._latest_mziq_url(ticker) == "https://r/ago.pdf"
+
+
+def test_latest_mziq_report_falls_back_to_the_previous_year(monkeypatch):
+    _patch_mziq(
+        monkeypatch,
+        {
+            2026: [_mziq_doc("xml-5.0", "2026-01-01T00:00:00.000Z", "https://r/x.pdf")],
+            2025: [
+                _mziq_doc(
+                    "relatorio-gerencial",
+                    "2025-12-08T00:00:00.000Z",
+                    "https://r/dez.pdf",
+                )
+            ],
+        },
+    )
+    assert FiiVacanciaHTTPHarvester()._latest_mziq_url("HSML11") == "https://r/dez.pdf"
+
+
+def test_xp_mziq_config_is_registered_for_xpml11_only():
+    fund = xp_mziq.fund_for_ticker("xpml11")
+    assert fund.company_id == "8071264f-09a1-481e-9c5e-25e5b370cd63"
+    assert fund.category_internal_names == ("relatorios_gerenciais",)
+    assert xp_mziq.fund_for_ticker("HSML11") is None
+    with pytest.raises(ValueError):
+        xp_mziq.build_documents_target("HSML11", 2026)
