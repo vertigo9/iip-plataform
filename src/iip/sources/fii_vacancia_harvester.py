@@ -11,6 +11,8 @@ from urllib.request import Request, urlopen
 from .fii_vacancia import (
     VacanciaReading,
     latest_hedge_url,
+    latest_knri_url,
+    latest_rbva_url,
     latest_trx_url,
     profile_for_ticker,
 )
@@ -54,6 +56,10 @@ class FiiVacanciaHTTPHarvester:
             return latest_trx_url(urls)
         if ticker == "HGBS11":
             return latest_hedge_url(urls)
+        if ticker == "RBVA11":
+            return latest_rbva_url(urls)
+        if ticker == "KNRI11":
+            return latest_knri_url(urls)
         return None
 
     def _latest_btg_url(self, ticker: str) -> str | None:

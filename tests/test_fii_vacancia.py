@@ -9,9 +9,13 @@ from iip.cli.fetch_template import _enrich_fii_with_vacancia_report
 from iip.sources.fii_vacancia import (
     VacanciaReading,
     latest_hedge_url,
+    latest_knri_url,
+    latest_rbva_url,
     latest_trx_url,
     parse_btg,
     parse_hedge,
+    parse_knri,
+    parse_rbva,
     parse_trx,
     profile_for_ticker,
 )
@@ -47,6 +51,35 @@ HEDGE_TEXT = (
 )
 
 
+RBVA_TEXT = """PRINCIPAIS NÚMEROS
+74
+ Imóveis
+ 299.783
+m² ABL
+8,3%
+Vacância Física
+2
+ 8
+Inquilinos
+R$
+1,76
+ bilhão
+Patrimônio Líquido ¹
+12,3%
+Dividend Yield² anualizado"""
+
+KNRI_TEXT = """Com relação a carteira de inquilinos do Fundo, tivemos a entrada da Galena, gestora
+de recursos financeiros, no conjunto 71 do Edifício Joaquim Floriano, ocupando uma
+área de 234 m².
+Como resultado da movimentação acima, a vacância física2 ao final do mês de agosto
+foi de 3,91% (ante 3,95% no mês anterior), a vacância financeira3 5,14% (ante 5,24% no
+mês anterior) e a vacância financeira ajustada pelas carências previstas nos novos
+contratos de locação 5,64% (ante 5,66% no mês anterior). Como mencionado acima,
+após a concretização da venda do imóvel PIB Sumaré, os indicadores de vacância
+sofrerão uma redução importante estimada em 2,17% (vacância física) e 0,74%
+(vacância financeira)."""
+
+
 def test_trx_reads_both_measures_and_prefers_financial():
     reading = parse_trx(TRX_TEXT)
     assert reading.physical_vacancy_pct == 0.67
@@ -71,7 +104,36 @@ def test_hedge_reads_physical_vacancy_and_reference_month():
     assert reading.occupancy_rate == pytest.approx(0.956)
 
 
-@pytest.mark.parametrize("parser", [parse_trx, parse_btg, parse_hedge])
+def test_rbva_reads_the_value_that_comes_before_its_label():
+    reading = parse_rbva(RBVA_TEXT)
+    assert reading.physical_vacancy_pct == 8.3
+    assert reading.financial_vacancy_pct is None
+    assert reading.basis == "física"
+    assert reading.occupancy_rate == pytest.approx(0.917)
+
+
+def test_knri_reads_physical_and_financial_and_ignores_the_adjusted_one():
+    reading = parse_knri(KNRI_TEXT)
+    assert reading.physical_vacancy_pct == 3.91
+    assert reading.financial_vacancy_pct == 5.14  # not 5,64 (ajustada) nor 0,74
+    assert reading.reference == "agosto"
+    assert reading.basis == "financeira"
+    assert reading.occupancy_rate == pytest.approx(0.9486)
+
+
+def test_knri_tolerates_the_footnote_digit_glued_to_the_word():
+    text = KNRI_TEXT.replace("física2", "física").replace("financeira3", "financeira")
+    assert parse_knri(text).financial_vacancy_pct == 5.14
+
+
+def test_rbva_does_not_read_a_percentage_from_prose_about_vacancy():
+    prose = "a rescisão teve impacto marginal na vacância física, com 0,004% da ABL."
+    assert parse_rbva(prose) is None
+
+
+@pytest.mark.parametrize(
+    "parser", [parse_trx, parse_btg, parse_hedge, parse_rbva, parse_knri]
+)
 def test_parsers_return_none_when_layout_does_not_match(parser):
     assert parser("Relatório sem a seção de vacância") is None
     assert parser("") is None
@@ -114,12 +176,35 @@ def test_latest_hedge_url_picks_the_newest_year_and_month():
     assert latest_hedge_url(urls) == urls[0]
 
 
+def test_latest_rbva_url_takes_the_newest_date_then_the_higher_serial():
+    urls = [
+        "https://docs.riobravo.com.br/RBVA11/relatorios/relatorios-2026-07-31-1294479.pdf",
+        "https://docs.riobravo.com.br/RBVA11/relatorios/relatorios-2026-07-31-1313146.pdf",
+        "https://docs.riobravo.com.br/RBVA11/relatorios/relatorios-2026-08-31-1321749.pdf",
+        "https://docs.riobravo.com.br/RBVA11/informes/informe-2026-09-30-1400000.pdf",
+    ]
+    assert latest_rbva_url(urls) == urls[2]
+    assert latest_rbva_url(urls[:2]) == urls[1]
+    assert latest_rbva_url([urls[3]]) is None
+
+
+def test_latest_knri_url_picks_the_newest_carta_do_gestor():
+    urls = [
+        "https://www.kinea.com.br/wp-content/uploads/2026/08/KNRI_Carta-do-Gestor_07-2026.pdf",
+        "https://www.kinea.com.br/wp-content/uploads/2026/09/KNRI_Carta-do-Gestor_08-2026.pdf",
+        "https://www.kinea.com.br/wp-content/uploads/2025/12/KNRI_Carta-do-Gestor_11-2025.pdf",
+        "https://www.kinea.com.br/wp-content/uploads/2026/09/KNRI_Aviso-aos-Cotistas_08-2026.pdf",
+    ]
+    assert latest_knri_url(urls) == urls[1]
+    assert latest_knri_url([urls[3]]) is None
+
+
 def test_only_verified_layouts_have_a_profile():
     assert {
         t
-        for t in ("TRXF11", "BTLG11", "HGBS11", "XPML11", "KNRI11")
+        for t in ("TRXF11", "BTLG11", "HGBS11", "RBVA11", "KNRI11", "XPML11", "ALZR11")
         if profile_for_ticker(t)
-    } == {"TRXF11", "BTLG11", "HGBS11"}
+    } == {"TRXF11", "BTLG11", "HGBS11", "RBVA11", "KNRI11"}
     assert profile_for_ticker(" btlg11 ") is not None
 
 
