@@ -235,7 +235,8 @@ def _enrich_fii_with_patria_fundamentos(
 
     try:
         result = _PatriaPlanilhaHarvester().fetch(symbol)
-    except Exception as exc:  # noqa: BLE001 — enriquecimento é best-effort, nunca deve derrubar o template CVM já montado
+    # enriquecimento é best-effort, nunca deve derrubar o template CVM já montado
+    except Exception as exc:  # noqa: BLE001
         warnings.append(
             f"não consegui buscar a Planilha de Fundamentos da Pátria: {exc}"
         )
@@ -390,7 +391,8 @@ def _fii_dividend_pillar_inputs(
     all_complementos = list(complementos)
     try:
         all_complementos += list(load_previous_year())
-    except Exception as exc:  # noqa: BLE001 — o ano anterior é opcional; sem ele a tendência do VP pode ficar indisponível
+    # o ano anterior é opcional; sem ele a tendência do VP pode ficar indisponível
+    except Exception as exc:  # noqa: BLE001
         warnings.append(f"não consegui buscar o informe CVM do ano anterior: {exc}")
     change, reason = nav_change_12m_pct(all_complementos, cnpj)
     if change is not None:
@@ -486,7 +488,8 @@ def fetch_fii_template_live(
             )
             price = bolsai_result.fii.close_price
             bolsai_fii = bolsai_result.fii
-        except Exception as exc:  # noqa: BLE001 — preço é opcional; qualquer falha aqui (rede, JSON, o que for) não deve derrubar os dados da CVM já obtidos
+        # preço é opcional; qualquer falha aqui (rede, JSON, o que for) não deve derrubar os dados da CVM já obtidos
+        except Exception as exc:  # noqa: BLE001
             bolsai_warning = f"não consegui buscar preço via bolsai: {exc}"
 
     default_financials = _fii_defaults()
@@ -698,7 +701,8 @@ def fetch_equity_template_live(
                     "dele (último balanço/janela móvel), que pode diferir do ano "
                     "fiscal da DFP usada nos demais campos."
                 )
-        except Exception as exc:  # noqa: BLE001 — bolsai é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+        # bolsai é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+        except Exception as exc:  # noqa: BLE001
             warnings.append(f"não consegui buscar fundamentos via bolsai: {exc}")
     elif brapi_token:
         try:
@@ -708,7 +712,8 @@ def fetch_equity_template_live(
             if result.quotes:
                 price = result.quotes[0].regular_market_price
                 fetched.append("price")
-        except Exception as exc:  # noqa: BLE001 — brapi é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+        # brapi é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+        except Exception as exc:  # noqa: BLE001
             warnings.append(f"não consegui buscar preço via brapi.dev: {exc}")
     else:
         warnings.append(
@@ -744,7 +749,8 @@ def fetch_equity_template_live(
     current = None
     try:
         current = _fetch_dfp(ano)
-    except Exception as exc:  # noqa: BLE001 — DFP é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+    # DFP é opcional; qualquer falha aqui não deve impedir o template de ser gerado
+    except Exception as exc:  # noqa: BLE001
         warnings.append(f"não consegui buscar DFP da CVM para {ano}: {exc}")
 
     if current is None:
@@ -856,7 +862,8 @@ def fetch_equity_template_live(
     baseline = None
     try:
         baseline = _fetch_dfp(ano_base)
-    except Exception as exc:  # noqa: BLE001 — crescimento 3y é opcional; qualquer falha aqui não deve impedir o restante do template
+    # crescimento 3y é opcional; qualquer falha aqui não deve impedir o restante do template
+    except Exception as exc:  # noqa: BLE001
         warnings.append(
             f"não consegui buscar DFP da CVM de {ano_base} (para crescimento 3y): {exc}"
         )
@@ -896,7 +903,8 @@ def fetch_equity_template_live(
         for history_ano in range(ano, ano - 5, -1):
             try:
                 loaded = _load_dfp(history_ano)
-            except Exception as exc:  # noqa: BLE001 — histórico é opcional; falha aqui não derruba o restante do template
+            # histórico é opcional; falha aqui não derruba o restante do template
+            except Exception as exc:  # noqa: BLE001
                 warnings.append(
                     f"não consegui buscar DFP da CVM de {history_ano} (para histórico de dividendos): {exc}"
                 )
@@ -1093,7 +1101,8 @@ def fetch_fiagro_template_live(
             if brapi_result.quotes:
                 price = brapi_result.quotes[0].regular_market_price
                 fetched.append("price")
-        except Exception as exc:  # noqa: BLE001 — preço é opcional, mesmo padrão do fetch-template atual
+        # preço é opcional, mesmo padrão do fetch-template atual
+        except Exception as exc:  # noqa: BLE001
             warnings.append(f"não consegui buscar preço via brapi.dev: {exc}")
     else:
         warnings.append(
@@ -1119,7 +1128,8 @@ def fetch_fiagro_template_live(
             )
             fetched.extend(val_fetched)
             warnings.extend(val_warnings)
-        except Exception as exc:  # noqa: BLE001 — opcional, mesmo padrão do preço via brapi
+        # opcional, mesmo padrão do preço via brapi
+        except Exception as exc:  # noqa: BLE001
             warnings.append(f"não consegui buscar NAV/yield via bolsai: {exc}")
 
     warnings.append(
@@ -1285,7 +1295,8 @@ def fetch_etf_template_live(
             )
             if brapi_result.quotes:
                 price = brapi_result.quotes[0].regular_market_price
-        except Exception as exc:  # noqa: BLE001 — mesmo motivo do bolsai acima: preço é opcional
+        # mesmo motivo do bolsai acima: preço é opcional
+        except Exception as exc:  # noqa: BLE001
             brapi_warning = f"não consegui buscar preço via brapi.dev: {exc}"
 
     default_financials = _etf_defaults()

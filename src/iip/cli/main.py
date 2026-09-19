@@ -247,7 +247,8 @@ def _template_financials(analyzer_cls: type) -> dict[str, Any]:
     )
     try:
         analyzer_cls().analyze(probe)
-    except Exception:  # noqa: BLE001, S110 — probe é best-effort por design (ver comentário abaixo)
+    # probe é best-effort por design (ver comentário abaixo)
+    except Exception:  # noqa: BLE001, S110
         # Some fields may only be touched deep down a branch; a failed
         # probe run still leaves us with whatever was recorded so far.
         pass
@@ -393,7 +394,8 @@ def fetch_template(
         console.print(f"[bold red]--cnpj é obrigatório para --type {asset_type}[/]")
         raise SystemExit(1)
 
-    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (ano/mês de competência CVM), não timestamp; timezone não se aplica
+    # data de calendário (ano/mês de competência CVM), não timestamp; timezone não se aplica
+    hoje = _dt.date.today()  # noqa: DTZ011
     ano_efetivo = ano or hoje.year
 
     if asset_type == "fii":
@@ -679,7 +681,8 @@ def _auto_valuation_score(
                 f"[dim]NTN-B longa (venc. {found.maturity:%d/%m/%Y}, ref. "
                 f"{found.reference_date:%d/%m/%Y}): IPCA + {found.real_yield:.2%}[/]"
             )
-    except Exception as exc:  # noqa: BLE001 — a taxa é consulta de mercado opcional; sem ela o Bazin fica sem valor, a decisão segue
+    # a taxa é consulta de mercado opcional; sem ela o Bazin fica sem valor, a decisão segue
+    except Exception as exc:  # noqa: BLE001
         console.print(f"[yellow]Aviso: não consegui buscar a taxa da NTN-B: {exc}[/]")
 
     result = catalog_valuation_for_decision(
@@ -843,7 +846,8 @@ def value_portfolio_command(
         written = write_valuation_report(
             vault_path,
             resultado,
-            as_of=_dt.date.today(),  # noqa: DTZ011 — data de calendário do usuário (a mesma das decisões), não timestamp
+            # data de calendário do usuário (a mesma das decisões), não timestamp
+            as_of=_dt.date.today(),  # noqa: DTZ011
         )
         console.print(f"[dim]Relatório de valuation: {written}[/]")
 
@@ -987,7 +991,8 @@ def analyze(
             console.print(
                 f"[dim]Vault: {resultado_persist.status.value} — {resultado_persist.path}[/]"
             )
-        except Exception as exc:  # noqa: BLE001 — falha ao gravar no vault não deve impedir a análise em si de ser exibida
+        # falha ao gravar no vault não deve impedir a análise em si de ser exibida
+        except Exception as exc:  # noqa: BLE001
             console.print(f"[yellow]Aviso: não consegui salvar no vault: {exc}[/]")
 
     if gerar_decisao:
@@ -1043,7 +1048,8 @@ def analyze(
 
             knowledge_decision = to_knowledge_decision(
                 decision,
-                decision_id=f"DEC-{symbol.upper()}-{_dt.date.today().isoformat()}",  # noqa: DTZ011 — data de calendário (data da decisão), não timestamp
+                # data de calendário (data da decisão), não timestamp
+                decision_id=f"DEC-{symbol.upper()}-{_dt.date.today().isoformat()}",  # noqa: DTZ011
                 date=_dt.date.today(),  # noqa: DTZ011 — mesma razão
             )
             try:
@@ -1168,7 +1174,8 @@ def persist_evidence(
             )
             raise SystemExit(1) from exc
     else:
-        data_evidencia = _dt.date.today()  # noqa: DTZ011 — data de calendário (data da evidência), não timestamp
+        # data de calendário (data da evidência), não timestamp
+        data_evidencia = _dt.date.today()  # noqa: DTZ011
 
     evidence = Evidence(
         evidence_id=evidence_id,
@@ -1269,7 +1276,8 @@ def collect_sparta_history_command(
     if ate:
         ano_fim, mes_fim = _parse_year_month(ate, "--ate")
     else:
-        hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (mês de referência padrão), não timestamp
+        # data de calendário (mês de referência padrão), não timestamp
+        hoje = _dt.date.today()  # noqa: DTZ011
         ano_fim, mes_fim = hoje.year, hoje.month
 
     if (ano_inicio, mes_inicio) > (ano_fim, mes_fim):
@@ -1641,13 +1649,15 @@ def _collect_mziq_manager_documents(
             continue
         try:
             request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
-            with urlopen(request, timeout=30.0) as response:  # noqa: S310 — URL vem da própria API MZIQ, não de entrada externa
+            # URL vem da própria API MZIQ, não de entrada externa
+            with urlopen(request, timeout=30.0) as response:  # noqa: S310
                 body = response.read()
                 content_type = response.headers.get("Content-Type", "application/octet-stream")
         except HTTPError as exc:
             table.add_row(document.category or "-", document.file_title or "-", f"[red]HTTP {exc.code}[/]")
             continue
-        except Exception as exc:  # noqa: BLE001 — hospedagens variadas (arquivo truncado, timeout, SSL); um documento ruim não deve abortar a coleta inteira
+        # hospedagens variadas (arquivo truncado, timeout, SSL); um documento ruim não deve abortar a coleta inteira
+        except Exception as exc:  # noqa: BLE001
             table.add_row(document.category or "-", document.file_title or "-", f"[red]{type(exc).__name__}[/]")
             continue
 
@@ -1779,7 +1789,8 @@ def collect_static_documents_command(
 
     import datetime as _dt
 
-    this_year = _dt.date.today().year  # noqa: DTZ011 — ano de calendário (histórico de documentos), não timestamp
+    # ano de calendário (histórico de documentos), não timestamp
+    this_year = _dt.date.today().year  # noqa: DTZ011
     harvester = StaticPdfListingHTTPHarvester()
     documents = harvester.collect(
         normalized_ticker,
@@ -1804,13 +1815,15 @@ def collect_static_documents_command(
     for document in documents:
         try:
             request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
-            with urlopen(request, timeout=30.0) as response:  # noqa: S310 — URL vem da própria página do fundo, não de entrada externa
+            # URL vem da própria página do fundo, não de entrada externa
+            with urlopen(request, timeout=30.0) as response:  # noqa: S310
                 body = response.read()
                 content_type = response.headers.get("Content-Type", "application/pdf")
         except HTTPError as exc:
             table.add_row(document.title, f"[red]HTTP {exc.code}[/]")
             continue
-        except Exception as exc:  # noqa: BLE001 — hospedagens variadas (timeout, SSL, DNS); um documento ruim não deve abortar a coleta inteira
+        # hospedagens variadas (timeout, SSL, DNS); um documento ruim não deve abortar a coleta inteira
+        except Exception as exc:  # noqa: BLE001
             table.add_row(document.title, f"[red]{type(exc).__name__}[/]")
             continue
 
@@ -1957,7 +1970,8 @@ def collect_solutions_ir_documents_command(
 
     import datetime as _dt
 
-    this_year = _dt.date.today().year  # noqa: DTZ011 — ano de calendário (histórico de documentos), não timestamp
+    # ano de calendário (histórico de documentos), não timestamp
+    this_year = _dt.date.today().year  # noqa: DTZ011
     documents = SolutionsIrHTTPHarvester().collect(
         normalized_ticker,
         years=tuple(range(this_year, this_year - max(anos_historico, 1), -1)),
@@ -1991,13 +2005,15 @@ def collect_solutions_ir_documents_command(
     for document in documents:
         try:
             request = Request(document.url, headers={"User-Agent": "IIP-D-OBSIDIAN/1.0"})
-            with urlopen(request, timeout=30.0) as response:  # noqa: S310 — URL vem da própria API Solutions IR, não de entrada externa
+            # URL vem da própria API Solutions IR, não de entrada externa
+            with urlopen(request, timeout=30.0) as response:  # noqa: S310
                 body = response.read()
                 content_type = response.headers.get("Content-Type", "application/pdf")
         except HTTPError as exc:
             table.add_row(document.category_sigla, document.year, document.title, f"[red]HTTP {exc.code}[/]")
             continue
-        except Exception as exc:  # noqa: BLE001 — hospedagem estática de terceiro (static.btgpactual.com); um documento ruim não deve abortar a coleta inteira
+        # hospedagem estática de terceiro (static.btgpactual.com); um documento ruim não deve abortar a coleta inteira
+        except Exception as exc:  # noqa: BLE001
             table.add_row(document.category_sigla, document.year, document.title, f"[red]{type(exc).__name__}[/]")
             continue
 
@@ -2093,7 +2109,8 @@ def collect_cpfl_documents_command(
 
     console.print("[dim]Buscando a Central de Resultados de CPFE3 (ri.cpfl.com.br)...[/]\n")
     documents = CpflRiHTTPHarvester().fetch().documents
-    first_year = _dt.date.today().year - max(anos_historico, 1) + 1  # noqa: DTZ011 — ano de calendário (histórico de documentos), não timestamp
+    # ano de calendário (histórico de documentos), não timestamp
+    first_year = _dt.date.today().year - max(anos_historico, 1) + 1  # noqa: DTZ011
     documents = tuple(d for d in documents if d.year >= first_year)
     if not incluir_midia:
         documents = tuple(d for d in documents if not d.is_media)
@@ -2111,13 +2128,15 @@ def collect_cpfl_documents_command(
     for document in documents:
         try:
             request = Request(document.url, headers={"User-Agent": "Mozilla/5.0 (compatible; IIP-D-OBSIDIAN/1.0)"})
-            with urlopen(request, timeout=60.0) as response:  # noqa: S310 — URL vem da própria Central de Resultados do RI, não de entrada externa
+            # URL vem da própria Central de Resultados do RI, não de entrada externa
+            with urlopen(request, timeout=60.0) as response:  # noqa: S310
                 body = response.read()
                 content_type = response.headers.get("Content-Type", "application/pdf")
         except HTTPError as exc:
             table.add_row(document.title, f"[red]HTTP {exc.code}[/]")
             continue
-        except Exception as exc:  # noqa: BLE001 — um documento ruim não deve abortar a coleta inteira
+        # um documento ruim não deve abortar a coleta inteira
+        except Exception as exc:  # noqa: BLE001
             table.add_row(document.title, f"[red]{type(exc).__name__}[/]")
             continue
 

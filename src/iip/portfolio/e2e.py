@@ -206,10 +206,12 @@ class AssetE2ERunner:
                     "ticker": ticker.upper(),
                     "asset_class": asset_class,
                     "stages_ok": stages_ok,
-                    "as_of": _dt.date.today().isoformat(),  # noqa: DTZ011 — data de calendário, não timestamp
+                    # data de calendário, não timestamp
+                    "as_of": _dt.date.today().isoformat(),  # noqa: DTZ011
                 },
             )
-        except Exception:  # noqa: BLE001, S110 -- summary frontmatter is best-effort, never masks the real per-stage results above
+        # summary frontmatter is best-effort, never masks the real per-stage results above
+        except Exception:  # noqa: BLE001, S110
             pass
 
         return AssetE2EResult(ticker, template, analysis, valuation, concentrations, quantitative, tuple(steps))

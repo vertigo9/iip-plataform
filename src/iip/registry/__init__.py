@@ -83,7 +83,8 @@ class ModuleRegistry:
                 )
             )
             return True
-        except Exception as exc:  # noqa: BLE001 — isola falha de carregamento de modulo, retorna False em vez de propagar
+        # isola falha de carregamento de modulo, retorna False em vez de propagar
+        except Exception as exc:  # noqa: BLE001
             logger.error("module_load_failed", module=name, error=str(exc))
             return False
 

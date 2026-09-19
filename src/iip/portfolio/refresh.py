@@ -164,7 +164,8 @@ def refresh_portfolio(
     fetch_equity = fetch_equity or fetch_equity_template_live
     fetch_fiagro = fetch_fiagro or fetch_fiagro_template_live
 
-    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (data de referência do snapshot), não timestamp
+    # data de calendário (data de referência do snapshot), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
     ano_efetivo = ano or hoje.year
     mes_efetivo = mes or hoje.month
     # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
@@ -217,7 +218,8 @@ def refresh_portfolio(
                     ano_efetivo,
                     mes_efetivo,
                 )
-        except Exception as exc:  # noqa: BLE001 — isolamento por posição, ver docstring do módulo
+        # isolamento por posição, ver docstring do módulo
+        except Exception as exc:  # noqa: BLE001
             outcomes.append(
                 PositionOutcome(
                     ticker=position.ticker,

@@ -105,7 +105,8 @@ class BolsaiHTTPHarvester:
 
             settings = get_settings()
             return settings.bolsai_cache_dir, settings.bolsai_cache_ttl_minutes * 60.0
-        except Exception:  # noqa: BLE001 — settings are optional here; no cache is the safe default
+        # settings are optional here; no cache is the safe default
+        except Exception:  # noqa: BLE001
             return None, 0.0
 
     def _cache_path(self, url: str) -> Path | None:
@@ -140,7 +141,8 @@ class BolsaiHTTPHarvester:
                 encoding="utf-8",
             )
             os.replace(tmp, path)
-        except Exception:  # noqa: BLE001 — caching is best-effort and must never fail a fetch
+        # caching is best-effort and must never fail a fetch
+        except Exception:  # noqa: BLE001
             return
 
     def _request(self, target: BolsaiTarget) -> tuple[int, str, bytes, str]:

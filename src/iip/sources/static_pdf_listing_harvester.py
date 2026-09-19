@@ -76,7 +76,8 @@ class StaticPdfListingHTTPHarvester:
         for index, target in enumerate(build_targets(ticker, years)):
             try:
                 page = self.fetch(target)
-            except Exception as exc:  # noqa: BLE001 — see docstring: only the first page is mandatory
+            # see docstring: only the first page is mandatory
+            except Exception as exc:  # noqa: BLE001
                 if index == 0:
                     raise
                 self.last_errors.append(f"{target.url}: {type(exc).__name__}: {exc}")

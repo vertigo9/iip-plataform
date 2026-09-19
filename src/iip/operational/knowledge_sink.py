@@ -20,7 +20,8 @@ class OperationalEvidenceSink:
         evidence_date = (
             date(document.year, 12, 31)
             if document.year is not None
-            else date.today()  # noqa: DTZ011 — data de calendário do documento, não timestamp
+            # data de calendário do documento, não timestamp
+            else date.today()  # noqa: DTZ011
         )
         return Evidence(
             evidence_id=document.document_id,

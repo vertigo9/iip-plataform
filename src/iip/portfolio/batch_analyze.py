@@ -115,7 +115,8 @@ def analyze_portfolio(
     analyzers = deps.analyzers or ANALYZERS
     knowledge_bridge_cls = deps.knowledge_bridge_cls or KnowledgeBridge
 
-    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (referência CVM), não timestamp
+    # data de calendário (referência CVM), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
     ano_efetivo = ano or hoje.year
     mes_efetivo = mes or hoje.month
     # DFP de um ano fiscal só sai meses depois do fim desse ano -- ver
@@ -178,7 +179,8 @@ def analyze_portfolio(
                 template, _ = fetch_fixed_income(
                     position.ticker, position.cnpj, ano_efetivo, mes_efetivo
                 )
-        except Exception as exc:  # noqa: BLE001 — isolamento por posição, mesmo padrão de refresh_portfolio
+        # isolamento por posição, mesmo padrão de refresh_portfolio
+        except Exception as exc:  # noqa: BLE001
             outcomes.append(
                 PositionOutcome(ticker=position.ticker, status="erro", detail=str(exc))
             )
@@ -208,7 +210,8 @@ def analyze_portfolio(
             resultado_persist = bridge.sync_analysis_projection(
                 report, position.ticker, analyzer_type
             )
-        except Exception as exc:  # noqa: BLE001 — isolamento por posição, mesmo padrão de refresh_portfolio
+        # isolamento por posição, mesmo padrão de refresh_portfolio
+        except Exception as exc:  # noqa: BLE001
             outcomes.append(
                 PositionOutcome(ticker=position.ticker, status="erro", detail=str(exc))
             )

@@ -53,7 +53,8 @@ class ProviderExecutionEngine:
                 collected.extend(evidence)
                 if collected:
                     break
-            except Exception as exc:  # noqa: BLE001 — isola falha de um provider, permite tentar o proximo
+            # isola falha de um provider, permite tentar o proximo
+            except Exception as exc:  # noqa: BLE001
                 runs.append(
                     ProviderRun(
                         provider,

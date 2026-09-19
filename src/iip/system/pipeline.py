@@ -80,7 +80,8 @@ class FullSystemPipeline:
                 trace = trace.add(
                     SystemArtifact(ticker.upper(), stage, value, evidence_ids)
                 )
-            except Exception as exc:  # noqa: BLE001 — isola falha de um estagio do pipeline, nao derruba a run inteira
+            # isola falha de um estagio do pipeline, nao derruba a run inteira
+            except Exception as exc:  # noqa: BLE001
                 return SystemResult(
                     run_id,
                     ticker.upper(),

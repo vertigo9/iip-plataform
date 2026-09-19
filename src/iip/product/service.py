@@ -25,7 +25,8 @@ class PortfolioService:
             return ServiceResponse(False, operation, error="operation_not_supported")
         try:
             return ServiceResponse(True, operation, payload=handler(**params))
-        except Exception as exc:  # noqa: BLE001 — isola falha do handler numa ServiceResponse, nao deixa propagar
+        # isola falha do handler numa ServiceResponse, nao deixa propagar
+        except Exception as exc:  # noqa: BLE001
             return ServiceResponse(
                 False,
                 operation,

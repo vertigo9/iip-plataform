@@ -55,7 +55,8 @@ class ProviderRuntime:
         try:
             value = getattr(handle.provider, method)(*args, **kwargs)
             return RuntimeResult(provider_name, method, True, value=value)
-        except Exception as exc:  # noqa: BLE001 — isola falha do metodo do provider num RuntimeResult, nao deixa propagar
+        # isola falha do metodo do provider num RuntimeResult, nao deixa propagar
+        except Exception as exc:  # noqa: BLE001
             return RuntimeResult(
                 provider_name,
                 method,

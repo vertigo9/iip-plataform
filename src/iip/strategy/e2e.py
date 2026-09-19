@@ -22,5 +22,6 @@ def execute(data: StrategyPipelineInput) -> StrategyE2E:
             and report.income_plan.gap >= 0
         )
         return StrategyE2E(report, valid)
-    except Exception:  # noqa: BLE001 — isola falha do pipeline e2e, retorna resultado negativo em vez de propagar
+    # isola falha do pipeline e2e, retorna resultado negativo em vez de propagar
+    except Exception:  # noqa: BLE001
         return StrategyE2E(None, False)

@@ -131,7 +131,8 @@ def value_portfolio(
                 f"NTN-B longa (venc. {rate.maturity:%d/%m/%Y}, ref. "
                 f"{rate.reference_date:%d/%m/%Y}): IPCA + {rate.real_yield:.2%}"
             )
-    except Exception as exc:  # noqa: BLE001 — a taxa é uma consulta de mercado opcional; falhar aqui não pode derrubar a rodada
+    # a taxa é uma consulta de mercado opcional; falhar aqui não pode derrubar a rodada
+    except Exception as exc:  # noqa: BLE001
         ntnb_note = f"não consegui buscar a taxa da NTN-B: {exc} — Bazin fica sem valor."
 
     bridge = None
@@ -142,7 +143,8 @@ def value_portfolio(
 
         bridge = (bridge_cls or KnowledgeBridge)(vault_path)
 
-    hoje = _dt.date.today()  # noqa: DTZ011 — data de calendário (ano fiscal da DFP), não timestamp
+    # data de calendário (ano fiscal da DFP), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
     ano_dfp = ano or (hoje.year - 1)
     # FII monthly reports are filed for the CURRENT year (unlike the annual DFP),
     # so ``ano`` (a fiscal year) does not apply to them.
@@ -210,7 +212,8 @@ def value_portfolio(
                 price=price,
                 inputs={**template.get("financials", {}), **market_inputs},
             )
-        except Exception as exc:  # noqa: BLE001 — isolamento por posição, mesmo padrão de refresh_portfolio
+        # isolamento por posição, mesmo padrão de refresh_portfolio
+        except Exception as exc:  # noqa: BLE001
             outcomes.append(ValuationOutcome(position.ticker, "erro", str(exc)))
             continue
 

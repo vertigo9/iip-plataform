@@ -164,7 +164,8 @@ def run_portfolio_cycle(
                         "confidence": raw_metrics.get("RAG_CONFIDENCE", 0.0),
                     },
                 )
-        except Exception as exc:  # noqa: BLE001 -- isolamento por ativo, uma falha nao trava os outros
+        # isolamento por ativo, uma falha nao trava os outros
+        except Exception as exc:  # noqa: BLE001
             logger.error("Falha ao processar ativo %s: %s", ticker, exc)
             results["errors"] += 1
 

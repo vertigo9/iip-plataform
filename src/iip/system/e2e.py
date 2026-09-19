@@ -29,6 +29,7 @@ def run_checks(checks: tuple[tuple[str, Callable[[], Any]], ...]) -> E2EReport:
         try:
             value = check()
             results.append(E2ECheck(name, bool(value), str(value)))
-        except Exception as exc:  # noqa: BLE001 — isola falha de um check e2e, permite os demais rodarem
+        # isola falha de um check e2e, permite os demais rodarem
+        except Exception as exc:  # noqa: BLE001
             results.append(E2ECheck(name, False, f"{type(exc).__name__}:{exc}"))
     return E2EReport(tuple(results))
