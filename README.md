@@ -182,7 +182,9 @@ comparar) e LFTB11 (ETF: o CNPJ consta no cadastro da CVM como FIIM, mas o
 Informe Diário que usamos não traz a cota dele, então não há NAV — verificado
 em 19/09/2026). O CRAA11 não está no dataset FIAGRO da CVM, mas o bolsai o
 serve pelo endpoint de FIIs, então é avaliado por NAV como os FIIs. Os FI-Infra
-listados usam a cota da CVM (o bolsai não os tem). Valor justo
+listados usam a cota da CVM (o bolsai não os tem). AXIA3 e LFTB11 ficam em
+aberto até haver fonte de NAV confiável — detalhes e caminho para retomar em
+`IIP_reconciliacao_blueprint_vs_codigo.md` ("Pendências em aberto"). Valor justo
 não é recomendação de compra.
 
 ### Coletar documentos de RI e gestoras

@@ -95,3 +95,17 @@ Investigação adicional (não fazia parte do escopo original desta reconciliaç
 5. **Framework de orquestração central no Core** — hoje cada pacote (`enterprise/`, `operational/`, etc.) tem sua própria mini-orquestração; consolidar seria uma extensão, não uma criação do zero.
 6. **Extração de conteúdo estruturado do restante dos documentos coletados** — a maior parte dos ~2000+ documentos de IR no vault (relatórios gerenciais, fatos relevantes etc.) ainda é evidência bruta (PDF), não dado estruturado; a promoção dos itens 2/3 usou dados já estruturados de outros providers (CVM DFP/Informe Mensal, Sparta, B3), não extração de PDF em si (exceto o piloto manual do PCIP11).
    - **Progresso (18/09/2026):** primeiro extrator de planilha estruturada — `sources/patria_planilha_fundamentos.py` (+ harvester) lê a aba "Resumo" da Planilha de Fundamentos mensal da Pátria via `openpyxl` e alimenta `occupancy_rate`/`avg_lease_term_years` em `fetch_fii_template_live`. Confirmado ao vivo: HGRU11 (ocupação 99,2%, WALE 8,97), LVBI11 (99,7%, 3,70), PVBI11 (72,0%, 4,97). HGCR11/PCIP11 (crédito, outro layout de planilha) têm extrator próprio, `parse_resumo_credito` — checado ao vivo (jul/2026): PL, VP/cota, reserva acumulada/cota, composição da carteira (% CRI/FII/caixa), prazo médio e spread. Só `reserves_to_npa` (reserva/VP por cota: 0,0071 no HGCR11, 0,0076 no PCIP11) alimenta o `FIIAnalyzer`; prazo médio dos CRIs deliberadamente NÃO vai para `avg_lease_term_years` (duração de carteira de crédito não é prazo de locação). `CreditSnapshot` (intelligence) continua sem alimentador real. Falta: demais gestoras/tipos de documento.
+
+## Pendências em aberto — valuation sem fonte de NAV (19/09/2026)
+
+Estado do `value-portfolio --report` em 19/09/2026: **35 posições avaliadas, 0 erro, 2 puladas**.
+As duas puladas ficam assim de propósito até haver uma fonte de NAV confiável; nada foi
+inventado para preenchê-las.
+
+| Ativo | Por que está sem valuation | O que já foi verificado | Caminho para retomar |
+|---|---|---|---|
+| **AXIA3** | Não é ação: é o rótulo de um FMP-FGTS Daycoval (subjacente Eletrobras ON) que **não negocia em bolsa** — não há preço de mercado para comparar com o NAV. O ticker "AXIA3" é o da própria ação da Eletrobras, outro ativo. | A CVM (Informe Diário) traz a cota do fundo; o fetch nunca busca preço para ele de propósito, para não atribuir a cotação da ação da Eletrobras a este fundo. | Definir o que "valor justo" significa para um fundo sem preço (ex.: comparar a cota com o valor de resgate/avaliação da própria gestora) ou tirá-lo do escopo de valuation. É decisão de método, não só de fonte. |
+| **LFTB11** | ETF Investo (MarketVector Brazil Treasury 760 Day). **Sem NAV** na fonte que usamos. | CNPJ 56.176.507/0001-55 está correto e consta no cadastro da CVM (`registro_classe`/`registro_fundo`) como **FIIM**, mas **não aparece no Informe Diário** (o dataset usado para cota/NAV de ETF e FI-Infra). O bolsai também não serve ETF de renda fixa pelo endpoint de FIIs. | Achar a cota diária em outro canal: relatório/portal da gestora (Investo), dados de ETF da B3, ou outro dataset da CVM para FIIM. Com a cota, basta a classe `etf` no catálogo (`METHODS_BY_ASSET_CLASS`, só NAV) e o fetch expor `nav_per_share` — o desenho foi testado em 19/09 e descartado só por falta de dado. |
+
+Como já foi resolvido para os demais: CRAA11 (bolsai, endpoint de FIIs), CDII11/JURO11/CPTI11 (cota do
+Informe Diário da CVM + preço do brapi, classe `fi_infra`).
