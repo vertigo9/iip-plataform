@@ -5,7 +5,7 @@ Primeiro extrator de PDF de FII de tijolo fora da Pátria (item 6 do roadmap,
 e PVBI11 (planilha da Pátria); nos demais fundos de tijolo ficava no valor-padrão
 do ``FIIAnalyzer``.
 
-Cada gestora escreve a vacância de um jeito, e os três layouts abaixo foram
+Cada gestora escreve a vacância de um jeito, e os cinco layouts abaixo foram
 lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
 
   - TRXF11 (Investor Report, em inglês): ``Vacancy Physical 0.67% and Financial
@@ -16,6 +16,15 @@ lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
   - HGBS11 (Relatório de Gestão da Hedge, shopping): ``VACÂNCIA: O Fundo
     encerrou jul/26 com 4,4% da ABL vaga`` -- só a FÍSICA (ABL), que é a medida
     padrão de shopping; o relatório não informa a financeira.
+
+  - RBVA11 (Relatório Gerencial da Rio Bravo): caixa "PRINCIPAIS NÚMEROS" com o
+    valor ANTES do rótulo (``8,3%`` e depois ``Vacância Física``) -- o inverso do
+    BTLG11. Só a física.
+  - KNRI11 (Carta do Gestor da Kinea, em prosa): ``a vacância física ao final do
+    mês de agosto foi de 3,91% (ante 3,95% no mês anterior), a vacância financeira
+    5,14% (...)``, com número de nota de rodapé colado à palavra (``física2``). O
+    texto traz ainda a financeira "ajustada pelas carências", que NÃO é lida: é
+    outra medida.
 
 Base da medida. A Pátria usa ``1 - vacância financeira`` (ponderada por receita)
 como ``occupancy_rate``. Aqui a financeira também vem primeiro; só quando o
@@ -86,6 +95,41 @@ _HEDGE = re.compile(
 )
 
 
+_RBVA = re.compile(r"(\d+,\d+)% vacancia fisica")
+_KNRI = re.compile(
+    r"vacancia fisica\d* ao final do mes de ([a-z]+) foi de (\d+,\d+)% "
+    r"\(ante [^)]*\), a vacancia financeira\d* (\d+,\d+)%"
+)
+
+
+def parse_rbva(text: str) -> VacanciaReading | None:
+    match = _RBVA.search(_normalize(text))
+    if match is None:
+        return None
+    physical = _pct(match.group(1), decimal_comma=True)
+    if physical is None:
+        return None
+    return VacanciaReading(
+        "rio_bravo_relatorio_gerencial", physical_vacancy_pct=physical
+    )
+
+
+def parse_knri(text: str) -> VacanciaReading | None:
+    match = _KNRI.search(_normalize(text))
+    if match is None:
+        return None
+    physical = _pct(match.group(2), decimal_comma=True)
+    financial = _pct(match.group(3), decimal_comma=True)
+    if physical is None and financial is None:
+        return None
+    return VacanciaReading(
+        "kinea_carta_do_gestor",
+        financial_vacancy_pct=financial,
+        physical_vacancy_pct=physical,
+        reference=match.group(1),
+    )
+
+
 def parse_trx(text: str) -> VacanciaReading | None:
     match = _TRX.search(_normalize(text))
     if match is None:
@@ -139,6 +183,8 @@ PROFILES: dict[str, VacanciaProfile] = {
     "TRXF11": VacanciaProfile("trx_investor_report", parse_trx, max_pages=6),
     "BTLG11": VacanciaProfile("btg_relatorio_gerencial", parse_btg, max_pages=6),
     "HGBS11": VacanciaProfile("hedge_relatorio_gestao", parse_hedge, max_pages=10),
+    "RBVA11": VacanciaProfile("rio_bravo_relatorio_gerencial", parse_rbva, max_pages=6),
+    "KNRI11": VacanciaProfile("kinea_carta_do_gestor", parse_knri, max_pages=6),
 }
 
 
@@ -148,6 +194,10 @@ def profile_for_ticker(ticker: str) -> VacanciaProfile | None:
 
 _TRX_UPLOAD = re.compile(r"/uploads/(\d{4})/(\d{2})/[^/]*investor-report", re.I)
 _HEDGE_FILE = re.compile(r"/(\d{4})_(\d{2})_HGBS_Relatorio\.pdf$", re.I)
+_RBVA_FILE = re.compile(
+    r"/RBVA11/relatorios/relatorios-(\d{4})-(\d{2})-(\d{2})-(\d+)\.pdf$"
+)
+_KNRI_CARTA = re.compile(r"/KNRI_Carta-do-Gestor_(\d{2})-(\d{4})\.pdf$", re.I)
 
 
 def latest_trx_url(urls: Iterable[str]) -> str | None:
@@ -169,4 +219,26 @@ def latest_hedge_url(urls: Iterable[str]) -> str | None:
         match = _HEDGE_FILE.search(url)
         if match:
             candidates.append(((int(match.group(1)), int(match.group(2))), url))
+    return max(candidates)[1] if candidates else None
+
+
+def latest_rbva_url(urls: Iterable[str]) -> str | None:
+    """Relatório gerencial mais recente do RBVA11 (``relatorios-AAAA-MM-DD-N``):
+    vale a data e, na mesma data, o número maior (a republicação)."""
+    candidates = []
+    for url in urls:
+        match = _RBVA_FILE.search(url)
+        if match:
+            year, month, day, serial = (int(g) for g in match.groups())
+            candidates.append(((year, month, day, serial), url))
+    return max(candidates)[1] if candidates else None
+
+
+def latest_knri_url(urls: Iterable[str]) -> str | None:
+    """Carta do Gestor mais recente do KNRI11 (``KNRI_Carta-do-Gestor_MM-AAAA``)."""
+    candidates = []
+    for url in urls:
+        match = _KNRI_CARTA.search(url)
+        if match:
+            candidates.append(((int(match.group(2)), int(match.group(1))), url))
     return max(candidates)[1] if candidates else None
