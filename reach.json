@@ -1,0 +1,572 @@
+[
+ {
+  "pkg": "sources",
+  "modules": 74,
+  "reached": 57,
+  "lines": 8999,
+  "reached_lines": 7538,
+  "tests": 96,
+  "used_by": [
+   "atlas",
+   "cli",
+   "intelligence",
+   "portfolio",
+   "portfolio_data"
+  ]
+ },
+ {
+  "pkg": "cli",
+  "modules": 3,
+  "reached": 3,
+  "lines": 4279,
+  "reached_lines": 4279,
+  "tests": 45,
+  "used_by": [
+   "portfolio"
+  ]
+ },
+ {
+  "pkg": "portfolio",
+  "modules": 22,
+  "reached": 18,
+  "lines": 3873,
+  "reached_lines": 3536,
+  "tests": 53,
+  "used_by": [
+   "automation",
+   "cli",
+   "integration",
+   "obsidian"
+  ]
+ },
+ {
+  "pkg": "intelligence",
+  "modules": 17,
+  "reached": 0,
+  "lines": 2092,
+  "reached_lines": 0,
+  "tests": 12,
+  "used_by": [
+   "decision",
+   "operational"
+  ]
+ },
+ {
+  "pkg": "knowledge",
+  "modules": 13,
+  "reached": 11,
+  "lines": 1833,
+  "reached_lines": 1393,
+  "tests": 29,
+  "used_by": [
+   "atlas",
+   "cli",
+   "core",
+   "decision",
+   "intelligence",
+   "operational",
+   "portfolio",
+   "sources"
+  ]
+ },
+ {
+  "pkg": "analysis",
+  "modules": 6,
+  "reached": 6,
+  "lines": 1704,
+  "reached_lines": 1704,
+  "tests": 15,
+  "used_by": [
+   "cli",
+   "decision",
+   "export",
+   "portfolio"
+  ]
+ },
+ {
+  "pkg": "providers",
+  "modules": 13,
+  "reached": 12,
+  "lines": 1229,
+  "reached_lines": 1133,
+  "tests": 18,
+  "used_by": [
+   "cli",
+   "health",
+   "portfolio"
+  ]
+ },
+ {
+  "pkg": "decision",
+  "modules": 22,
+  "reached": 16,
+  "lines": 1226,
+  "reached_lines": 888,
+  "tests": 24,
+  "used_by": [
+   "cli",
+   "integration",
+   "portfolio"
+  ]
+ },
+ {
+  "pkg": "harvest",
+  "modules": 2,
+  "reached": 0,
+  "lines": 1016,
+  "reached_lines": 0,
+  "tests": 5,
+  "used_by": []
+ },
+ {
+  "pkg": "portfolio_data",
+  "modules": 15,
+  "reached": 14,
+  "lines": 922,
+  "reached_lines": 838,
+  "tests": 14,
+  "used_by": [
+   "decision",
+   "obsidian",
+   "portfolio"
+  ]
+ },
+ {
+  "pkg": "obsidian",
+  "modules": 4,
+  "reached": 3,
+  "lines": 732,
+  "reached_lines": 655,
+  "tests": 5,
+  "used_by": [
+   "automation",
+   "cli",
+   "operational"
+  ]
+ },
+ {
+  "pkg": "atlas",
+  "modules": 9,
+  "reached": 6,
+  "lines": 594,
+  "reached_lines": 467,
+  "tests": 13,
+  "used_by": [
+   "cli",
+   "intelligence",
+   "portfolio",
+   "sources"
+  ]
+ },
+ {
+  "pkg": "operational",
+  "modules": 10,
+  "reached": 0,
+  "lines": 536,
+  "reached_lines": 0,
+  "tests": 9,
+  "used_by": [
+   "automation"
+  ]
+ },
+ {
+  "pkg": "universal",
+  "modules": 10,
+  "reached": 10,
+  "lines": 405,
+  "reached_lines": 405,
+  "tests": 9,
+  "used_by": [
+   "portfolio"
+  ]
+ },
+ {
+  "pkg": "integration",
+  "modules": 11,
+  "reached": 0,
+  "lines": 392,
+  "reached_lines": 0,
+  "tests": 5,
+  "used_by": [
+   "decision"
+  ]
+ },
+ {
+  "pkg": "strategy",
+  "modules": 12,
+  "reached": 0,
+  "lines": 363,
+  "reached_lines": 0,
+  "tests": 4,
+  "used_by": []
+ },
+ {
+  "pkg": "data",
+  "modules": 3,
+  "reached": 0,
+  "lines": 362,
+  "reached_lines": 0,
+  "tests": 2,
+  "used_by": [
+   "operational"
+  ]
+ },
+ {
+  "pkg": "validation_engine",
+  "modules": 11,
+  "reached": 0,
+  "lines": 360,
+  "reached_lines": 0,
+  "tests": 4,
+  "used_by": [
+   "benchmark"
+  ]
+ },
+ {
+  "pkg": "enterprise_consolidation",
+  "modules": 14,
+  "reached": 0,
+  "lines": 358,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "orchestration",
+  "modules": 9,
+  "reached": 0,
+  "lines": 352,
+  "reached_lines": 0,
+  "tests": 3,
+  "used_by": []
+ },
+ {
+  "pkg": "portfolio_decision",
+  "modules": 10,
+  "reached": 0,
+  "lines": 340,
+  "reached_lines": 0,
+  "tests": 6,
+  "used_by": [
+   "decision"
+  ]
+ },
+ {
+  "pkg": "production_integration",
+  "modules": 12,
+  "reached": 0,
+  "lines": 337,
+  "reached_lines": 0,
+  "tests": 3,
+  "used_by": []
+ },
+ {
+  "pkg": "system",
+  "modules": 10,
+  "reached": 0,
+  "lines": 335,
+  "reached_lines": 0,
+  "tests": 3,
+  "used_by": []
+ },
+ {
+  "pkg": "health",
+  "modules": 1,
+  "reached": 1,
+  "lines": 331,
+  "reached_lines": 331,
+  "tests": 10,
+  "used_by": [
+   "cli",
+   "core"
+  ]
+ },
+ {
+  "pkg": "portfolio_intelligence",
+  "modules": 12,
+  "reached": 0,
+  "lines": 325,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "benchmark",
+  "modules": 11,
+  "reached": 0,
+  "lines": 324,
+  "reached_lines": 0,
+  "tests": 2,
+  "used_by": []
+ },
+ {
+  "pkg": "export",
+  "modules": 1,
+  "reached": 1,
+  "lines": 319,
+  "reached_lines": 319,
+  "tests": 1,
+  "used_by": [
+   "cli"
+  ]
+ },
+ {
+  "pkg": "platform",
+  "modules": 9,
+  "reached": 0,
+  "lines": 308,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "scenario_engine",
+  "modules": 12,
+  "reached": 0,
+  "lines": 307,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "enterprise",
+  "modules": 10,
+  "reached": 0,
+  "lines": 305,
+  "reached_lines": 0,
+  "tests": 2,
+  "used_by": []
+ },
+ {
+  "pkg": "product",
+  "modules": 11,
+  "reached": 0,
+  "lines": 285,
+  "reached_lines": 0,
+  "tests": 6,
+  "used_by": []
+ },
+ {
+  "pkg": "operational_integration",
+  "modules": 10,
+  "reached": 0,
+  "lines": 284,
+  "reached_lines": 0,
+  "tests": 2,
+  "used_by": []
+ },
+ {
+  "pkg": "production",
+  "modules": 11,
+  "reached": 0,
+  "lines": 284,
+  "reached_lines": 0,
+  "tests": 5,
+  "used_by": []
+ },
+ {
+  "pkg": "coverage",
+  "modules": 11,
+  "reached": 0,
+  "lines": 283,
+  "reached_lines": 0,
+  "tests": 2,
+  "used_by": []
+ },
+ {
+  "pkg": "cycle",
+  "modules": 11,
+  "reached": 0,
+  "lines": 270,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "adaptive",
+  "modules": 10,
+  "reached": 0,
+  "lines": 242,
+  "reached_lines": 0,
+  "tests": 3,
+  "used_by": []
+ },
+ {
+  "pkg": "hardening",
+  "modules": 11,
+  "reached": 0,
+  "lines": 239,
+  "reached_lines": 0,
+  "tests": 3,
+  "used_by": []
+ },
+ {
+  "pkg": "registry",
+  "modules": 2,
+  "reached": 2,
+  "lines": 189,
+  "reached_lines": 189,
+  "tests": 8,
+  "used_by": [
+   "cli",
+   "health",
+   "metrics",
+   "portfolio",
+   "sources",
+   "synchronization"
+  ]
+ },
+ {
+  "pkg": "replication",
+  "modules": 1,
+  "reached": 1,
+  "lines": 161,
+  "reached_lines": 161,
+  "tests": 2,
+  "used_by": [
+   "cli",
+   "health"
+  ]
+ },
+ {
+  "pkg": "versioning",
+  "modules": 1,
+  "reached": 1,
+  "lines": 128,
+  "reached_lines": 128,
+  "tests": 4,
+  "used_by": [
+   "cli",
+   "health",
+   "synchronization"
+  ]
+ },
+ {
+  "pkg": "metrics",
+  "modules": 1,
+  "reached": 1,
+  "lines": 126,
+  "reached_lines": 126,
+  "tests": 1,
+  "used_by": [
+   "cli"
+  ]
+ },
+ {
+  "pkg": "synchronization",
+  "modules": 1,
+  "reached": 1,
+  "lines": 94,
+  "reached_lines": 94,
+  "tests": 3,
+  "used_by": [
+   "health"
+  ]
+ },
+ {
+  "pkg": "core",
+  "modules": 1,
+  "reached": 1,
+  "lines": 74,
+  "reached_lines": 74,
+  "tests": 3,
+  "used_by": [
+   "cli"
+  ]
+ },
+ {
+  "pkg": "config",
+  "modules": 1,
+  "reached": 1,
+  "lines": 63,
+  "reached_lines": 63,
+  "tests": 31,
+  "used_by": [
+   "atlas",
+   "automation",
+   "cli",
+   "core",
+   "health",
+   "logging",
+   "metrics",
+   "providers",
+   "registry",
+   "sources",
+   "synchronization"
+  ]
+ },
+ {
+  "pkg": "events",
+  "modules": 1,
+  "reached": 1,
+  "lines": 62,
+  "reached_lines": 62,
+  "tests": 2,
+  "used_by": [
+   "knowledge",
+   "registry",
+   "sources"
+  ]
+ },
+ {
+  "pkg": "automation",
+  "modules": 1,
+  "reached": 0,
+  "lines": 58,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "exceptions",
+  "modules": 1,
+  "reached": 0,
+  "lines": 49,
+  "reached_lines": 0,
+  "tests": 1,
+  "used_by": []
+ },
+ {
+  "pkg": "plugins",
+  "modules": 1,
+  "reached": 0,
+  "lines": 39,
+  "reached_lines": 0,
+  "tests": 0,
+  "used_by": []
+ },
+ {
+  "pkg": "logging",
+  "modules": 1,
+  "reached": 1,
+  "lines": 36,
+  "reached_lines": 36,
+  "tests": 0,
+  "used_by": [
+   "core",
+   "health",
+   "providers",
+   "registry"
+  ]
+ },
+ {
+  "pkg": "(raiz)",
+  "modules": 1,
+  "reached": 1,
+  "lines": 4,
+  "reached_lines": 4,
+  "tests": 0,
+  "used_by": [
+   "cli"
+  ]
+ },
+ {
+  "pkg": "common",
+  "modules": 1,
+  "reached": 0,
+  "lines": 1,
+  "reached_lines": 0,
+  "tests": 0,
+  "used_by": []
+ }
+]
