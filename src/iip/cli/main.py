@@ -1816,6 +1816,119 @@ def macro_alerts_command(
     # alerta não é falha: o código de saída só reflete configuração inválida
 
 
+@cli.command("target-policy")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--init",
+    is_flag=True,
+    default=False,
+    help="Cria 02_Portfolio/Politica_Pesos_Alvo.json a partir do Current.md, com todos os "
+    "pesos, tolerâncias e limites VAZIOS (nunca sobrescreve um arquivo existente).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Politica_Pesos_Alvo.md (tabela de decisão).",
+)
+def target_policy_command(vault: str | None, init: bool, report: bool) -> None:
+    """Mostra e valida a política de pesos-alvo por ativo contra o Current.md.
+
+    É uma camada de política: não compra, vende, aporta nem rebalanceia, e nenhum percentual é
+    preenchido por este comando. Política ou snapshot inválidos param com o motivo."""
+    import datetime as _dt
+
+    from iip.portfolio.target_policy import (
+        POLICY_RELATIVE_PATH,
+        SNAPSHOT_RELATIVE_PATH,
+        build_initial_policy,
+        load_policy,
+        read_snapshot_rows,
+        reconcile,
+        save_policy,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    # data de calendário (versão da política e idade do dado), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    try:
+        policy = load_policy(vault_path)
+        rows = read_snapshot_rows(Path(vault_path) / SNAPSHOT_RELATIVE_PATH)
+        if policy is None:
+            if not init:
+                console.print(
+                    "[yellow]Sem política de pesos-alvo. Rode com --init para criar a partir "
+                    "do Current.md, com todos os percentuais vazios.[/]"
+                )
+                raise SystemExit(1)
+            policy = build_initial_policy(rows, version=f"{hoje.isoformat()}.1")
+            console.print(f"[dim]Criado: {save_policy(vault_path, policy)}[/]")
+    except ValueError as exc:
+        console.print(f"[bold red]Política de pesos-alvo inválida:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    rec = reconcile(policy, rows)
+    status_count: dict[str, int] = {}
+    for line in policy.lines:
+        status_count[line.status] = status_count.get(line.status, 0) + 1
+    console.print(
+        f"[bold]Política {policy.version}[/] (hash {policy.content_hash}) — "
+        f"{POLICY_RELATIVE_PATH.as_posix()}"
+    )
+    console.print(
+        f"Status: {policy.approval_status}; base {policy.base_id}; monitoramento "
+        f"{'ligado' if policy.monitoring_enabled else 'desligado'}; regra de soma: "
+        f"{policy.sum_rule or 'em aberto'}."
+    )
+    table = Table(title=f"Linhas da política — snapshot de R$ {rec.total:,.2f}")
+    table.add_column("Linha")
+    table.add_column("Classe")
+    table.add_column("Valor", justify="right")
+    table.add_column("Peso atual", justify="right")
+    table.add_column("Alvo", justify="right")
+    table.add_column("Status")
+    for item in sorted(rec.weights, key=lambda w: -w.weight_pct)[:12]:
+        target = "—" if item.line.target_pct is None else f"{item.line.target_pct:.2f}%"
+        table.add_row(
+            item.line.id,
+            item.line.asset_class,
+            f"{item.value:,.2f}",
+            f"{item.weight_pct:.2f}%",
+            target,
+            item.line.status,
+        )
+    console.print(table)
+    console.print(
+        f"[dim]{len(policy.lines)} linhas ("
+        + ", ".join(f"{n} {s}" for s, n in sorted(status_count.items()))
+        + f"); as 12 maiores acima; {len(policy.retired)} posições zeradas fora do "
+        "universo.[/]"
+    )
+    for row in rec.uncovered:
+        console.print(f"[yellow]Posição sem linha na política:[/] {row.id}")
+    for line in rec.absent_lines:
+        console.print(f"[yellow]Linha sem posição no snapshot:[/] {line.id}")
+    for row in rec.reopened:
+        console.print(f"[yellow]Posição zerada que voltou ao snapshot:[/] {row.id}")
+    for group, member in rec.missing_members:
+        console.print(f"[yellow]Registro que saiu de {group}:[/] {member}")
+    for group, row in rec.new_members:
+        console.print(f"[yellow]Registro novo em {group}:[/] {row.id}")
+    if rec.consistent and not rec.missing_members:
+        console.print("[green]Política e snapshot batem.[/]")
+    console.print(
+        "[dim]Política, não ordem: nada é comprado, vendido, aportado nem rebalanceado.[/]"
+    )
+    if report:
+        from iip.obsidian.target_policy_report import write_policy_report
+
+        console.print(f"[dim]{write_policy_report(vault_path, policy, rec, hoje)}[/]")
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",
