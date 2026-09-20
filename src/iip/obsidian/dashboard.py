@@ -4,7 +4,7 @@ Redirecionado (17/09/2026) para o vault real usado pelo
 ``KnowledgeBridge``/``AssetE2ERunner`` (``vault/01_Assets/<Categoria>/
 <TICKER>/<TICKER> - Score e Ranking.md``) -- a versão anterior deste
 gerador apontava para um layout legado (``01 - Portfolio/Assets/
-{TICKER}.md``, vault de demonstração ``MeuVaultFinanceiro``) que nunca
+{TICKER}.md``, do vault de demonstração já removido) que nunca
 foi escrito pelo pipeline real, então o dashboard sempre mostrava
 "N/A" em tudo.
 
