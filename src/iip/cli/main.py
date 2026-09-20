@@ -1093,6 +1093,120 @@ def collect_fii_history_command(
         raise SystemExit(1)
 
 
+@cli.command("validate-income")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--min-age-days",
+    type=int,
+    default=None,
+    help="Só refaz a validação se a última tem mais de N dias (os relatórios são mensais).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Validacao_Renda.md (sobrescrita a cada execução).",
+)
+def validate_income_command(
+    vault: str | None, min_age_days: int | None, report: bool
+) -> None:
+    """Confere a distribuição por cota da CVM (base da renda projetada) com a que a gestora
+    escreve no relatório mais recente. Só registra: não altera a renda projetada."""
+    import datetime as _dt
+
+    from iip.portfolio.fii_history_refresh import fii_positions
+    from iip.portfolio.historical_series import HistoricalSeriesStore
+    from iip.portfolio.income_cross_check import (
+        load_validation,
+        run_cross_checks,
+        save_validation,
+    )
+    from iip.portfolio.registry import PORTFOLIO_ASSETS
+    from iip.sources.fii_distribution_harvester import (
+        PATRIA_SHEET_TICKERS,
+        FiiDistributionHTTPHarvester,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    # data de calendário (idade da última validação), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    tickers = tuple(sorted(p.ticker for p in fii_positions(PORTFOLIO_ASSETS)))
+
+    if min_age_days is not None:
+        previous = load_validation(vault_path)
+        stamps = [c.checked_at for c in previous.values()]
+        try:
+            age = (hoje - _dt.date.fromisoformat(min(stamps))).days if stamps else None
+        except ValueError:
+            age = None
+        if age is not None and age <= min_age_days:
+            console.print(
+                f"[dim]Validação em dia (última há {age} dias, limite {min_age_days}).[/]"
+            )
+            if report:
+                from iip.obsidian.income_validation_report import (
+                    write_validation_report,
+                )
+
+                console.print(
+                    f"[dim]{write_validation_report(vault_path, tuple(previous.values()))}[/]"
+                )
+            return
+
+    harvester = FiiDistributionHTTPHarvester()
+
+    def fetch(ticker: str):
+        if ticker in PATRIA_SHEET_TICKERS:
+            return harvester.fetch_patria_sheet(ticker)
+        return harvester.fetch_distribution(ticker)
+
+    console.print(
+        f"[dim]Conferindo {len(tickers)} FIIs com os relatórios dos gestores...[/]\n"
+    )
+    checks = run_cross_checks(
+        tickers, HistoricalSeriesStore(vault_path), fetch, today=hoje
+    )
+    save_validation(vault_path, checks)
+
+    table = Table(title="Renda: CVM contra o gestor")
+    table.add_column("Ticker")
+    table.add_column("Situação")
+    table.add_column("Gestor", justify="right")
+    table.add_column("CVM", justify="right")
+    table.add_column("Diferença", justify="right")
+    cor = {
+        "confere": "green",
+        "mudanca_recente": "cyan",
+        "diverge": "red",
+        "so_gestor": "yellow",
+    }
+    for c in checks:
+        table.add_row(
+            c.ticker,
+            f"[{cor.get(c.status, 'dim')}]{c.label}[/]",
+            f"{c.declared:.4f}" if c.declared is not None else "—",
+            f"{c.cvm_projection:.4f}" if c.cvm_projection is not None else "—",
+            f"{c.diff_projection:+.1%}" if c.diff_projection is not None else "—",
+        )
+    console.print(table)
+    conferem = sum(c.status == "confere" for c in checks)
+    console.print(
+        f"\n[bold]Resumo:[/] {conferem} conferem, "
+        f"{sum(c.status == 'mudanca_recente' for c in checks)} só com o mês recente, "
+        f"{sum(c.status == 'diverge' for c in checks)} divergem, "
+        f"{sum(c.status == 'so_gestor' for c in checks)} só com número do gestor, "
+        f"{sum(c.status in ('sem_gestor', 'leitura_falhou') for c in checks)} sem como conferir"
+    )
+    if report:
+        from iip.obsidian.income_validation_report import write_validation_report
+
+        console.print(f"[dim]{write_validation_report(vault_path, checks)}[/]")
+
+
 @cli.command("portfolio-income")
 @click.option(
     "--vault",

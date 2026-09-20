@@ -33,7 +33,15 @@ def _cota(value: float) -> str:
     return f"R$ {value:.4f}".replace(".", ",")
 
 
-def render_income_report(report: IncomeReport) -> str:
+def _manager_cell(check) -> str:
+    """O que a validação cruzada diz do fundo, numa célula: o valor do gestor e a situação."""
+    if check is None or check.declared is None:
+        return "—"
+    return f"{check.label} (R$ {check.declared:.4f})".replace(".", ",")
+
+
+def render_income_report(report: IncomeReport, checks: dict | None = None) -> str:
+    checks = checks or {}
     projected, excluded = report.projected, report.excluded
     lines = [
         "---",
@@ -88,8 +96,8 @@ def render_income_report(report: IncomeReport) -> str:
         "",
         "## Projetadas",
         "",
-        "| Ticker | Quantidade | Por cota (mediana) | Renda/mês | Janela | Meses atípicos |",
-        "|---|---:|---:|---:|---|---|",
+        "| Ticker | Quantidade | Por cota (mediana) | Renda/mês | Janela | Meses atípicos | Gestor |",
+        "|---|---:|---:|---:|---|---|---|",
     ]
     for ln in projected:
         window = f"{ln.months[0].period} a {ln.months[-1].period} ({len(ln.months)})"
@@ -98,7 +106,8 @@ def render_income_report(report: IncomeReport) -> str:
             notes += f"; repetidos descartados: {', '.join(ln.repeated)}"
         lines.append(
             f"| {ln.ticker} | {ln.quantity:.0f} | {_cota(ln.per_unit)} | "
-            f"{_brl(ln.monthly_income)} | {window} | {notes} |"
+            f"{_brl(ln.monthly_income)} | {window} | {notes} | "
+            f"{_manager_cell(checks.get(ln.ticker))} |"
         )
 
     lines += ["", "## Sem projeção", ""]
@@ -143,5 +152,9 @@ def render_income_report(report: IncomeReport) -> str:
 def write_income_report(vault_path: Path | str, report: IncomeReport) -> Path:
     path = Path(vault_path) / REPORT_RELATIVE_PATH
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(render_income_report(report), encoding="utf-8")
+    from iip.portfolio.income_cross_check import load_validation
+
+    path.write_text(
+        render_income_report(report, load_validation(vault_path)), encoding="utf-8"
+    )
     return path

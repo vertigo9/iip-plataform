@@ -84,6 +84,13 @@ Write-Output "--- Series mensais da CVM ---" | Tee-Object -FilePath $LogFile -Ap
 python -m iip.cli.main collect-fii-history --min-age-days 6 --report --alert-file $AlertaSeries 2>&1 | Tee-Object -FilePath $LogFile -Append
 $SeriesExitCode = $LASTEXITCODE
 
+# Validacao cruzada da renda: a serie da CVM contra o que cada gestora escreve no relatorio
+# (Validacao_Renda.md). Os relatorios sao mensais, entao so refaz se a ultima tem mais de 6
+# dias. So registra: nao altera a renda projetada.
+Write-Output "--- Validacao da renda com os gestores ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main validate-income --min-age-days 6 --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$ValidateExitCode = $LASTEXITCODE
+
 # Leituras da carteira que nao usam rede: renda projetada (Renda.md) e exposicao
 # (Exposicao.md). Ficam atualizadas com a serie e o snapshot mais recentes.
 Write-Output "--- Renda projetada e exposicao ---" | Tee-Object -FilePath $LogFile -Append
@@ -97,7 +104,7 @@ Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
 python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DashboardExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -126,8 +133,8 @@ if ($SeriesExitCode -ne 0) {
     Notificar-Windows "IIP: falha nas series da CVM" $msg5 "Warning"
 }
 
-if ($IncomeExitCode -ne 0 -or $ExposureExitCode -ne 0 -or $DashboardExitCode -ne 0) {
-    $msg6 = "A renda projetada, a exposicao ou o dashboard da carteira nao foram gerados hoje. Veja " + $LogFile
+if ($ValidateExitCode -ne 0 -or $IncomeExitCode -ne 0 -or $ExposureExitCode -ne 0 -or $DashboardExitCode -ne 0) {
+    $msg6 = "A validacao da renda, a renda projetada, a exposicao ou o dashboard da carteira nao foram gerados hoje. Veja " + $LogFile
     Notificar-Windows "IIP: falha na renda ou na exposicao" $msg6 "Warning"
 }
 
@@ -149,7 +156,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0) {
     exit 0
 }
 exit 1
