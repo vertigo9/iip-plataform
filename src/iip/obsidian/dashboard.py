@@ -63,6 +63,12 @@ MACRO_NOTE_DV_PATH = "07_Research/Macro/Contexto_Macro"
 MACRO_INDICATORS_KEY = "macro_indicadores"
 MACRO_PROBLEMS_KEY = "macro_problemas"
 MACRO_COLLECTED_KEY = "macro_coleta_desde"
+MACRO_ALERTS_NOTE_DV_PATH = "07_Research/Macro/Alertas_Macro"
+MACRO_ALERTS_ACTIVE_KEY = "alertas_ativos"
+MACRO_ALERTS_DATA_KEY = "alertas_dado"
+MACRO_ALERTS_WATCH_KEY = "em_observacao"
+MACRO_ALERTS_RULES_KEY = "regras_total"
+MACRO_ALERTS_NEW_KEY = "alertas_novos"
 
 
 def _missing(note_dv_path: str, command: str) -> str:
@@ -184,6 +190,30 @@ def _tracking_section() -> list[str]:
         f"    const pr = Array.from(p.{MACRO_PROBLEMS_KEY} || []);",
         f'    dv.paragraph(ind.length + " indicadores, " + pr.length + " com problema (dados de " + String(p.date).slice(0, 10) + "; coleta desde " + String(p.{MACRO_COLLECTED_KEY}).slice(0, 10) + ").");',
         '    dv.table(["Indicador", "Último", "Competência", "Variação 12 meses", "Situação"], ind.map(x => [x.nome + " (" + x.unidade + ")", x.valor === null ? "—" : x.valor, x.competencia || "—", x.variacao_12m === null ? "—" : x.variacao_12m, x.defasado ? "defasado" : (x.provisorio ? "parcial" : "em dia")]));',
+        "}",
+        "```",
+        "",
+        "### Alertas macro",
+        "",
+        "Nota completa: [[Alertas_Macro|Alertas macro]]. Gerada por `iip macro-alerts --report`. "
+        "São alertas informativos: contexto, não decidem aporte nem peso.",
+        "",
+        "```dataviewjs",
+        f'const p = dv.page("{MACRO_ALERTS_NOTE_DV_PATH}");',
+        f"if (!p || p.{MACRO_ALERTS_ACTIVE_KEY} === undefined) {{",
+        _missing(MACRO_ALERTS_NOTE_DV_PATH, "iip macro-alerts --report"),
+        "} else {",
+        f"    const at = Array.from(p.{MACRO_ALERTS_ACTIVE_KEY} || []);",
+        f"    const dd = Array.from(p.{MACRO_ALERTS_DATA_KEY} || []);",
+        f"    const ob = Array.from(p.{MACRO_ALERTS_WATCH_KEY} || []);",
+        f'    dv.paragraph(at.length + " alerta(s) ativo(s), " + dd.length + " aviso(s) de dado, " + ob.length + " em observação (regras " + p.{MACRO_ALERTS_RULES_KEY} + ", dados de " + String(p.date).slice(0, 10) + ").");',
+        "    if (at.length) {",
+        '        dv.table(["Severidade", "Regra", "Competência", "Mensagem", "Desde"], at.map(x => [x.severidade + (x.novo ? " (novo)" : ""), x.regra, x.competencia || "—", x.mensagem, x.desde]));',
+        "    }",
+        "    if (dd.length) {",
+        '        dv.paragraph("Avisos de dado (o dado tem problema; não é sinal econômico):");',
+        '        dv.table(["Motivo", "Indicador", "Detalhe"], dd.map(x => [x.motivo, x.indicador, x.mensagem]));',
+        "    }",
         "}",
         "```",
         "",

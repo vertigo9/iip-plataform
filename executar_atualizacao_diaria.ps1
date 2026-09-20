@@ -116,12 +116,22 @@ Write-Output "--- Sensibilidade macro ---" | Tee-Object -FilePath $LogFile -Appe
 python -m iip.cli.main macro-sensitivity --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $SensitivityExitCode = $LASTEXITCODE
 
+# Alertas macro por regra explicita (Alertas_Macro.md; regras em 07_Research/Macro/
+# alertas_macro.json). Nao usa rede. Alerta e informativo: nao decide aporte nem peso e nao
+# entra no codigo de saida (so regra ou estado invalido falha). O arquivo de alerta so existe
+# se ha alerta de Atencao NOVO; e apagado antes para nunca reavisar o de ontem.
+$AlertaMacro = Join-Path $LogDir "alertas_macro.txt"
+if (Test-Path $AlertaMacro) { Remove-Item $AlertaMacro -Force }
+Write-Output "--- Alertas macro ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main macro-alerts --report --alert-file $AlertaMacro 2>&1 | Tee-Object -FilePath $LogFile -Append
+$MacroAlertExitCode = $LASTEXITCODE
+
 # Painel: cada bloco le o cabecalho das notas geradas acima, por isso vem por ultimo.
 Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
 python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DashboardExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, alertas_macro: $MacroAlertExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -150,8 +160,8 @@ if ($SeriesExitCode -ne 0) {
     Notificar-Windows "IIP: falha nas series da CVM" $msg5 "Warning"
 }
 
-if ($MacroExitCode -ne 0 -or $MacroContextExitCode -ne 0 -or $SensitivityExitCode -ne 0) {
-    $msg7 = "A coleta, o contexto ou a sensibilidade macro (BACEN/IBGE/Tesouro) falharam hoje. Veja " + $LogFile
+if ($MacroExitCode -ne 0 -or $MacroContextExitCode -ne 0 -or $SensitivityExitCode -ne 0 -or $MacroAlertExitCode -ne 0) {
+    $msg7 = "A coleta, o contexto, a sensibilidade ou os alertas macro (BACEN/IBGE/Tesouro; regras e estado em 07_Research/Macro) falharam hoje. Veja " + $LogFile
     Notificar-Windows "IIP: falha no macro" $msg7 "Warning"
 }
 
@@ -168,6 +178,14 @@ if (Test-Path $AlertaSeries) {
     Notificar-Windows ("IIP: " + $Series.Count + " serie(s) da CVM pioraram") $ResumoSeries "Warning"
 }
 
+# Alerta macro de Atencao novo: informa o ambiente, nao e falha do job nem ordem de nada.
+if (Test-Path $AlertaMacro) {
+    $Macro = @(Get-Content $AlertaMacro -Encoding UTF8)
+    $ResumoMacro = ($Macro | Select-Object -First 3) -join "; "
+    if ($Macro.Count -gt 3) { $ResumoMacro += "; e mais " + ($Macro.Count - 3) }
+    Notificar-Windows ("IIP: " + $Macro.Count + " alerta(s) macro de atencao") $ResumoMacro "Information"
+}
+
 # Mudanca de decisao nao e falha: nao entra no codigo de saida, so avisa.
 if (Test-Path $AlertaDecisoes) {
     $Mudancas = @(Get-Content $AlertaDecisoes -Encoding UTF8)
@@ -178,7 +196,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0 -and $MacroAlertExitCode -eq 0) {
     exit 0
 }
 exit 1

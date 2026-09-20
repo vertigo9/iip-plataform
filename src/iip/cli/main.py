@@ -1675,6 +1675,147 @@ def macro_context_command(vault: str | None, report: bool) -> None:
         console.print(f"[dim]{write_macro_report(vault_path, context)}[/]")
 
 
+@cli.command("macro-alerts")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--init",
+    is_flag=True,
+    default=False,
+    help="Cria 07_Research/Macro/alertas_macro.json a partir do conjunto-padrão, se ainda "
+    "não existir (nunca sobrescreve um arquivo editado).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 07_Research/Macro/Alertas_Macro.md (sobrescrita a cada execução).",
+)
+@click.option(
+    "--alert-file",
+    default=None,
+    help="Arquivo de texto com uma linha por alerta de Atenção NOVO (o agendador o lê para "
+    "a notificação do Windows). Sem alerta novo, o arquivo é apagado.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Avalia e mostra, sem gravar estado, nota nem arquivo de alerta.",
+)
+def macro_alerts_command(
+    vault: str | None,
+    init: bool,
+    report: bool,
+    alert_file: str | None,
+    dry_run: bool,
+) -> None:
+    """Avalia as regras de alerta macro sobre o dado guardado (sem rede).
+
+    Alertas são informativos: dizem o que mudou no ambiente e não decidem, sugerem nem
+    alteram aporte, peso-alvo ou rebalanceamento. Um alerta ativo não faz o comando falhar;
+    regra ou estado inválido, sim, com o motivo."""
+    import datetime as _dt
+
+    from iip.macro.alerts import (
+        DEFAULT_RULES,
+        RULES_RELATIVE_PATH,
+        load_rules,
+        load_state,
+        run_alerts,
+        save_rules,
+        save_state,
+        write_alert_file,
+    )
+    from iip.macro.store import MacroStore
+    from iip.portfolio.valuation_inputs import load_valuation_inputs
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    try:
+        rule_set = load_rules(vault_path)
+        state = load_state(vault_path)
+    except ValueError as exc:
+        console.print(f"[bold red]Configuração dos alertas inválida:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    if rule_set is None:
+        if not init:
+            console.print(
+                "[yellow]Sem arquivo de regras. Rode com --init para criar a partir do "
+                "conjunto-padrão (editável).[/]"
+            )
+            raise SystemExit(1)
+        if dry_run:
+            rule_set = DEFAULT_RULES
+        else:
+            console.print(f"[dim]Criado: {save_rules(vault_path, DEFAULT_RULES)}[/]")
+            rule_set = DEFAULT_RULES
+
+    store = MacroStore(vault_path)
+    # data de calendário (idade do dado e janela dos eventos), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    run = run_alerts(
+        store, rule_set, state, hoje, inputs=load_valuation_inputs(vault_path)
+    )
+
+    console.print(
+        f"[bold]Regras {rule_set.version}[/] (hash {rule_set.content_hash}) — "
+        f"{RULES_RELATIVE_PATH.as_posix()}"
+    )
+    table = Table(title=f"Regras de alerta macro — {hoje:%d/%m/%Y}")
+    table.add_column("Regra")
+    table.add_column("Severidade")
+    table.add_column("Situação")
+    table.add_column("Medida atual")
+    from iip.obsidian.macro_alerts_report import STATUS_LABELS, current_measure
+
+    for ev in run.evaluations:
+        cor = "red" if ev.status == "ativo" else "dim"
+        table.add_row(
+            ev.rule.id,
+            ev.rule.severity,
+            f"[{cor}]{STATUS_LABELS[ev.status].replace('**', '')}[/]",
+            current_measure(ev),
+        )
+    console.print(table)
+
+    for alert in run.active:
+        marca = " [cyan](novo)[/]" if alert.is_new else ""
+        console.print(f"[bold]{alert.severity.upper()}[/]{marca} {alert.message}")
+        for line in alert.impact:
+            console.print(f"  [dim]{line}[/]")
+    for alert in run.data_alerts:
+        console.print(f"[yellow]DADO[/] {alert.message}")
+    for watching in run.watching:
+        console.print(
+            f"[dim]Em observação: {watching.rule_id} (emitido, ainda não rearmou).[/]"
+        )
+    if not run.active and not run.data_alerts:
+        console.print("[green]Nenhum alerta ativo.[/]")
+    console.print(
+        f"\n[bold]Resumo:[/] {len(run.active)} ativo(s) ({len(run.new_alerts)} novo(s)), "
+        f"{len(run.data_alerts)} aviso(s) de dado, {len(run.watching)} em observação."
+    )
+
+    if dry_run:
+        console.print("[dim]--dry-run: nada foi gravado.[/]")
+        return
+    console.print(f"[dim]Estado: {save_state(vault_path, run.state)}[/]")
+    if alert_file:
+        lines = write_alert_file(alert_file, run)
+        console.print(
+            f"[dim]{len(lines)} linha(s) para notificação em {alert_file}.[/]"
+        )
+    if report:
+        from iip.obsidian.macro_alerts_report import write_alerts_report
+
+        console.print(f"[dim]{write_alerts_report(vault_path, run)}[/]")
+    # alerta não é falha: o código de saída só reflete configuração inválida
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",

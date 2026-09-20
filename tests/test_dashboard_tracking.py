@@ -21,6 +21,7 @@ from iip.obsidian.exposure_report import (
 )
 from iip.obsidian.income_report import REPORT_RELATIVE_PATH as INCOME_PATH
 from iip.obsidian.income_report import render_income_report
+from iip.obsidian.macro_alerts_report import REPORT_RELATIVE_PATH as MACRO_ALERTS_PATH
 from iip.obsidian.macro_report import REPORT_RELATIVE_PATH as MACRO_PATH
 from iip.obsidian.series_report import REPORT_RELATIVE_PATH as SERIES_PATH
 from iip.obsidian.series_report import render_series_report
@@ -70,6 +71,7 @@ def test_each_report_path_matches_the_path_the_dashboard_reads():
     assert dash.INCOME_NOTE_DV_PATH + ".md" == INCOME_PATH.as_posix()
     assert dash.SERIES_NOTE_DV_PATH + ".md" == SERIES_PATH.as_posix()
     assert dash.MACRO_NOTE_DV_PATH + ".md" == MACRO_PATH.as_posix()
+    assert dash.MACRO_ALERTS_NOTE_DV_PATH + ".md" == MACRO_ALERTS_PATH.as_posix()
 
 
 def test_every_block_reads_a_key_that_its_note_actually_writes():
@@ -174,6 +176,10 @@ def test_the_dashboard_template_uses_each_key_it_defines():
         dash.MACRO_INDICATORS_KEY,
         dash.MACRO_PROBLEMS_KEY,
         dash.MACRO_COLLECTED_KEY,
+        dash.MACRO_ALERTS_ACTIVE_KEY,
+        dash.MACRO_ALERTS_DATA_KEY,
+        dash.MACRO_ALERTS_WATCH_KEY,
+        dash.MACRO_ALERTS_RULES_KEY,
     ):
         assert f"p.{key}" in DASHBOARD_TEMPLATE, key
 
@@ -188,6 +194,7 @@ def test_the_wiki_links_point_at_notes_the_job_writes():
         "Renda",
         "Series",
         "Contexto_Macro",
+        "Alertas_Macro",
     } <= targets
     written = {
         DECISIONS_PATH.stem,
@@ -195,6 +202,7 @@ def test_the_wiki_links_point_at_notes_the_job_writes():
         INCOME_PATH.stem,
         SERIES_PATH.stem,
         MACRO_PATH.stem,
+        MACRO_ALERTS_PATH.stem,
         "Valuation",
     }
     assert targets <= written
@@ -207,6 +215,7 @@ def test_a_block_whose_note_is_missing_or_old_says_so_instead_of_an_empty_table(
         (dash.INCOME_NOTE_DV_PATH, dash.INCOME_MONTHLY_KEY),
         (dash.SERIES_NOTE_DV_PATH, dash.SERIES_TOTAL_KEY),
         (dash.MACRO_NOTE_DV_PATH, dash.MACRO_INDICATORS_KEY),
+        (dash.MACRO_ALERTS_NOTE_DV_PATH, dash.MACRO_ALERTS_ACTIVE_KEY),
     ):
         assert f'dv.page("{note_path}")' in DASHBOARD_TEMPLATE
         assert f"if (!p || p.{key} === undefined)" in DASHBOARD_TEMPLATE
