@@ -996,6 +996,23 @@ def collect_fii_history_command(
                 f"[dim]Séries em dia: todas atualizadas há {min_age_days} dias ou menos; "
                 "nada a baixar.[/]"
             )
+            if report:
+                # sem baixar, a nota ainda reflete o estado atual das séries guardadas
+                from iip.obsidian.series_report import write_series_report
+
+                current = tuple(
+                    compute_state(
+                        p.ticker,
+                        HistoricalSeriesStore(vault_path),
+                        today=hoje,
+                        refreshed_at=(previous.get(p.ticker) or {}).get("refreshed_at"),
+                    )
+                    for p in positions
+                )
+                console.print(
+                    "[dim]Estado das séries: "
+                    f"{write_series_report(vault_path, current, (), today_iso=hoje.isoformat())}[/]"
+                )
             return
 
     console.print(
@@ -1181,6 +1198,22 @@ def portfolio_income_command(
         console.print(
             f"[dim]Relatório de renda: {write_income_report(vault_path, result)}[/]"
         )
+
+
+@cli.command("dashboard")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+def dashboard_command(vault: str | None) -> None:
+    """Gera 02_Portfolio/Dashboard.md, o painel que junta valuation, decisões, exposição,
+    renda e séries. Só monta os blocos; cada um lê o cabeçalho da nota que o comando
+    correspondente grava (--report), então rode este depois deles."""
+    from iip.obsidian.dashboard import generate_portfolio_dashboard
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    console.print(f"[dim]Dashboard: {generate_portfolio_dashboard(vault_path)}[/]")
 
 
 @cli.command("decide-portfolio")

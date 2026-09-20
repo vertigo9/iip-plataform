@@ -76,7 +76,7 @@ Por isso o próximo bloco não é mais funcionalidade, e sim **confiabilidade**:
 | A2 | **Estado de cada série** | **FEITO (20/09/2026)**: `Historical/_estado.json` (situação, última competência, meses, data da atualização, defasada) e a nota `02_Portfolio/Series.md` | pequeno |
 | A3 | **Alerta** de série ausente, defasada, zerada ou que piorou | **FEITO (20/09/2026)**: `--alert-file` e notificação do Windows, por MUDANÇA para pior (uma série que já estava ruim não reavisa toda semana). Defasada = última competência com mais de 2 meses de calendário | pequeno |
 | A4 | **Validação cruzada com o relatório do gestor**, começando pelos 4 fundos sem projeção (AFHI11, BTCI11, VGIP11, XPML11) | conferido só com o balanço da CVM, em 2 fundos | médio (depende dos PDFs de cada gestora) |
-| A5 | **Painel**: levar `Decisoes`, `Exposicao` e `Renda` ao `Dashboard.md`, que hoje só mostra score e valuation | notas separadas, sem link no painel | pequeno a médio |
+| A5 | **Painel**: `Decisoes`, `Exposicao`, `Renda` e `Series` no `Dashboard.md` | **FEITO (20/09/2026)**: seção "Acompanhamento da Carteira" com 4 blocos que leem o cabeçalho de cada nota (chaves e caminhos definidos uma vez em `obsidian/dashboard.py`); nota ausente ou de versão anterior vira aviso, não tabela vazia; novo `iip dashboard`, rodado pelo job depois das notas. Achado: nenhum comando atual gerava o `Dashboard.md` (só o agendador do motor legado) | pequeno a médio |
 
 **Ressalva sobre A5:** integrar "conforme os contratos existentes" não é pelos pacotes do Nível 3 (contratos duplicados, sem consumidor). O caminho é o `obsidian/dashboard.py`, que já roda.
 

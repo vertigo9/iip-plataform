@@ -341,6 +341,37 @@ def test_min_age_days_skips_when_every_series_is_recent(monkeypatch, tmp_path):
     assert captured["tickers"] is None  # não baixou nada
 
 
+def test_min_age_days_still_writes_the_note_from_the_current_state(
+    monkeypatch, tmp_path
+):
+    _patch_refresh(monkeypatch)
+    vault = _vault(tmp_path)
+    save_state_file(
+        vault,
+        (SeriesState("HGRU11", "regular", "2026-08", 6, _today().isoformat(), False),),
+    )
+
+    out = CliRunner().invoke(
+        cli,
+        [
+            "collect-fii-history",
+            "--vault",
+            str(vault),
+            "--sem-evidencia",
+            "--ticker",
+            "HGRU11",
+            "--min-age-days",
+            "6",
+            "--report",
+        ],
+    )
+
+    assert out.exit_code == 0, out.output
+    assert "Séries em dia" in out.output
+    note = (vault / "02_Portfolio" / "Series.md").read_text(encoding="utf-8")
+    assert "HGRU11" in note and "series_total" in note
+
+
 def test_min_age_days_refreshes_only_the_old_or_never_refreshed(monkeypatch, tmp_path):
     captured = {}
     _patch_refresh(monkeypatch, captured=captured)
