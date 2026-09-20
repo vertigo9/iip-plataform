@@ -112,6 +112,15 @@ Sobre a proposta de política de peso-alvo e integração macroeconômica:
 - **Macro versionado**: os coletores de BACEN/IBGE guardam só data e valor, sem data de publicação nem revisão. Ao persistir, gravar a **data de coleta** de cada observação; só o que foi coletado a partir de então é "conhecido em tal data". Dado macro anterior não serve para backtest de decisão.
 - Renda recorrente como prioridade reforça o Bloco A (a renda projetada e a qualidade dela) e faz da sustentabilidade dos proventos o critério central de elegibilidade na política.
 
+## Entrega B — Macro (20/09/2026)
+
+**Feito (passo 1: contrato, persistência e contexto):** pacote `iip.macro` (`contract`, `store`, `collector`, `context`), `iip collect-macro`, `iip macro-context [--report]`, nota `07_Research/Macro/Contexto_Macro.md`, bloco no `Dashboard.md`, passo no job diário.
+
+- **Contrato**: 14 indicadores (BACEN SGS e IBGE SIDRA) com fonte, código, unidade, frequência, categoria, como foi verificado (`verified_by`), se o mês em curso é parcial, prazo para ficar defasado e o mapa de relevância por classe (leitura, não causal). Séries verificadas contra o catálogo de dados abertos do BCB (Selic meta, Selic diária, Selic mensal, câmbio, IBC-Br, inadimplência); IPCA e desocupação conferidos entre BACEN e IBGE (concordam); IPCA 12m, IGP-M e CDI seguem a documentação do BCB.
+- **Persistência versionada**: uma série por indicador, append-only; um valor revisado pela fonte vira nova observação ao lado da anterior, com a data da coleta; `as_known_on(data)` devolve o que se sabia numa data. **Limite que não dá para contornar:** as duas fontes não expõem data de publicação nem versão, então só vale como "conhecido em tal data" a partir da primeira coleta (20/09/2026). O dado macro de hoje NÃO reconstrói o que se sabia numa decisão passada.
+- **Achados**: o BACEN devolve o mês em curso PARCIAL nas séries acumuladas (Selic e CDI do mês): marcado como provisório; o IBGE responde em gzip mesmo sem pedir, e o coletor antigo não descomprimia (corrigido).
+- **Próximo (passo 2)**: cenários (sensibilidade de juros e inflação) e a ligação com as premissas de valuation (hoje só a NTN-B longa do Tesouro entra no Bazin e no Yield). Nada disso altera aporte nem peso-alvo.
+
 ## O que esta lista não promete
 
 "Ligar tudo" não é o objetivo certo: cerca de metade das 13.400 linhas fora do CLI é redundante entre si. O objetivo é que **tudo o que gera valor com dado real** esteja num comando, e que o resto seja removido de forma consciente.

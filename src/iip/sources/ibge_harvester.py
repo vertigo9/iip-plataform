@@ -6,11 +6,21 @@ Same injectable-``opener`` pattern as ``.bacen_harvester`` and
 
 from __future__ import annotations
 
+import gzip
 from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.request import Request, urlopen
 
 from .ibge import IbgeDataPoint, IbgeTarget, parse_agregados_response
+
+_GZIP_MAGIC = bytes((0x1F, 0x8B))
+
+
+def _maybe_gunzip(body: bytes) -> bytes:
+    """O IBGE responde em gzip mesmo sem o cliente pedir (Content-Encoding: gzip); o urllib
+    não descomprime sozinho. Reconhece pelo início do corpo (1f 8b), não só pelo cabeçalho.
+    """
+    return gzip.decompress(body) if body[:2] == _GZIP_MAGIC else body
 
 
 @dataclass(frozen=True)
@@ -44,7 +54,7 @@ class IbgeHTTPHarvester:
         response = self._opener(request, timeout=self.timeout)
         raw_status = getattr(response, "status", 200)
         status_code = 200 if raw_status is None else int(raw_status)
-        body = response.read()
+        body = _maybe_gunzip(response.read())
         points = parse_agregados_response(body)
         return FetchedAggregate(target=target, status_code=status_code, points=points)
 
