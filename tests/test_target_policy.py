@@ -506,6 +506,11 @@ def test_the_note_is_written_next_to_the_policy(tmp_path):
 # --- CLI -----------------------------------------------------------------------------------
 
 
+def _flat(text):
+    """O texto sem espaços nem quebras: o rich quebra linhas longas (caminhos do runner)."""
+    return "".join(text.split())
+
+
 def _invoke(tmp_path, *args):
     return CliRunner().invoke(cli, ["target-policy", "--vault", str(tmp_path), *args])
 
@@ -515,7 +520,7 @@ def test_the_command_asks_for_init_when_there_is_no_policy(tmp_path):
 
     result = _invoke(tmp_path)
 
-    assert result.exit_code == 1 and "--init" in result.output
+    assert result.exit_code == 1 and "--init" in _flat(result.output)
     assert load_policy(tmp_path) is None
 
 
@@ -530,8 +535,8 @@ def test_init_creates_the_empty_policy_and_the_note(tmp_path):
         ln.numbers == (None,) * 4 for ln in policy.lines
     )
     assert (tmp_path / "02_Portfolio" / "Politica_Pesos_Alvo.md").exists()
-    assert "Política e snapshot batem" in result.output
-    assert "nada é comprado, vendido, aportado nem rebalanceado" in result.output
+    assert "Políticaesnapshotbatem" in _flat(result.output)
+    assert "nadaécomprado,vendido,aportadonemrebalanceado" in _flat(result.output)
 
 
 def test_init_never_overwrites_a_policy_the_user_edited(tmp_path):
@@ -555,18 +560,20 @@ def test_an_invalid_policy_stops_the_command_with_the_reason(tmp_path):
     result = _invoke(tmp_path, "--report")
 
     assert result.exit_code == 1
-    assert (
-        "Política de pesos-alvo inválida" in result.output
-        and "maior que max_pct" in result.output
-    )
+    assert "Políticadepesos-alvoinválida" in _flat(
+        result.output
+    ) and "maiorquemax_pct" in _flat(result.output)
     assert not (tmp_path / "02_Portfolio" / "Politica_Pesos_Alvo.md").exists()
 
 
 def test_a_missing_snapshot_stops_the_command_with_the_reason(tmp_path):
     result = _invoke(tmp_path, "--init")
 
-    assert result.exit_code == 1 and "Política de pesos-alvo inválida" in result.output
-    assert "Current.md" in result.output and "encontrado" in result.output
+    assert result.exit_code == 1 and "Políticadepesos-alvoinválida" in _flat(
+        result.output
+    )
+    assert "Current.md" in _flat(result.output)
+    assert "arquivodosnapshotnãoencontrado" in _flat(result.output)
 
 
 def test_a_reconciliation_problem_is_a_warning_not_a_failure(tmp_path):
@@ -578,7 +585,8 @@ def test_a_reconciliation_problem_is_a_warning_not_a_failure(tmp_path):
 
     assert result.exit_code == 0
     assert (
-        "Posição sem linha na política" in result.output and "NOVO11" in result.output
+        "Posiçãosemlinhanapolítica" in _flat(result.output)
+        and "NOVO11" in result.output
     )
 
 
