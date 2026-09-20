@@ -749,6 +749,136 @@ def _lead_and_others(attempts) -> tuple[str, str, str]:
     )
 
 
+@cli.command("portfolio-exposure")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--file",
+    "snapshot_file",
+    type=click.Path(),
+    default=None,
+    help="Snapshot das posições (padrão: <vault>/02_Portfolio/Current.md).",
+)
+@click.option(
+    "--limite-grupo",
+    type=float,
+    default=0.20,
+    show_default=True,
+    help="Alerta de atenção para um grupo (classe, gestora, setor...) acima desta fração.",
+)
+@click.option(
+    "--limite-posicao",
+    type=float,
+    default=0.10,
+    show_default=True,
+    help="Alerta de atenção para uma posição acima desta fração.",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Exposicao.md (sobrescrita a cada execução).",
+)
+def portfolio_exposure_command(
+    vault: str | None,
+    snapshot_file: str | None,
+    limite_grupo: float,
+    limite_posicao: float,
+    report: bool,
+) -> None:
+    """Exposição e concentração da carteira (classe, gestora, setor/segmento, risco).
+
+    Lê o snapshot das posições do vault; não usa rede. Os limites são de ATENÇÃO, não
+    política de alocação. Diz a idade do snapshot e o que ficou fora dele."""
+    import datetime as _dt
+
+    from iip.portfolio.exposure import (
+        SEM_CLASSIFICACAO,
+        STALE_AFTER_DAYS,
+        build_exposure,
+    )
+    from iip.portfolio.vault_snapshot import parse_current_snapshot
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    path = (
+        Path(snapshot_file)
+        if snapshot_file
+        else Path(vault_path) / "02_Portfolio" / "Current.md"
+    )
+    if not path.is_file():
+        console.print(f"[bold red]Snapshot das posições não encontrado: {path}[/]")
+        raise SystemExit(1)
+
+    try:
+        result = build_exposure(
+            parse_current_snapshot(path),
+            # data de calendário (idade do snapshot), não timestamp
+            today=_dt.date.today(),  # noqa: DTZ011
+            group_limit=limite_grupo,
+            position_limit=limite_posicao,
+        )
+    except ValueError as exc:
+        console.print(f"[bold red]Não consegui ler o snapshot:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    if result.as_of is not None:
+        aviso = (
+            " [yellow](defasado: os pesos já andaram com os preços)[/]"
+            if result.stale
+            else ""
+        )
+        console.print(
+            f"[dim]Snapshot de {result.as_of:%d/%m/%Y} ({result.age_days} dias; mais de "
+            f"{STALE_AFTER_DAYS} é defasado){aviso}[/]"
+        )
+    console.print(
+        f"[bold]{result.position_count} posições, R$ {result.total_value:,.2f}[/]"
+    )
+    if result.missing_from_snapshot:
+        console.print(
+            "[yellow]Fora do snapshot (estão no registro): "
+            f"{', '.join(result.missing_from_snapshot)} — a carteira está incompleta.[/]"
+        )
+
+    for dimension in result.dimensions:
+        table = Table(
+            title=f"{dimension.name} (classificado: {dimension.classified_weight:.0%})"
+        )
+        table.add_column("Grupo")
+        table.add_column("Peso", justify="right")
+        table.add_column("Pos.", justify="right")
+        for row in dimension.rows[:10]:
+            table.add_row(row.label, f"{row.weight:.1%}", str(row.count))
+        if len(dimension.rows) > 10:
+            table.add_row(f"... e mais {len(dimension.rows) - 10}", "", "")
+        console.print(table)
+        if dimension.low_coverage:
+            console.print(
+                f"[yellow]Cobertura baixa em {dimension.name}: o registro não classifica "
+                f"({SEM_CLASSIFICACAO}) a maior parte.[/]"
+            )
+
+    if result.flags:
+        console.print("\n[bold]Alertas de concentração[/] (limites de atenção)")
+        for flag in result.flags:
+            console.print(
+                f"  {flag.kind} · {flag.dimension}: [bold]{flag.label}[/] "
+                f"{flag.weight:.1%} (limite {flag.limit:.0%})"
+            )
+    else:
+        console.print("\nNenhum grupo ou posição acima dos limites de atenção.")
+
+    if report:
+        from iip.obsidian.exposure_report import write_exposure_report
+
+        console.print(
+            f"[dim]Relatório de exposição: {write_exposure_report(vault_path, result)}[/]"
+        )
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",

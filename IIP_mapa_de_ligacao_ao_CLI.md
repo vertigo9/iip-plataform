@@ -13,10 +13,10 @@ Data: 20/09/2026. Pedido do usuário: "assim que for possível ligar tudo ao CLI
 
 ## Achado que muda o mapa
 
-O vault **tem as posições**: `02_Portfolio/Position Registry.md` (fonte Investidor10) traz quantidade, preço médio, preço atual, valor e peso, e `portfolio/vault_snapshot.py` já sabe lê-lo. Por isso as camadas de carteira (exposição, concentração, renda) **têm insumo real**. Três ressalvas:
+O vault **tem as posições**: `02_Portfolio/Current.md` (fonte Investidor10, lido por `portfolio/vault_snapshot.py`) traz quantidade, preço médio, preço atual, valor e peso de **46 posições ativas, incluindo as 10 de renda fixa bancária que o registro de ativos não acompanha**. (O `Position Registry.md`, ao lado, é um subconjunto de 35 linhas sem a renda fixa bancária e sem o AXIA3; não é a fonte certa.) Por isso as camadas de carteira (exposição, concentração, renda) **têm insumo real**. Três ressalvas:
 
-- **Cobre 35 das 37 posições da carteira**: faltam **AXIA3** (fundo do FGTS, que não está numa corretora) e **PVBI11**. Uma leitura de exposição precisa dizer isso, em vez de somar 100% de uma carteira incompleta.
-- **É uma fotografia sem data no cabeçalho** (e a regra 4 da própria nota diz que não é histórico). Os pesos valem tanto quanto a última atualização dela; hoje ninguém a atualiza automaticamente.
+- **Cobre 36 das 37 posições do registro de ativos**: falta só o **PVBI11**. Uma leitura de exposição precisa dizer isso, em vez de somar 100% de uma carteira incompleta.
+- **É uma fotografia sem data no cabeçalho**: a data usada é a de modificação do arquivo (12/09/2026, 8 dias atrás). A regra 4 da nota diz que não é histórico, e hoje ninguém a atualiza automaticamente; os pesos valem tanto quanto a última atualização.
 - **Peso-alvo vazio de propósito**: a regra 1 da nota diz "permanece vazio enquanto não existir política formal de alocação". Tudo que rebalanceia ou aporta até um alvo precisa dessa política, que é sua.
 
 ## Nível 1 — ligar já (insumo real no vault, sem decisão nova sua)
@@ -24,8 +24,8 @@ O vault **tem as posições**: `02_Portfolio/Position Registry.md` (fonte Invest
 | # | O quê | Código que já existe | Insumo | Esforço | Por que primeiro |
 |---|---|---|---|---|---|
 | 1 | **Alerta de mudança de decisão** + `decide-portfolio` no agendador das 08:00 | `integration/decision_history.py` (`changed`), `adaptive/portfolio_alerts.py`; o `decide-portfolio` já traz a coluna "Anterior" | as `DEC-*` de `03_Decisions` | pequeno | fecha o que o PR #17 preparou; o histórico diário que ele gera é o insumo do item 7 |
-| 2 | **Exposição e concentração** (por classe, gestora, segmento, risco; alerta acima de um limite), com a ressalva de cobrir 35 das 37 posições | `portfolio_intelligence/{holdings,exposure,manager_intelligence,segment_intelligence}.py`, `intelligence/portfolio_intelligence.py` (`concentration_alerts`) | pesos do Position Registry + `PortfolioAsset` (`manager`, `segment`, `risk_profile`) | pequeno a médio | é a leitura de risco que a carteira ainda não tem; hoje só se sabe o score de cada ativo, não quanto pesa cada gestora |
-| 3 | **Renda projetada** (próxima distribuição por cota × quantidade) | `portfolio_data/income_forecast.py`, `decision/income_forecast_{note,persistence}.py`, `portfolio_intelligence/income_intelligence.py` | quantidade (Position Registry, 35 de 37) + histórico de distribuição por cota | médio | **a verificar**: preciso confirmar de onde sai o histórico mensal por cota para os 37 ativos antes de prometer |
+| 2 | **Exposição e concentração** (por classe, gestora, segmento, risco; alerta acima de um limite), **FEITO em 20/09/2026: `iip portfolio-exposure`** (cobre 36 das 37 posições) | `portfolio_intelligence/{holdings,exposure,manager_intelligence,segment_intelligence}.py`, `intelligence/portfolio_intelligence.py` (`concentration_alerts`) | pesos do Position Registry + `PortfolioAsset` (`manager`, `segment`, `risk_profile`) | pequeno a médio | é a leitura de risco que a carteira ainda não tem; hoje só se sabe o score de cada ativo, não quanto pesa cada gestora |
+| 3 | **Renda projetada** (próxima distribuição por cota × quantidade) | `portfolio_data/income_forecast.py`, `decision/income_forecast_{note,persistence}.py`, `portfolio_intelligence/income_intelligence.py` | quantidade (`Current.md`, 36 de 37) + histórico de distribuição por cota | médio | **a verificar**: preciso confirmar de onde sai o histórico mensal por cota para os 37 ativos antes de prometer |
 
 Custo de cota: o 1 acrescenta uma rodada de busca por dia (uma por posição); os 2 e 3 não gastam cota do bolsai.
 
