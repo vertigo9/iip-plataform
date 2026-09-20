@@ -548,8 +548,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         # Daycoval + 2 agregadores concordantes: faixa 90%-100% do PL em
         # ações ON Eletrobras, 0%-10% em titulos publicos federais).
         structure="Fundo Mútuo de Privatização (FMP-FGTS), condomínio aberto",
-        segment="Ações — Privatização (Eletrobras ON), mín. 90% a máx. 100% do PL em ELET3 + até 10% em títulos públicos federais",
-        strategy="Privatização (FGTS) — concentração mínima de 90% do patrimônio em ações ordinárias da Eletrobras (ELET3)",
+        segment="Ações — Privatização (Axia Energia, ex-Eletrobras, ON), mín. 90% a máx. 100% do PL em AXIA3 + até 10% em títulos públicos federais",
+        strategy="Privatização (FGTS) — concentração mínima de 90% do patrimônio em ações ordinárias da Axia Energia (AXIA3, ex-Eletrobras/ELET3)",
         sector="Utilities",
         industry="Electric Utilities / Renewable",
         manager="Daycoval",
@@ -561,10 +561,11 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         classification_provenance=ClassificationProvenance.DATABASE,
         # CNPJ do FUNDO Daycoval FMP-FGTS Eletrobras (verificado via
         # busca, multiplas fontes concordam, inclusive documento do
-        # administrador). NAO confundir com o ticker "AXIA3" em si, que
-        # e a propria acao ordinaria da Eletrobras (CNPJ
-        # 00.001.180/0001-26) -- um ativo totalmente diferente. O
-        # fundo FMP-FGTS nao tem ticker/cotacao propria na B3 (so e
+        # administrador). NAO confundir a COTA do fundo com o ticker
+        # "AXIA3", a acao ordinaria da Axia Energia (ex-Eletrobras,
+        # CNPJ 00.001.180/0001-26): o fundo carrega essas acoes (99,8%
+        # do PL na CDA de 08/2026), mas a cota e outro ativo, com NAV
+        # proprio. O fundo FMP-FGTS nao tem ticker/cotacao propria na B3 (so e
         # acessado via FGTS, nao por corretora) -- por isso o fetch
         # deste ativo busca só patrimonio/cota via CVM, nunca preço via
         # bolsai/brapi (buscar preço usando "AXIA3" pegaria o preço da
