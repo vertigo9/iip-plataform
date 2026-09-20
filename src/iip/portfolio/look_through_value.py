@@ -18,6 +18,7 @@ from iip.portfolio_data.look_through import (
     combine_margin,
     equity_weights,
 )
+from iip.portfolio_data.valuation_exceptions import ValuationExceptions
 from iip.portfolio_data.valuation_methods import evaluate_valuations, first_valuation
 from iip.sources.cvm_cda import CdaPortfolio, recent_months
 
@@ -46,6 +47,7 @@ def look_through_inputs(
     fetch_equity: Callable[..., tuple[dict, object]],
     plan: FetchPlan,
     market_inputs: dict[str, float | None],
+    exceptions: ValuationExceptions | None = None,
 ) -> LookThrough:
     """Levanta se a CDA ou a busca de uma empresa falhar (o chamador isola por posição).
     Uma empresa que foi buscada mas não deu margem (sem preço, ou nenhum método aplicável)
@@ -82,6 +84,7 @@ def look_through_inputs(
             industry=underlying.industry,
             price=price,
             inputs={**template.get("financials", {}), **market_inputs},
+            exceptions=exceptions,
         )
         snapshot = first_valuation(attempts)
         if snapshot is None or snapshot.margin_of_safety is None:

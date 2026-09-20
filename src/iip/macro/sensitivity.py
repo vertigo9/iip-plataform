@@ -142,7 +142,7 @@ def _differs(a: float | None, b: float | None) -> bool:
     return abs(a - b) > _TOLERANCE
 
 
-def _evaluate(position, rate: float | None):
+def _evaluate(position, rate: float | None, exceptions=None):
     inputs = dict(position.inputs)
     inputs["ntnb_real_yield"] = rate
     return vm.evaluate_valuations(
@@ -152,13 +152,14 @@ def _evaluate(position, rate: float | None):
         industry=position.industry,
         price=position.price,
         inputs=inputs,
+        exceptions=exceptions,
     )
 
 
 def analyse_asset(
-    position, base_rate: float | None, scenario_set: ScenarioSet
+    position, base_rate: float | None, scenario_set: ScenarioSet, exceptions=None
 ) -> AssetSensitivity:
-    base = _method_values(_evaluate(position, base_rate))
+    base = _method_values(_evaluate(position, base_rate, exceptions))
     outcomes = []
     for scenario in scenario_set.scenarios:
         rate = (
@@ -168,7 +169,7 @@ def analyse_asset(
         )
         outcomes.append(
             ScenarioOutcome(
-                scenario.id, rate, _method_values(_evaluate(position, rate))
+                scenario.id, rate, _method_values(_evaluate(position, rate, exceptions))
             )
         )
     sensitive, insensitive = [], []
@@ -219,6 +220,7 @@ def run_sensitivity(
     *,
     store: MacroStore | None,
     today: _dt.date,
+    exceptions=None,
 ) -> SensitivityResult:
     warnings: list[str] = []
     base = inputs.base_rate
@@ -264,7 +266,7 @@ def run_sensitivity(
 
     base_rate = base.real_yield if base else None
     assets = tuple(
-        analyse_asset(position, base_rate, scenario_set)
+        analyse_asset(position, base_rate, scenario_set, exceptions)
         for position in inputs.positions
     )
     for scenario in scenario_set.scenarios:

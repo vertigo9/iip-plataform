@@ -204,6 +204,38 @@ def _class_table(
     return "\n".join(lines)
 
 
+def _exceptions_section(result: ValuationRunResult, as_of: date) -> list[str]:
+    """As exceções metodológicas declaradas que valeram nesta rodada, com o hash. Uma exceção
+    vencida CONTINUA aplicada e é sinalizada; nada é removido nem reativado sozinho."""
+    declared = result.exceptions.items
+    if not declared:
+        return []
+    overdue = {i.id for i in result.exceptions.overdue(as_of)}
+    lines = [
+        "## Exceções metodológicas",
+        "",
+        f"Regras declaradas que prevalecem sobre as palavras-chave do setor (versão "
+        f"{result.exceptions.version}, hash `{result.exceptions.content_hash}`). Descrevem por "
+        "que um método serve ou não; não são conclusão sobre o valor justo nem recomendação. "
+        "Os valores abaixo são a consequência da regra aplicada.",
+        "",
+        "| Ativo | Método | Ação | Situação | Motivo |",
+        "|---|---|---|---|---|",
+    ]
+    for item in declared:
+        status = (
+            f"**VENCIDA** (revisão era até {item.review_by}); segue aplicada"
+            if item.id in overdue
+            else f"vigente (revisão até {item.review_by})"
+        )
+        action = "exclui" if item.action == "exclude" else "lidera"
+        lines.append(
+            f"| `{item.ticker}` | {item.method} | {action} | {status} | {item.reason} |"
+        )
+    lines.append("")
+    return lines
+
+
 def render_valuation_report(
     result: ValuationRunResult,
     *,
@@ -227,6 +259,20 @@ def render_valuation_report(
             f"ntnb_maturity: {rate.maturity.isoformat()}",
             f"ntnb_reference_date: {rate.reference_date.isoformat()}",
         ]
+    declared = result.exceptions.items
+    frontmatter.append(
+        f"excecoes_hash: {result.exceptions.content_hash}"
+        if declared
+        else "excecoes_hash: null"
+    )
+    frontmatter.append(
+        "excecoes_aplicadas: [" + ", ".join(i.id for i in declared) + "]"
+    )
+    frontmatter.append(
+        "excecoes_vencidas: ["
+        + ", ".join(i.id for i in result.exceptions.overdue(as_of))
+        + "]"
+    )
     top, bottom = compute_highlights(result)
     frontmatter += _yaml_list(HIGHLIGHTS_TOP_KEY, top)
     frontmatter += _yaml_list(HIGHLIGHTS_BOTTOM_KEY, bottom)
@@ -243,6 +289,7 @@ def render_valuation_report(
     if source_note:
         body += ["", f"> {source_note}"]
     body.append("")
+    body += _exceptions_section(result, as_of)
 
     if top:
         body += [

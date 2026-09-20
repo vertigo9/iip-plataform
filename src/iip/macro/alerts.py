@@ -59,6 +59,7 @@ from iip.macro.scenarios import Scenario, ScenarioSet
 from iip.macro.sensitivity import analyse_asset
 from iip.macro.store import MacroStore
 from iip.portfolio.valuation_inputs import ValuationInputs
+from iip.portfolio_data.valuation_exceptions import exceptions_for
 
 RULES_RELATIVE_PATH = Path("07_Research") / "Macro" / "alertas_macro.json"
 STATE_RELATIVE_PATH = Path("07_Research") / "Macro" / "estado_alertas.json"
@@ -833,7 +834,9 @@ def _method_label(method: str) -> str:
     return {"bazin": "Bazin", "yield": "Yield"}.get(method, method)
 
 
-def ntnb_impact(inputs: ValuationInputs | None, shift_pp: float) -> tuple[str, ...]:
+def ntnb_impact(
+    inputs: ValuationInputs | None, shift_pp: float, exceptions=None
+) -> tuple[str, ...]:
     """O que um deslocamento da taxa real de ``shift_pp`` faz com o valor justo dos métodos que
     a usam, com o restante dos insumos igual. Reusa a análise da sensibilidade (mesmo
     avaliador do valuation); é estimativa das premissas, não previsão."""
@@ -850,7 +853,7 @@ def ntnb_impact(inputs: ValuationInputs | None, shift_pp: float) -> tuple[str, .
     )
     changes: dict[str, list[float]] = {}
     for position in inputs.positions:
-        asset = analyse_asset(position, inputs.base_rate.real_yield, move)
+        asset = analyse_asset(position, inputs.base_rate.real_yield, move, exceptions)
         outcome = asset.scenarios[0]
         for index, base in enumerate(asset.base):
             if base.method not in asset.sensitive_methods or not base.fair_value:
@@ -976,6 +979,8 @@ def run_alerts(
     """Avalia todas as regras sobre o que está guardado. Não usa rede e não grava nada: quem
     chama grava o estado devolvido (``AlertRun.state``)."""
     validate(rule_set)
+    # o impacto estimado usa as mesmas exceções metodológicas do valuation (as do vault do store)
+    exceptions = exceptions_for(store.vault)
     previous_rules = (state or {}).get("rules", {})
     previous_data = (state or {}).get("data", {})
     context = build_context(store, today)
@@ -1055,7 +1060,7 @@ def run_alerts(
             and evaluation.latest
             and evaluation.latest.measure is not None
         ):
-            impact = ntnb_impact(inputs, evaluation.latest.measure)
+            impact = ntnb_impact(inputs, evaluation.latest.measure, exceptions)
         active.append(
             Alert(
                 rule.id,

@@ -70,6 +70,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from .valuation import ValuationMethod, ValuationSnapshot, build_snapshot
+from .valuation_exceptions import ValuationExceptions
 
 GRAHAM_MULTIPLIER = 22.5
 
@@ -185,6 +186,9 @@ def applicability(
     asset_class: str,
     sector: str = "",
     industry: str = "",
+    *,
+    ticker: str = "",
+    exceptions: ValuationExceptions | None = None,
 ) -> Applicability:
     methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower())
     if methods is None:
@@ -196,6 +200,11 @@ def applicability(
         return Applicability(
             False, f"{method.value} não se aplica à classe {asset_class!r}"
         )
+    # uma exceção metodológica DECLARADA prevalece sobre as palavras-chave do setor
+    if exceptions is not None and ticker:
+        declared = exceptions.exclusion(ticker, method.value)
+        if declared is not None:
+            return Applicability(False, declared.citation())
     haystack = f"{sector} {industry}".lower()
     for needle, reason in SECTOR_EXCLUSIONS.get(method, ()):
         if needle in haystack:
@@ -204,11 +213,24 @@ def applicability(
 
 
 def ordered_methods(
-    asset_class: str, sector: str = "", industry: str = ""
+    asset_class: str,
+    sector: str = "",
+    industry: str = "",
+    *,
+    ticker: str = "",
+    exceptions: ValuationExceptions | None = None,
 ) -> tuple[ValuationMethod, ...]:
     """The class's catalogued methods, Bazin first for dividend-led sectors
-    (relative order of the others is kept)."""
+    (relative order of the others is kept). A declared methodological exception
+    that names a leading method for the ticker puts it first, whatever the sector
+    would say."""
     methods = METHODS_BY_ASSET_CLASS.get(asset_class.strip().lower(), ())
+    if exceptions is not None and ticker:
+        leader = exceptions.leader(ticker)
+        if leader is not None:
+            chosen = next((m for m in methods if m.value == leader.method), None)
+            if chosen is not None:
+                return (chosen, *(m for m in methods if m is not chosen))
     haystack = f"{sector} {industry}".lower()
     if ValuationMethod.BAZIN in methods and any(
         k in haystack for k in DIVIDEND_LED_KEYWORDS
@@ -371,12 +393,15 @@ def evaluate_valuations(
     industry: str = "",
     price: float | None,
     inputs: Mapping[str, float | None],
+    exceptions: ValuationExceptions | None = None,
 ) -> tuple[MethodAttempt, ...]:
     """Try every method catalogued for the asset's class, in order, and say
     what happened to each. Never raises for missing data and never returns a
     fair value it did not compute from ``inputs``."""
 
-    methods = ordered_methods(asset_class, sector, industry)
+    methods = ordered_methods(
+        asset_class, sector, industry, ticker=ticker, exceptions=exceptions
+    )
     if not methods:
         return (
             MethodAttempt(
@@ -388,7 +413,9 @@ def evaluate_valuations(
 
     attempts: list[MethodAttempt] = []
     for method in methods:
-        fit = applicability(method, asset_class, sector, industry)
+        fit = applicability(
+            method, asset_class, sector, industry, ticker=ticker, exceptions=exceptions
+        )
         if not fit.applicable:
             attempts.append(MethodAttempt(method, "not_applicable", fit.reason))
             continue
