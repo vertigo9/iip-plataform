@@ -641,8 +641,10 @@ def test_only_the_command_and_the_note_use_the_policy_module():
         if any(n.startswith("iip.portfolio.target_policy") for n in _imports(path))
     }
 
+    # o layers.py só LÊ os tipos da política (alvos definidos, para as camadas); não a grava
     assert users == {
         "src/iip/obsidian/target_policy_report.py",
+        "src/iip/portfolio/layers.py",
         "src/iip/cli/main.py",
     }
 
