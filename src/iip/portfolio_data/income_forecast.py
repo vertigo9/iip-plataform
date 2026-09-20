@@ -28,7 +28,7 @@ calendar month, no per-event metadata — so it gets its own minimal
 from __future__ import annotations
 
 from dataclasses import dataclass
-from statistics import mean
+from statistics import mean, median
 
 
 @dataclass(frozen=True)
@@ -52,9 +52,14 @@ def forecast_next_distribution(
     history: tuple[MonthlyDistribution, ...],
     *,
     window: int = 3,
+    statistic: str = "mean",
 ) -> IncomeForecast:
-    """Project the next month's distribution as the average of the last
-    ``window`` known months.
+    """Project the next month's distribution as the average (``statistic="mean"``,
+    the default) or the median (``"median"``) of the last ``window`` known months.
+
+    The median is for series with one-off extra distributions (a fund that paid a
+    double month): one of them moves a 3-month mean by a third but leaves the median
+    where the regular payment is.
 
     If fewer than ``window`` months are available, uses whatever is
     available and reports the true ``sample_size`` — it never pretends
@@ -63,6 +68,8 @@ def forecast_next_distribution(
 
     if window <= 0:
         raise ValueError("window must be positive")
+    if statistic not in ("mean", "median"):
+        raise ValueError("statistic must be 'mean' or 'median'")
     if not history:
         raise ValueError("history must not be empty")
 
@@ -72,11 +79,14 @@ def forecast_next_distribution(
         raise ValueError("history contains duplicate periods")
 
     sample = ordered[-window:]
-    projected = round(mean(item.amount_per_unit for item in sample), 12)
+    aggregate = mean if statistic == "mean" else median
+    projected = round(aggregate(item.amount_per_unit for item in sample), 12)
 
     return IncomeForecast(
         ticker=ticker.strip().upper(),
-        method=f"moving_average_{window}m",
+        method=(
+            f"moving_average_{window}m" if statistic == "mean" else f"median_{window}m"
+        ),
         window=window,
         sample_size=len(sample),
         periods_used=tuple(item.period for item in sample),

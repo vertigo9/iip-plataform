@@ -879,6 +879,212 @@ def portfolio_exposure_command(
         )
 
 
+@cli.command("collect-fii-history")
+@click.option(
+    "--ticker",
+    "tickers",
+    multiple=True,
+    help="Atualiza só estes FIIs (repita a opção). Padrão: todos os FIIs da carteira.",
+)
+@click.option(
+    "--desde-ano",
+    type=int,
+    default=2021,
+    show_default=True,
+    help="Primeiro ano da série (a coleta refaz a série inteira desde este ano).",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT).",
+)
+@click.option(
+    "--sem-evidencia",
+    is_flag=True,
+    default=False,
+    help="Não persiste evidência Atlas no vault, só a série em 02_Portfolio/Historical.",
+)
+def collect_fii_history_command(
+    tickers: tuple[str, ...], desde_ano: int, vault: str | None, sem_evidencia: bool
+) -> None:
+    """Atualiza a série mensal da CVM (Informe Mensal de FII) de cada FII da carteira.
+
+    Sem isto a série guardada em 02_Portfolio/Historical não muda mais, e a renda projetada
+    e o painel de distribuições ficam velhos. Um zip por ano cobre todos os fundos (baixado
+    uma vez). A série guardada só é substituída se a coleta não trouxer menos meses."""
+    import datetime as _dt
+
+    from iip.knowledge.bridge import KnowledgeBridge
+    from iip.portfolio.fii_history_refresh import fii_positions, refresh_fii_histories
+    from iip.portfolio.historical_series import HistoricalSeriesStore
+    from iip.portfolio.registry import PORTFOLIO_ASSETS
+
+    positions = fii_positions(PORTFOLIO_ASSETS)
+    if tickers:
+        wanted = {t.strip().upper() for t in tickers}
+        positions = tuple(p for p in positions if p.ticker in wanted)
+        unknown = wanted - {p.ticker for p in positions}
+        if unknown:
+            console.print(
+                f"[bold red]Não são FIIs da carteira: {', '.join(sorted(unknown))}[/]"
+            )
+            raise SystemExit(1)
+
+    # data de calendário (último ano a buscar), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    if desde_ano > hoje.year:
+        console.print("[bold red]--desde-ano não pode ser depois do ano corrente.[/]")
+        raise SystemExit(1)
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    console.print(
+        f"[dim]Atualizando {len(positions)} série(s) da CVM ({desde_ano} a {hoje.year})...[/]\n"
+    )
+    outcomes = refresh_fii_histories(
+        positions,
+        store=HistoricalSeriesStore(vault_path),
+        years=range(desde_ano, hoje.year + 1),
+        bridge=None if sem_evidencia else KnowledgeBridge(vault_path),
+    )
+
+    table = Table(title="Séries mensais da CVM")
+    table.add_column("Ticker")
+    table.add_column("Meses", justify="right")
+    table.add_column("Novos", justify="right")
+    table.add_column("Última competência")
+    table.add_column("Status")
+    for outcome in outcomes:
+        cor = {"ok": "green", "erro": "red", "pulado": "yellow"}[outcome.status]
+        table.add_row(
+            outcome.ticker,
+            str(outcome.observations) if outcome.observations else "—",
+            f"+{outcome.added}" if outcome.status == "ok" else "—",
+            outcome.last_period or "—",
+            f"[{cor}]{outcome.status}[/]",
+        )
+    console.print(table)
+    for outcome in outcomes:
+        if outcome.status != "ok":
+            console.print(
+                f"[dim]{outcome.ticker} · {outcome.status}: {outcome.detail}[/]"
+            )
+    console.print(
+        f"\n[bold]Resumo:[/] {sum(o.status == 'ok' for o in outcomes)} ok, "
+        f"{sum(o.status == 'erro' for o in outcomes)} erro, "
+        f"{sum(o.status == 'pulado' for o in outcomes)} pulado"
+    )
+    if any(o.status == "erro" for o in outcomes):
+        raise SystemExit(1)
+
+
+@cli.command("portfolio-income")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--file",
+    "snapshot_file",
+    type=click.Path(),
+    default=None,
+    help="Snapshot das posições (padrão: <vault>/02_Portfolio/Current.md).",
+)
+@click.option(
+    "--janela",
+    type=int,
+    default=6,
+    show_default=True,
+    help="Quantos meses entram na mediana da distribuição por cota (mínimo 3).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Renda.md (sobrescrita a cada execução).",
+)
+def portfolio_income_command(
+    vault: str | None, snapshot_file: str | None, janela: int, report: bool
+) -> None:
+    """Renda mensal projetada: mediana da distribuição por cota (série da CVM) x quantidade.
+
+    Não usa rede. Só projeta o fundo cuja série é regular; o resto aparece com o motivo
+    (rendimento zero/negativo na CVM, série irregular, sem série). É renda bruta estimada,
+    não promessa."""
+    import datetime as _dt
+
+    from iip.portfolio.historical_series import HistoricalSeriesStore
+    from iip.portfolio.income import build_income
+    from iip.portfolio.vault_snapshot import parse_current_snapshot
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    path = (
+        Path(snapshot_file)
+        if snapshot_file
+        else Path(vault_path) / "02_Portfolio" / "Current.md"
+    )
+    if not path.is_file():
+        console.print(f"[bold red]Snapshot das posições não encontrado: {path}[/]")
+        raise SystemExit(1)
+
+    try:
+        result = build_income(
+            parse_current_snapshot(path),
+            HistoricalSeriesStore(vault_path),
+            # data de calendário (idade da série), não timestamp
+            today=_dt.date.today(),  # noqa: DTZ011
+            window=janela,
+        )
+    except ValueError as exc:
+        console.print(f"[bold red]Não consegui projetar:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    console.print(
+        f"[bold]Renda mensal projetada: R$ {result.monthly_income:,.2f}[/] "
+        f"({len(result.projected)} posições, {result.covered_share:.1%} do valor da carteira)"
+    )
+    table = Table(title="Projetadas (mediana da distribuição por cota)")
+    table.add_column("Ticker")
+    table.add_column("Qtd", justify="right")
+    table.add_column("R$/cota", justify="right")
+    table.add_column("R$/mês", justify="right")
+    table.add_column("Atípicos")
+    for line in result.projected:
+        table.add_row(
+            line.ticker,
+            f"{line.quantity:.0f}",
+            f"{line.per_unit:.4f}",
+            f"{line.monthly_income:,.2f}",
+            ", ".join(line.unusual) or "—",
+        )
+    console.print(table)
+    for line in result.excluded:
+        if line.last_period:
+            console.print(f"[yellow]{line.ticker} sem projeção:[/] {line.reason}")
+    sem_serie = [ln.ticker for ln in result.excluded if not ln.last_period]
+    console.print(
+        f"[dim]Sem série mensal de distribuição por cota ({len(sem_serie)} posições): "
+        "ações, FI-Infra, FI-Agro, ETF, FMP-FGTS e renda fixa bancária.[/]"
+    )
+    if result.stale_series:
+        console.print(
+            "[yellow]Série defasada: "
+            f"{', '.join(ln.ticker for ln in result.stale_series)} — rode "
+            "`iip collect-fii-history`.[/]"
+        )
+    console.print(
+        "[dim]Renda bruta estimada; não é promessa. O gestor pode cortar ou aumentar.[/]"
+    )
+
+    if report:
+        from iip.obsidian.income_report import write_income_report
+
+        console.print(
+            f"[dim]Relatório de renda: {write_income_report(vault_path, result)}[/]"
+        )
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",
