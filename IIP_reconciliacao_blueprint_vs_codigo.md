@@ -112,3 +112,7 @@ o AXIA3); e com a CDA da CVM (última linha da tabela) o **AXIA3 também: 37 ava
 
 Como já foi resolvido para os demais: CRAA11 (bolsai, endpoint de FIIs), CDII11/JURO11/CPTI11 (cota do
 Informe Diário da CVM + preço do brapi, classe `fi_infra`).
+
+## Decisão da carteira em lote (20/09/2026)
+
+Elo que faltava entre Intelligence/Valuation e Decision: `iip decide-portfolio [--persist] [--report] [--ticker T]` (`portfolio/batch_decide.py`). Uma busca de template por posição alimenta o analisador e o valuation do catálogo (sem gastar a cota do bolsai duas vezes); a evidência citada é a mais recente, de fontes diferentes, que já existe em `04_Evidence` (`portfolio/evidence_lookup.py`; sem nenhuma a posição é pulada, nunca se fabrica); o sinal de tese é sempre `Neutro`; `decide()` gera a decisão e `--persist` a grava em `03_Decisions` (`DEC-<ticker>-<data>`, append-only, com a anterior para `previous_verdict`/`change_type`); `--report` grava `02_Portfolio/Decisoes.md` (`obsidian/decision_report.py`) com decisão, anterior, análise, valuation, saída de tese e o que mudou. Primeira rodada real: 37 decididas, 0 puladas, 0 com erro (7 MANTER, 17 AGUARDAR, 11 REDUZIR, 2 VENDER); só ALZR11 e XPML11 mudaram em relação a 18/09 (AGUARDAR → MANTER). Ainda não está no agendador das 08:00 e não há alerta por mudança.
