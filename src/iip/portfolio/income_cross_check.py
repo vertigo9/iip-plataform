@@ -62,6 +62,8 @@ class CrossCheck:
     diff_projection: float | None = None  # (CVM - gestor) / gestor
     diff_last: float | None = None
     note: str = ""
+    # a data do relatório / da distribuição do número do gestor, se a fonte a deixa ver
+    reference: str | None = None
 
     @property
     def label(self) -> str:
@@ -126,6 +128,7 @@ def cross_check_fund(
         "declared": declared.per_quota,
         "source_url": declared.source_url,
         "evidence": declared.evidence,
+        "reference": declared.reference or declared.competencia,
         "diff_projection": _diff(projection, declared.per_quota),
         "diff_last": _diff(cvm_last, declared.per_quota),
     }

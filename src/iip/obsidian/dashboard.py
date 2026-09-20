@@ -54,6 +54,9 @@ EXPOSURE_MISSING_KEY = "fora_do_snapshot"
 INCOME_MONTHLY_KEY = "renda_mensal"
 INCOME_COVERAGE_KEY = "cobertura_valor"
 INCOME_EXCLUDED_KEY = "sem_projecao"
+INCOME_CVM_MONTHLY_KEY = "renda_mensal_cvm"
+INCOME_HYBRID_KEY = "estimativa_hibrida"
+INCOME_ADJUSTMENTS_KEY = "ajustes_gestor"
 SERIES_PROBLEMS_KEY = "problemas"
 SERIES_TOTAL_KEY = "series_total"
 
@@ -130,7 +133,13 @@ def _tracking_section() -> list[str]:
         f"if (!p || p.{INCOME_MONTHLY_KEY} === undefined) {{",
         _missing(INCOME_NOTE_DV_PATH, "iip portfolio-income --report"),
         "} else {",
-        f'    dv.paragraph("R$ " + Number(p.{INCOME_MONTHLY_KEY}).toFixed(2) + " por mês, cobrindo " + (Number(p.{INCOME_COVERAGE_KEY}) * 100).toFixed(1) + "% do valor da carteira.");',
+        f'    let txt = "R$ " + Number(p.{INCOME_MONTHLY_KEY}).toFixed(2) + " por mês, cobrindo " + (Number(p.{INCOME_COVERAGE_KEY}) * 100).toFixed(1) + "% do valor da carteira.";',
+        f'    if (p.{INCOME_HYBRID_KEY}) txt += " **Estimativa híbrida**: só CVM seria R$ " + Number(p.{INCOME_CVM_MONTHLY_KEY}).toFixed(2) + "; a diferença vem de valores declarados pelo gestor (abaixo).";',
+        "    dv.paragraph(txt);",
+        f"    const aj = Array.from(p.{INCOME_ADJUSTMENTS_KEY} || []);",
+        "    if (aj.length) {",
+        '        dv.table(["Fundo", "Fonte", "CVM", "Gestor", "Efetiva"], aj.map(x => [x.ticker, x.fonte, x.cvm === null ? "sem projeção" : x.cvm, x.gestor, x.efetiva]));',
+        "    }",
         f"    const ex = Array.from(p.{INCOME_EXCLUDED_KEY} || []);",
         "    if (ex.length) {",
         '        dv.paragraph("Fundos com série, mas sem projeção confiável:");',

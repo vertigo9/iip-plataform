@@ -15,7 +15,6 @@ from iip.portfolio.historical_series import (
     HistoricalSeries,
     HistoricalSeriesStore,
 )
-from iip.portfolio.income import IncomeLine, IncomeReport
 from iip.portfolio.income_cross_check import (
     CrossCheck,
     cross_check_fund,
@@ -23,7 +22,6 @@ from iip.portfolio.income_cross_check import (
     run_cross_checks,
     save_validation,
 )
-from iip.portfolio_data.income_forecast import MonthlyDistribution
 from iip.sources import fii_distribution_harvester
 from iip.sources.fii_distribution_reports import (
     DeclaredDistribution,
@@ -350,43 +348,30 @@ def test_the_validation_note_is_written_to_the_portfolio_folder(tmp_path):
     assert path == tmp_path / "02_Portfolio" / "Validacao_Renda.md"
 
 
-def test_the_income_note_shows_what_the_manager_said_per_fund():
-    report = IncomeReport(
-        None,
-        1000.0,
+def test_the_income_note_shows_what_the_manager_said_per_fund(tmp_path):
+    from iip.portfolio.income import build_income
+    from iip.universal.portfolio_state import PortfolioState, PositionState
+
+    store = HistoricalSeriesStore(tmp_path)
+    store.save(_series("OK11", [0.95] * 6))
+    store.save(_series("NEW11", [0.50] * 6))
+    state = PortfolioState(
+        "2026-09-12",
         (
-            IncomeLine(
-                "OK11",
-                10,
-                500.0,
-                "projetada",
-                per_unit=0.95,
-                monthly_income=9.5,
-                months=(MonthlyDistribution("2026-08", 0.95),),
-                code="regular",
-            ),
-            IncomeLine(
-                "NEW11",
-                10,
-                500.0,
-                "projetada",
-                per_unit=0.5,
-                monthly_income=5.0,
-                months=(MonthlyDistribution("2026-08", 0.5),),
-                code="regular",
-            ),
+            PositionState("OK11", 10.0, 500.0, 0.5, "fund"),
+            PositionState("NEW11", 10.0, 500.0, 0.5, "fund"),
         ),
-        6,
-        TODAY,
+        1000.0,
     )
+    report = build_income(state, store, today=TODAY, checks={"OK11": _checks()[0]})
 
-    text = render_income_report(report, {"OK11": _checks()[0]})
+    text = render_income_report(report)
 
-    assert "| Gestor |" in text
-    assert "confere (R$ 0,9300)" in text
+    assert "| Gestor (por cota) |" in text
     ok_row = next(ln for ln in text.splitlines() if ln.startswith("| OK11"))
     new_row = next(ln for ln in text.splitlines() if ln.startswith("| NEW11"))
-    assert ok_row.endswith("confere (R$ 0,9300) |") and new_row.endswith("| — |")
+    assert "R$ 0,9300" in ok_row and "confere" in ok_row
+    assert "| — |" in new_row
 
 
 # --- CLI -----------------------------------------------------------------------
