@@ -124,8 +124,12 @@ ALL_PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
     PortfolioAsset(
         "CSUD3",
         "equity",
-        sector="Utilidade Pública / Tecnologia",
-        industry="Processamento de Dados e Serviços",
+        # Classificação B3 (informada pelo usuário em 20/09/2026): Financeiro / Serviços
+        # Financeiros Diversos. Antes estava "Utilidade Pública / Tecnologia" (uma barra dentro
+        # do setor, que criava um setor à parte nas camadas e ainda fazia o valuation excluir o
+        # Graham por "tecnologia" e o Bazin liderar por "utilidade pública").
+        sector="Financeiro",
+        industry="Serviços Financeiros Diversos",
         cnpj="01.896.779/0001-38",
     ),
     PortfolioAsset(
