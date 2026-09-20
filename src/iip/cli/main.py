@@ -1935,6 +1935,107 @@ def target_policy_command(vault: str | None, init: bool, report: bool) -> None:
         console.print(f"[dim]{write_policy_report(vault_path, policy, rec, hoje)}[/]")
 
 
+@cli.command("portfolio-layers")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Camadas.md (sobrescrita a cada execução).",
+)
+def portfolio_layers_command(vault: str | None, report: bool) -> None:
+    """Mostra o patrimônio em camadas: classe, ativo, ações (consolidado, setor, segmento) e
+    FIIs (tipo e segmento), cada percentual com o seu denominador.
+
+    Só leitura do Current.md e do registro de ativos (e, se existir, do que a política de
+    pesos-alvo já define): não define alvos nem limites, não altera a política e não decide,
+    aporta nem rebalanceia."""
+    import datetime as _dt
+
+    from iip.portfolio.layers import build_layers
+    from iip.portfolio.target_policy import (
+        SNAPSHOT_RELATIVE_PATH,
+        load_policy,
+        read_snapshot_rows,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    snapshot_path = Path(vault_path) / SNAPSHOT_RELATIVE_PATH
+    try:
+        rows = read_snapshot_rows(snapshot_path)
+        policy = load_policy(vault_path)
+        layers = build_layers(rows, policy)
+    except ValueError as exc:
+        console.print(f"[bold red]Camadas do patrimônio:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    # data de calendário (idade do snapshot), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    snapshot_date = _dt.date.fromtimestamp(snapshot_path.stat().st_mtime)
+    console.print(
+        f"[bold]{layers.position_count} posições, R$ {layers.total:,.2f}[/] "
+        f"(snapshot de {snapshot_date:%d/%m/%Y}, {(hoje - snapshot_date).days} dias)"
+    )
+    table = Table(
+        title="1. Patrimônio por classe (peso_total_pct: sobre o patrimônio total)"
+    )
+    table.add_column("Classe")
+    table.add_column("Ativos", justify="right")
+    table.add_column("Valor", justify="right")
+    table.add_column("peso_total_pct", justify="right")
+    for group in layers.classes:
+        table.add_row(
+            group.label,
+            str(len(group.holdings)),
+            f"{group.value:,.2f}",
+            f"{group.weight_total_pct:.2f}%",
+        )
+    console.print(table)
+    if layers.stocks:
+        table = Table(title="3. Ações (peso_classe_pct: sobre o valor das ações)")
+        table.add_column("Ação")
+        table.add_column("peso_total_pct", justify="right")
+        table.add_column("peso_classe_pct", justify="right")
+        for holding in layers.stocks.holdings[:5]:
+            table.add_row(
+                holding.id,
+                f"{holding.weight_total_pct:.2f}%",
+                f"{layers.stocks.weight_group_pct(holding):.2f}%",
+            )
+        console.print(table)
+    defined = sum(1 for h in layers.assets if h.target_pct is not None)
+    console.print(
+        f"[dim]{len(layers.assets)} linhas de ativo, {defined} com alvo definido na política "
+        f"({policy.approval_status if policy else 'sem política'}). Só leitura: nada é "
+        "definido, sinalizado, comprado, vendido, aportado nem rebalanceado.[/]"
+    )
+    if layers.unclassified:
+        console.print(
+            f"[yellow]Sem classificação no registro:[/] {', '.join(layers.unclassified)}"
+        )
+    if report:
+        from iip.obsidian.layers_report import write_layers_report
+
+        console.print(
+            "[dim]"
+            + str(
+                write_layers_report(
+                    vault_path,
+                    layers,
+                    today=hoje,
+                    snapshot_date=snapshot_date,
+                    policy_hash=policy.content_hash if policy else None,
+                    policy_status=policy.approval_status if policy else None,
+                )
+            )
+            + "[/]"
+        )
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",
