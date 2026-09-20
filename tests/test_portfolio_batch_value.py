@@ -169,7 +169,7 @@ def test_technology_equity_is_valued_only_by_the_methods_that_fit():
 
 def test_classes_without_an_implemented_method_and_missing_sector_are_skipped_without_fetching():
     etf = PortfolioAsset(
-        "LFTB11", "etf", cnpj="1"
+        "AXIA3", "fixed_income", cnpj="1"
     )  # a class with no implemented method
     no_sector = PortfolioAsset(
         "XXXX3", "equity", cnpj="1"
@@ -255,7 +255,7 @@ def test_value_portfolio_command_prints_side_by_side_table(monkeypatch):
         lambda: (
             _equity("CXSE3", sector="Financeiro", industry="Seguros"),
             _equity("BTLG11x"),
-            PortfolioAsset("LFTB11", "etf", cnpj="1"),
+            PortfolioAsset("AXIA3", "fixed_income", cnpj="1"),
         ),
     )
     monkeypatch.setattr(bv, "_default_fetch_rate", lambda: RATE)
@@ -277,7 +277,7 @@ def test_value_portfolio_command_prints_side_by_side_table(monkeypatch):
     assert "17.26" in result.output  # Bazin at 7.30%
     # the fund is summarized per class in one line, not as a table row
     assert "pulado (1)" in result.output  # not wrapped-line sensitive
-    assert "LFTB11" in result.output
+    assert "AXIA3" in result.output
     assert "principal" in result.output  # header may wrap in a narrow table
     assert (
         "Bazin" in result.output
@@ -409,3 +409,50 @@ def test_unlisted_fixed_income_like_axia3_is_still_skipped_without_fetching():
     )
     assert result.outcomes[0].status == "pulado"
     assert "fixed_income" in result.outcomes[0].detail
+
+
+def _etf(ticker="LFTB11"):
+    return PortfolioAsset(
+        ticker,
+        "etf",
+        cnpj="56.176.507/0001-55",
+        structure="Renda Fixa (Títulos Públicos)",
+        segment="Pós-fixado",
+    )
+
+
+def test_an_etf_is_valued_by_nav_against_its_market_price():
+    calls = []
+
+    def fetch_etf(symbol, cnpj, ano, mes, brapi_token):
+        calls.append((symbol, cnpj))
+        return _template(price=126.93, nav_per_share=126.66), object()
+
+    result = value_portfolio(
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(_etf(),),
+        fetch_etf=fetch_etf,
+        fetch_rate=lambda: RATE,
+    )
+
+    outcome = result.outcomes[0]
+    assert outcome.status == "ok" and outcome.asset_class == "etf"
+    assert outcome.attempts[0].method == ValuationMethod.NAV
+    assert outcome.attempts[0].snapshot.fair_value == 126.66
+    assert outcome.attempts[0].snapshot.margin_of_safety < 0  # prêmio sobre o NAV
+    assert calls == [("LFTB11", "56.176.507/0001-55")]
+
+
+def test_an_etf_without_a_nav_is_skipped_with_the_reason_not_valued_by_guess():
+    result = value_portfolio(
+        bolsai_api_key=None,
+        brapi_token=None,
+        positions=(_etf(),),
+        fetch_etf=lambda *a: (_template(price=126.93), object()),
+        fetch_rate=lambda: RATE,
+    )
+
+    outcome = result.outcomes[0]
+    assert outcome.status == "pulado"
+    assert "VP/cota" in outcome.detail or "patrimônio por cota" in outcome.detail

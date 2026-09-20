@@ -74,8 +74,8 @@ from .valuation import ValuationMethod, ValuationSnapshot, build_snapshot
 GRAHAM_MULTIPLIER = 22.5
 
 # Methods appropriate per asset class, in order of preference. Classes with no
-# entry (etf, fixed_income, ...) have no method catalogued yet -- reported as
-# such, not guessed.
+# entry (fixed_income, ...) have no method catalogued yet -- reported as such,
+# not guessed.
 METHODS_BY_ASSET_CLASS: dict[str, tuple[ValuationMethod, ...]] = {
     "equity": (
         ValuationMethod.GRAHAM,
@@ -92,6 +92,12 @@ METHODS_BY_ASSET_CLASS: dict[str, tuple[ValuationMethod, ...]] = {
     # is no income input for Yield and these are "papel" (CDI/credit-spread income).
     # Not the whole fixed_income class: AXIA3 is a FMP-FGTS with no market ticker.
     "fi_infra": (ValuationMethod.NAV,),
+    # ETFs (só o LFTB11 na carteira): NAV apenas. A cota patrimonial vem da página
+    # oficial da gestora (iip.sources.investo_etf), já que o Informe Diário da CVM não
+    # traz o fundo. O preço acompanha o NAV por criação e resgate de cotas, então a
+    # "margem" aqui é o prêmio/desconto sobre o NAV, não um sinal de preço errado; e
+    # não há método de renda (o LFTB11 acumula, não distribui).
+    "etf": (ValuationMethod.NAV,),
 }
 
 # Per-method sector/industry exclusions: lowercase substrings matched against

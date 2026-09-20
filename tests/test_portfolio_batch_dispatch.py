@@ -127,6 +127,7 @@ def _value(rec, *, ano=None):
         ano=ano,
         positions=ALL,
         fetch_fii=f["fii"],
+        fetch_etf=f["etf"],
         fetch_equity=f["equity"],
         fetch_fiagro=f["fiagro"],
         fetch_fixed_income=f["fixed_income"],
@@ -174,9 +175,11 @@ def test_analyze_uses_an_explicit_year_for_every_class(tmp_path):
 def _expected_value(ano_dfp):
     # o valuation difere de propósito: FII/FI-Infra/FIAGRO usam o ano corrente
     # (informe mensal), o FI-Infra ganha o brapi_token, o FIAGRO ganha o
-    # bolsai_api_key; ETF e renda fixa sem ticker não têm método e não são buscados
+    # bolsai_api_key; a renda fixa sem ticker não tem método e não é buscada. O ETF
+    # passou a ter (NAV, cota patrimonial do Investo) e é buscado como no refresh
     return {
         "fii": [(("FIIX11", "1", Y, "BK"), {})],
+        "etf": [(("ETFX11", "2", Y, M, "PK"), {})],
         "fixed_income": [(("INFR11", "5", Y, M), {"brapi_token": "PK"})],
         "fiagro": [(("AGRO11", "4", Y, M, "PK"), {"bolsai_api_key": "BK"})],
         "equity": [(("EQTY3", "3", ano_dfp, "BK", "PK"), {})],

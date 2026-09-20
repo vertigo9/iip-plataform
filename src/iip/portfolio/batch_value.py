@@ -98,6 +98,7 @@ def value_portfolio(
     ano: int | None = None,
     positions: tuple[PortfolioAsset, ...] | None = None,
     fetch_equity: Callable[..., tuple[dict, object]] | None = None,
+    fetch_etf: Callable[..., tuple[dict, object]] | None = None,
     fetch_fii: Callable[..., tuple[dict, object]] | None = None,
     fetch_fiagro: Callable[..., tuple[dict, object]] | None = None,
     fetch_fixed_income: Callable[..., tuple[dict, object]] | None = None,
@@ -109,6 +110,7 @@ def value_portfolio(
     # calls to spend the daily provider quota on.
     fetchers = resolve_fetchers(
         fii=fetch_fii,
+        etf=fetch_etf,
         fixed_income=fetch_fixed_income,
         equity=fetch_equity,
         fiagro=fetch_fiagro,

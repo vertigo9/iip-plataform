@@ -37,6 +37,7 @@ _CLASS_TITLES = {
     "fii": "FIIs",
     "fiagro": "FIAGROs",
     "fi_infra": "FI-Infra",
+    "etf": "ETFs",
 }
 
 _READING_GUIDE = """\

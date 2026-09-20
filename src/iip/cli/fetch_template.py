@@ -1397,14 +1397,100 @@ def fetch_etf_template_live(
         default_financials=default_financials,
         price=price,
     )
-    extra_warnings = tuple(w for w in (diario_warning, brapi_warning) if w)
-    if extra_warnings:
+    template, investo_fetched, investo_warnings = _enrich_etf_with_investo(
+        template, symbol, cnpj, price, resultado.fetched_fields
+    )
+    extra_warnings = tuple(
+        w for w in (diario_warning, brapi_warning, *investo_warnings) if w
+    )
+    base_warnings = resultado.warnings
+    if "assets_under_management_millions" in investo_fetched:
+        # o aviso genérico diz que o PL vem de um mês de Informe Diário; aqui vem do Investo
+        base_warnings = tuple(
+            w
+            for w in base_warnings
+            if not w.startswith("assets_under_management_millions vem de um único mês")
+        )
+    if extra_warnings or investo_fetched:
         resultado = FetchResult(
-            fetched_fields=resultado.fetched_fields,
+            fetched_fields=(*resultado.fetched_fields, *investo_fetched),
             dividend_yield_months_used=resultado.dividend_yield_months_used,
-            warnings=(*resultado.warnings, *extra_warnings),
+            warnings=(*base_warnings, *extra_warnings),
         )
     return template, resultado
+
+
+def _enrich_etf_with_investo(
+    template: dict[str, Any],
+    symbol: str,
+    cnpj: str,
+    price: float | None,
+    already_fetched: tuple[str, ...] = (),
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Best-effort NAV per share (and net assets) from the ETF manager's own page, for
+    the ETFs verified in ``iip.sources.investo_etf`` (LFTB11): the CVM Informe Diário does
+    not carry them, and without ``nav_per_share`` there is nothing to value them by.
+
+    Silent no-op for any other ticker. Never raises: a failure becomes a warning and the
+    template stays as the CVM/brapi path built it. A NAV older than the source's limit is
+    not used (and says so). The NAV is D-1 and the brapi price is newer, so the premium
+    over NAV carries that lag -- the warning states it.
+    """
+    from datetime import date
+
+    from iip.sources import investo_etf
+    from iip.sources.investo_etf_harvester import InvestoEtfHTTPHarvester
+
+    if not investo_etf.supports(symbol):
+        return template, [], []
+    try:
+        fetched = InvestoEtfHTTPHarvester().fetch(symbol, expected_cnpj=cnpj)
+    # enriquecimento é best-effort, nunca deve derrubar o template já montado
+    except Exception as exc:  # noqa: BLE001
+        return (
+            template,
+            [],
+            [f"não consegui ler a cota patrimonial de {symbol} no Investo: {exc}"],
+        )
+
+    latest = fetched.latest
+    # data de calendário (idade do dado), não timestamp
+    age_days = (date.today() - latest.date).days  # noqa: DTZ011
+    if age_days > investo_etf.MAX_NAV_AGE_DAYS:
+        return (
+            template,
+            [],
+            [
+                f"a cota patrimonial mais recente do Investo é de {latest.date:%d/%m/%Y} "
+                f"({age_days} dias, acima do limite de {investo_etf.MAX_NAV_AGE_DAYS}): "
+                "não usada, nav_per_share fica vazio"
+            ],
+        )
+
+    template = dict(template)
+    financials = dict(template.get("financials", {}))
+    financials["nav_per_share"] = latest.nav_per_share
+    fetched_fields = ["nav_per_share"]
+    # o Informe Diário da CVM não traz estes ETFs; só o que ele NÃO preencheu vem do
+    # Investo (o PL é o do mesmo dia da cota)
+    if "assets_under_management_millions" not in already_fetched and latest.net_assets:
+        financials["assets_under_management_millions"] = round(
+            latest.net_assets / 1_000_000, 2
+        )
+        fetched_fields.append("assets_under_management_millions")
+    if price is not None and "market_cap" not in already_fetched and latest.net_assets:
+        # cotas = PL / NAV; valor de mercado = preço x cotas
+        template["market_cap"] = round(
+            price * latest.net_assets / latest.nav_per_share, 2
+        )
+        fetched_fields.append("market_cap")
+    template["financials"] = financials
+    warnings = [
+        f"nav_per_share = R$ {latest.nav_per_share:.2f}, a cota patrimonial de "
+        f"{latest.date:%d/%m/%Y} (D-1) do site oficial da Investo; o preço de mercado "
+        "vem do brapi e é mais novo, então o prêmio sobre o NAV carrega essa defasagem."
+    ]
+    return template, fetched_fields, warnings
 
 
 def _fii_defaults() -> dict[str, Any]:
