@@ -21,6 +21,7 @@ from iip.obsidian.exposure_report import (
 )
 from iip.obsidian.income_report import REPORT_RELATIVE_PATH as INCOME_PATH
 from iip.obsidian.income_report import render_income_report
+from iip.obsidian.macro_report import REPORT_RELATIVE_PATH as MACRO_PATH
 from iip.obsidian.series_report import REPORT_RELATIVE_PATH as SERIES_PATH
 from iip.obsidian.series_report import render_series_report
 from iip.portfolio.batch_decide import DecisionOutcome, DecisionRunResult
@@ -68,6 +69,7 @@ def test_each_report_path_matches_the_path_the_dashboard_reads():
     assert dash.EXPOSURE_NOTE_DV_PATH + ".md" == EXPOSURE_PATH.as_posix()
     assert dash.INCOME_NOTE_DV_PATH + ".md" == INCOME_PATH.as_posix()
     assert dash.SERIES_NOTE_DV_PATH + ".md" == SERIES_PATH.as_posix()
+    assert dash.MACRO_NOTE_DV_PATH + ".md" == MACRO_PATH.as_posix()
 
 
 def test_every_block_reads_a_key_that_its_note_actually_writes():
@@ -169,6 +171,9 @@ def test_the_dashboard_template_uses_each_key_it_defines():
         dash.INCOME_ADJUSTMENTS_KEY,
         dash.SERIES_PROBLEMS_KEY,
         dash.SERIES_TOTAL_KEY,
+        dash.MACRO_INDICATORS_KEY,
+        dash.MACRO_PROBLEMS_KEY,
+        dash.MACRO_COLLECTED_KEY,
     ):
         assert f"p.{key}" in DASHBOARD_TEMPLATE, key
 
@@ -176,12 +181,20 @@ def test_the_dashboard_template_uses_each_key_it_defines():
 def test_the_wiki_links_point_at_notes_the_job_writes():
     targets = set(re.findall(r"\[\[(\w+)\|", DASHBOARD_TEMPLATE))
 
-    assert {"Valuation", "Decisoes", "Exposicao", "Renda", "Series"} <= targets
+    assert {
+        "Valuation",
+        "Decisoes",
+        "Exposicao",
+        "Renda",
+        "Series",
+        "Contexto_Macro",
+    } <= targets
     written = {
         DECISIONS_PATH.stem,
         EXPOSURE_PATH.stem,
         INCOME_PATH.stem,
         SERIES_PATH.stem,
+        MACRO_PATH.stem,
         "Valuation",
     }
     assert targets <= written
@@ -193,6 +206,7 @@ def test_a_block_whose_note_is_missing_or_old_says_so_instead_of_an_empty_table(
         (dash.EXPOSURE_NOTE_DV_PATH, dash.EXPOSURE_AGE_KEY),
         (dash.INCOME_NOTE_DV_PATH, dash.INCOME_MONTHLY_KEY),
         (dash.SERIES_NOTE_DV_PATH, dash.SERIES_TOTAL_KEY),
+        (dash.MACRO_NOTE_DV_PATH, dash.MACRO_INDICATORS_KEY),
     ):
         assert f'dv.page("{note_path}")' in DASHBOARD_TEMPLATE
         assert f"if (!p || p.{key} === undefined)" in DASHBOARD_TEMPLATE
@@ -366,7 +380,7 @@ def _balanced(js):
 def test_every_dataviewjs_block_has_balanced_brackets_and_strings():
     blocks = re.findall(r"```dataviewjs\n(.*?)```", DASHBOARD_TEMPLATE, re.S)
 
-    assert len(blocks) >= 9  # os 5 já existentes + os 4 do acompanhamento
+    assert len(blocks) >= 10  # os 5 já existentes + os 5 do acompanhamento
     for index, block in enumerate(blocks):
         assert _balanced(block), f"bloco {index} desbalanceado:\n{block}"
 

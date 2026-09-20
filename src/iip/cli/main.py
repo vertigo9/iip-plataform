@@ -1364,6 +1364,147 @@ def dashboard_command(vault: str | None) -> None:
     console.print(f"[dim]Dashboard: {generate_portfolio_dashboard(vault_path)}[/]")
 
 
+@cli.command("collect-macro")
+@click.option(
+    "--indicator",
+    "indicators",
+    multiple=True,
+    help="Coleta só estes indicadores (id do catálogo; repita a opção). Padrão: todos.",
+)
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+def collect_macro_command(indicators: tuple[str, ...], vault: str | None) -> None:
+    """Coleta os indicadores macro (BACEN SGS e IBGE SIDRA) e guarda em 07_Research/Macro.
+
+    Cada valor é gravado com a data da coleta; um valor que a fonte revisou é guardado como
+    nova versão, sem apagar a anterior. Macro é contexto: não decide aporte nem peso."""
+    import datetime as _dt
+
+    from iip.macro.collector import collect_macro
+    from iip.macro.contract import INDICATORS
+    from iip.macro.store import MacroStore
+
+    unknown = [i for i in indicators if i not in INDICATORS]
+    if unknown:
+        console.print(
+            f"[bold red]Indicador fora do catálogo: {', '.join(unknown)}[/] "
+            f"(catálogo: {', '.join(sorted(INDICATORS))})"
+        )
+        raise SystemExit(1)
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    # data de calendário (data da coleta), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    outcomes = collect_macro(
+        tuple(indicators) or None, MacroStore(vault_path), today=hoje
+    )
+
+    table = Table(title=f"Coleta macro — {hoje:%d/%m/%Y}")
+    table.add_column("Indicador")
+    table.add_column("Novos", justify="right")
+    table.add_column("Revisados", justify="right")
+    table.add_column("Última competência")
+    table.add_column("Status")
+    for outcome in outcomes:
+        cor = "green" if outcome.status == "ok" else "red"
+        table.add_row(
+            outcome.indicator_id,
+            str(outcome.result.new) if outcome.result else "—",
+            str(outcome.result.revised) if outcome.result else "—",
+            outcome.last_reference or "—",
+            f"[{cor}]{outcome.status}[/]",
+        )
+    console.print(table)
+    for outcome in outcomes:
+        if outcome.status != "ok":
+            console.print(f"[dim]{outcome.indicator_id}: {outcome.detail}[/]")
+    revised = sum(o.result.revised for o in outcomes if o.result)
+    if revised:
+        console.print(
+            f"[yellow]{revised} valor(es) revisado(s) pela fonte desde a última coleta.[/]"
+        )
+    console.print(
+        f"\n[bold]Resumo:[/] {sum(o.status == 'ok' for o in outcomes)} ok, "
+        f"{sum(o.status == 'erro' for o in outcomes)} erro"
+    )
+    if any(o.status == "erro" for o in outcomes):
+        raise SystemExit(1)
+
+
+@cli.command("macro-context")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 07_Research/Macro/Contexto_Macro.md (sobrescrita a cada execução).",
+)
+def macro_context_command(vault: str | None, report: bool) -> None:
+    """Mostra o contexto macro guardado: último valor, comparação com 12 meses antes, frescor
+    e conferência entre fontes. Não usa rede; só descreve, não recomenda."""
+    import datetime as _dt
+
+    from iip.macro.context import build_context
+    from iip.macro.store import MacroStore
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    # data de calendário (idade do dado), não timestamp
+    context = build_context(MacroStore(vault_path), _dt.date.today())  # noqa: DTZ011
+
+    if len(context.missing) == len(context.readings):
+        console.print(
+            "[yellow]Nenhum dado macro guardado ainda: rode `iip collect-macro`.[/]"
+        )
+        raise SystemExit(1)
+
+    table = Table(title="Contexto macro (dado guardado)")
+    table.add_column("Indicador")
+    table.add_column("Último", justify="right")
+    table.add_column("Competência")
+    table.add_column("Variação 12m", justify="right")
+    table.add_column("Situação")
+    for reading in context.readings:
+        if reading.missing:
+            table.add_row(reading.indicator.name, "—", "—", "—", "[red]sem dados[/]")
+            continue
+        change = "—" if reading.change is None else f"{reading.change:+.2f}"
+        situacao = (
+            "[yellow]defasado[/]"
+            if reading.stale
+            else ("parcial" if reading.latest.provisional else "em dia")
+        )
+        table.add_row(
+            reading.indicator.name,
+            f"{reading.latest.value:g}",
+            reading.latest.reference,
+            change,
+            situacao,
+        )
+    console.print(table)
+    for check in context.source_checks:
+        if check.compared:
+            verdict = "concordam" if check.agrees else "[red]divergem[/]"
+            console.print(
+                f"[dim]{check.a} x {check.b}: {verdict} em {check.compared} "
+                f"competências (maior diferença {check.max_difference:.2f})[/]"
+            )
+    console.print(
+        "[dim]Contexto, não recomendação. Só vale como conhecido em tal data a partir da "
+        f"primeira coleta ({context.first_collected_at}).[/]"
+    )
+    if report:
+        from iip.obsidian.macro_report import write_macro_report
+
+        console.print(f"[dim]{write_macro_report(vault_path, context)}[/]")
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",

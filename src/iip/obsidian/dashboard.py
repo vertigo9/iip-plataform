@@ -59,6 +59,10 @@ INCOME_HYBRID_KEY = "estimativa_hibrida"
 INCOME_ADJUSTMENTS_KEY = "ajustes_gestor"
 SERIES_PROBLEMS_KEY = "problemas"
 SERIES_TOTAL_KEY = "series_total"
+MACRO_NOTE_DV_PATH = "07_Research/Macro/Contexto_Macro"
+MACRO_INDICATORS_KEY = "macro_indicadores"
+MACRO_PROBLEMS_KEY = "macro_problemas"
+MACRO_COLLECTED_KEY = "macro_coleta_desde"
 
 
 def _missing(note_dv_path: str, command: str) -> str:
@@ -163,6 +167,23 @@ def _tracking_section() -> list[str]:
         "    if (pr.length) {",
         '        dv.table(["Fundo", "Situação", "Última competência", "Defasada", "Atualizada em"], pr.map(x => [x.ticker, x.situacao, x.ultima_competencia || "—", x.defasada ? "sim" : "não", x.atualizada_em || "nunca"]));',
         "    }",
+        "}",
+        "```",
+        "",
+        "### Contexto macroeconômico",
+        "",
+        "Nota completa: [[Contexto_Macro|Contexto macroeconômico]]. Coletada por "
+        "`iip collect-macro`. É contexto: não decide aporte nem peso.",
+        "",
+        "```dataviewjs",
+        f'const p = dv.page("{MACRO_NOTE_DV_PATH}");',
+        f"if (!p || p.{MACRO_INDICATORS_KEY} === undefined) {{",
+        _missing(MACRO_NOTE_DV_PATH, "iip collect-macro && iip macro-context --report"),
+        "} else {",
+        f"    const ind = Array.from(p.{MACRO_INDICATORS_KEY} || []);",
+        f"    const pr = Array.from(p.{MACRO_PROBLEMS_KEY} || []);",
+        f'    dv.paragraph(ind.length + " indicadores, " + pr.length + " com problema (dados de " + String(p.date).slice(0, 10) + "; coleta desde " + String(p.{MACRO_COLLECTED_KEY}).slice(0, 10) + ").");',
+        '    dv.table(["Indicador", "Último", "Competência", "Variação 12 meses", "Situação"], ind.map(x => [x.nome + " (" + x.unidade + ")", x.valor === null ? "—" : x.valor, x.competencia || "—", x.variacao_12m === null ? "—" : x.variacao_12m, x.defasado ? "defasado" : (x.provisorio ? "parcial" : "em dia")]));',
         "}",
         "```",
         "",

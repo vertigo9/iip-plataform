@@ -99,12 +99,21 @@ $IncomeExitCode = $LASTEXITCODE
 python -m iip.cli.main portfolio-exposure --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $ExposureExitCode = $LASTEXITCODE
 
+# Macro (BACEN SGS e IBGE SIDRA): guarda cada valor com a data da coleta e escreve o contexto
+# (07_Research/Macro/Contexto_Macro.md). So contexto: nao decide aporte nem peso. O
+# armazenamento so grava o que mudou, entao rodar toda noite nao duplica nada.
+Write-Output "--- Macro ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main collect-macro 2>&1 | Tee-Object -FilePath $LogFile -Append
+$MacroExitCode = $LASTEXITCODE
+python -m iip.cli.main macro-context --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$MacroContextExitCode = $LASTEXITCODE
+
 # Painel: cada bloco le o cabecalho das notas geradas acima, por isso vem por ultimo.
 Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
 python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DashboardExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -133,6 +142,11 @@ if ($SeriesExitCode -ne 0) {
     Notificar-Windows "IIP: falha nas series da CVM" $msg5 "Warning"
 }
 
+if ($MacroExitCode -ne 0 -or $MacroContextExitCode -ne 0) {
+    $msg7 = "A coleta ou o contexto macro (BACEN/IBGE) falharam hoje. Veja " + $LogFile
+    Notificar-Windows "IIP: falha no macro" $msg7 "Warning"
+}
+
 if ($ValidateExitCode -ne 0 -or $IncomeExitCode -ne 0 -or $ExposureExitCode -ne 0 -or $DashboardExitCode -ne 0) {
     $msg6 = "A validacao da renda, a renda projetada, a exposicao ou o dashboard da carteira nao foram gerados hoje. Veja " + $LogFile
     Notificar-Windows "IIP: falha na renda ou na exposicao" $msg6 "Warning"
@@ -156,7 +170,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0) {
     exit 0
 }
 exit 1
