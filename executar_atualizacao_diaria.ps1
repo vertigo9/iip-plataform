@@ -38,7 +38,12 @@ function Notificar-Windows {
         $notify = New-Object System.Windows.Forms.NotifyIcon
         $notify.Icon = [System.Drawing.SystemIcons]::$Icone
         $notify.Visible = $true
-        $notify.ShowBalloonTip(15000, $Titulo, $Mensagem, [System.Windows.Forms.ToolTipIcon]::$Icone)
+        # O enum ToolTipIcon nao tem "Information" (os nomes sao None, Info, Warning, Error):
+        # com o nome errado o valor vira $null e o ShowBalloonTip falha sem aviso. SystemIcons
+        # tem "Information"; so o enum do balao precisa do nome "Info".
+        $TipoBalao = $Icone
+        if ($Icone -eq "Information") { $TipoBalao = "Info" }
+        $notify.ShowBalloonTip(15000, $Titulo, $Mensagem, [System.Windows.Forms.ToolTipIcon]::$TipoBalao)
         Start-Sleep -Seconds 1
     } catch {
         Write-Output "(nao consegui mostrar notificacao do Windows: $_)"
