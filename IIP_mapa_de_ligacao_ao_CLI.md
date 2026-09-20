@@ -57,14 +57,42 @@ Custo de cota: o 1 acrescenta uma rodada de busca por dia (uma por posição); o
 - `automation/scheduler.py`: parece ser o agendador do motor legado das 18:00 (confirmar).
 - `harvest/patria.py` (1.016 linhas, com `main()` próprio): o coletor da Pátria hoje é o `collect-patria-documents` via MZIQ; este parece o antecessor. **Confirmar** antes de tirar.
 
-## Ordem que recomendo
+## Ordem que recomendo (revista em 20/09/2026, à noite)
 
-1. **Item 1** (alertas + `decide-portfolio` no agendador): pequeno, fecha o PR #17 e começa a acumular o histórico do item 7.
-2. **Item 2** (exposição e concentração): maior ganho de leitura de risco, com dado que já temos.
-3. **Item 3** (renda projetada), depois de eu confirmar a fonte do histórico por cota.
-4. Em paralelo, **você define o peso-alvo** (item 4 destrava aporte e rebalanceamento) e diz se quer o Macro (item 8).
-5. Itens 5, 6, 7 e 9 quando houver o insumo, nessa ordem de dependência (6 → 5; 7 só depois de alguns meses).
-6. Nível 3 e o lixo: PR de limpeza à parte, quando você autorizar.
+**Feito:** itens 1 (alertas de decisão + `decide-portfolio` no agendador), 2 (exposição e concentração) e 3 (renda projetada + `collect-fii-history`).
+
+**O que o item 3 mudou.** A renda deixou de ser algo a desenvolver: há um comando, uma nota persistida (`Renda.md`) e um comando de coleta. Mas duas coisas ficaram menores do que parecem:
+
+- "Rotina de coleta disponível" é um **comando**, ainda não uma **rotina**: nada o roda sozinho. A série já ficou congelada uma vez por isso.
+- A camada de dados cobre **26,4% do valor da carteira** na renda (12 FIIs). O resto não tem série mensal por cota, e a série que existe é ruidosa (zero, negativo, repetido).
+
+Por isso o próximo bloco não é mais funcionalidade, e sim **confiabilidade**:
+
+### Bloco A — confiabilidade e frescor dos dados de renda (novo, o próximo)
+
+| # | O quê | Situação hoje | Esforço |
+|---|---|---|---|
+| A1 | **Rodar o `collect-fii-history` sozinho** (agendador; semanal basta, a CVM atualiza o arquivo semanalmente e o dado é mensal) | só existe o comando | pequeno |
+| A2 | **Estado de cada série** (última competência, idade, meses, situação: ok / defasada / zero / irregular / ausente), gravado no vault | a nota `Renda.md` já classifica por posição, mas o estado não é persistido nem tem data de atualização | pequeno |
+| A3 | **Alerta** para série defasada, ausente, zerada/negativa ou que passou de regular a irregular, pelo mesmo arquivo de alerta e notificação do `decide-portfolio` | a classificação existe; o aviso não | pequeno |
+| A4 | **Validação cruzada com o relatório do gestor**, começando pelos 4 fundos sem projeção (AFHI11, BTCI11, VGIP11, XPML11) | conferido só com o balanço da CVM, em 2 fundos | médio (depende dos PDFs de cada gestora) |
+| A5 | **Painel**: levar `Decisoes`, `Exposicao` e `Renda` ao `Dashboard.md`, que hoje só mostra score e valuation | notas separadas, sem link no painel | pequeno a médio |
+
+**Ressalva sobre A5:** integrar "conforme os contratos existentes" não é pelos pacotes do Nível 3 (contratos duplicados, sem consumidor). O caminho é o `obsidian/dashboard.py`, que já roda.
+
+### Bloco B — cobertura (depois do A)
+
+- **Ações**: dividendo anual do balanço (DFC/bolsai), método diferente do mensal; 14 posições, 43,9% do valor.
+- **FI-Infra, FI-Agro**: ver se os relatórios da Sparta trazem a distribuição mensal por cota (hoje só a cota patrimonial).
+- Só então o total de renda deixa de ser "26% da carteira".
+
+### Continuam como antes
+
+4. **Peso-alvo** (você define; destrava aporte e rebalanceamento) e **Macro** (você diz o uso).
+5. **Ciclo documental → sinal de tese real** (6 → 5) e **validação histórica** (7, só depois de meses de decisões diárias: o item 1 já as acumula).
+6. **Nível 3 e o lixo**: PR de limpeza à parte, com o seu OK.
+
+**Ordem:** A1 → A3 → A2 → A5 → A4; depois B; o resto conforme os insumos que dependem de você.
 
 ## O que esta lista não promete
 
