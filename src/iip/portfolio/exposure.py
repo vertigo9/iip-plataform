@@ -21,7 +21,11 @@ import datetime as _dt
 from collections import defaultdict
 from dataclasses import dataclass
 
-from iip.portfolio.registry import PORTFOLIO_ASSETS, PortfolioAsset
+from iip.portfolio.registry import (
+    ALL_PORTFOLIO_ASSETS,
+    PORTFOLIO_ASSETS,
+    PortfolioAsset,
+)
 from iip.portfolio.vault_snapshot import _ID_TO_REGISTRY_TICKER
 from iip.universal.portfolio_state import PortfolioState, PositionState
 
@@ -83,6 +87,9 @@ class ExposureReport:
     missing_from_snapshot: tuple[str, ...]
     group_limit: float
     position_limit: float
+    # posições de ativos ENCERRADOS no registro que voltaram ao snapshot (ticker, encerrado em):
+    # o job não as atualiza até o ativo ser reativado no registro
+    closed_in_snapshot: tuple[tuple[str, str], ...] = ()
 
     @property
     def stale(self) -> bool:
@@ -91,7 +98,8 @@ class ExposureReport:
 
 def _registry_asset(position: PositionState) -> PortfolioAsset | None:
     ticker = _ID_TO_REGISTRY_TICKER.get(position.ticker, position.ticker)
-    return next((a for a in PORTFOLIO_ASSETS if a.ticker == ticker), None)
+    # inclui as encerradas: uma posição que voltou ao snapshot mantém a classificação
+    return next((a for a in ALL_PORTFOLIO_ASSETS if a.ticker == ticker), None)
 
 
 def _class_label(position: PositionState, asset: PortfolioAsset | None) -> str:
@@ -198,4 +206,11 @@ def build_exposure(
         ),
         group_limit=group_limit,
         position_limit=position_limit,
+        closed_in_snapshot=tuple(
+            sorted(
+                (a.ticker, a.closed_on)
+                for a in ALL_PORTFOLIO_ASSETS
+                if a.closed_on and a.ticker in in_snapshot
+            )
+        ),
     )

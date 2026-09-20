@@ -112,6 +112,12 @@ def render_exposure_report(report: ExposureReport) -> str:
             + ", ".join(report.missing_from_snapshot)
             + ". A soma dos pesos abaixo é de uma carteira incompleta."
         )
+    for closed_ticker, closed_on in report.closed_in_snapshot:
+        lines.append(
+            f"- **Posição de ativo encerrado voltou ao snapshot**: `{closed_ticker}` "
+            f"(encerrado no registro em {closed_on}). O job diário não o atualiza, avalia nem "
+            "decide até ele ser reativado (apagar `closed_on` em `portfolio/registry.py`)."
+        )
 
     lines += ["", "## Alertas de concentração", ""]
     if report.flags:

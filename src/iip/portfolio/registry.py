@@ -48,11 +48,18 @@ class PortfolioAsset:
     # adivinhado a partir do ticker ou de conhecimento geral.
     sector: str | None = None
     industry: str | None = None
+    # Posição ENCERRADA: data (AAAA-MM-DD) em que o usuário zerou a posição. O ativo continua
+    # aqui, com todos os dados, para poder voltar (sair de um ativo e comprá-lo de novo depois
+    # é normal): reativar é só apagar ``closed_on``. Enquanto estiver preenchido, o ativo fica
+    # FORA de ``PORTFOLIO_ASSETS`` e o job diário não o atualiza, avalia nem decide.
+    closed_on: str | None = None
+    closure_note: str = ""
 
 
 # This table deliberately avoids inventing classifications not supported by
-# the DATABASE or explicitly supplied by the user.
-PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
+# the DATABASE or explicitly supplied by the user. Todas as posições que o projeto já teve,
+# inclusive as encerradas; ``PORTFOLIO_ASSETS`` (abaixo) é só o subconjunto ativo.
+ALL_PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
     # CNPJs abaixo verificados ao vivo em 18/09/2026 contra o cadastro
     # aberto da CVM (dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/
     # cad_cia_aberta.csv), cruzando razão social/nome comercial com cada
@@ -271,6 +278,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         # subjacente, não um tier baixo/médio/alto a nível de fundo).
         classification_provenance=ClassificationProvenance.USER,
         cnpj="09.552.812/0001-14",  # confirmado pelo usuario via extrato real da corretora
+        closed_on="2026-09-18",
+        closure_note="posição zerada, informado pelo usuário em 20/09/2026",
     ),
     PortfolioAsset(
         "VGIP11",
@@ -466,6 +475,8 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
         # encontrada em fonte confiável.
         classification_provenance=ClassificationProvenance.DATABASE,
         cnpj="35.652.102/0001-76",  # verificado via busca (doc oficial B3/FNET)
+        closed_on="2026-08-14",
+        closure_note="posição zerada, informado pelo usuário em 20/09/2026",
     ),
     PortfolioAsset(
         "ALZR11",
@@ -575,9 +586,22 @@ PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = (
 )
 
 
-def get_asset(ticker: str) -> PortfolioAsset | None:
+# As posições ATIVAS: é o que o job diário e os comandos de carteira percorrem.
+PORTFOLIO_ASSETS: tuple[PortfolioAsset, ...] = tuple(
+    a for a in ALL_PORTFOLIO_ASSETS if a.closed_on is None
+)
+# As posições encerradas, com os dados e a data de encerramento preservados.
+CLOSED_ASSETS: tuple[PortfolioAsset, ...] = tuple(
+    a for a in ALL_PORTFOLIO_ASSETS if a.closed_on is not None
+)
+
+
+def get_asset(ticker: str, *, include_closed: bool = False) -> PortfolioAsset | None:
+    """O ativo do registro. Por padrão só as posições ativas; ``include_closed=True`` também
+    acha as encerradas (para reconhecer uma posição que voltou ao snapshot)."""
     target = ticker.strip().upper()
-    return next((asset for asset in PORTFOLIO_ASSETS if asset.ticker == target), None)
+    pool = ALL_PORTFOLIO_ASSETS if include_closed else PORTFOLIO_ASSETS
+    return next((asset for asset in pool if asset.ticker == target), None)
 
 
 def assets_by_class(asset_class: str) -> tuple[PortfolioAsset, ...]:

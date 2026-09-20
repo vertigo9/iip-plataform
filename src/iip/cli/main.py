@@ -842,6 +842,12 @@ def portfolio_exposure_command(
             "[yellow]Fora do snapshot (estão no registro): "
             f"{', '.join(result.missing_from_snapshot)} — a carteira está incompleta.[/]"
         )
+    for closed_ticker, closed_on in result.closed_in_snapshot:
+        console.print(
+            f"[yellow]{closed_ticker} voltou ao snapshot, mas está encerrado no registro "
+            f"(desde {closed_on}): o job não o atualiza. Para reativar, apague `closed_on` "
+            "dele em portfolio/registry.py.[/]"
+        )
 
     for dimension in result.dimensions:
         table = Table(

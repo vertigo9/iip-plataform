@@ -24,4 +24,4 @@ def test_portfolio_package_does_not_depend_on_provider_manifests():
     from iip.portfolio import PORTFOLIO_ASSETS, get_asset
 
     assert get_asset("XPML11") is not None
-    assert len(PORTFOLIO_ASSETS) == 37
+    assert len(PORTFOLIO_ASSETS) == 35  # 37 no registro, 2 encerrados (BTCI11 e PVBI11)
