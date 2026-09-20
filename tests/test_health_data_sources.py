@@ -40,6 +40,59 @@ def test_reachability_check_healthy_even_on_http_error_status():
     assert "404" in result.message
 
 
+def test_strict_reachability_check_unhealthy_on_http_error_status():
+    def opener(request, timeout):
+        raise HTTPError("https://exemplo.com", 404, "Not Found", None, None)
+
+    check = DataSourceReachabilityCheck(
+        "teste", "https://exemplo.com", opener=opener, strict=True
+    )
+    result = check.check(make_settings())
+
+    assert result.healthy is False
+    assert "404" in result.message
+
+
+def test_strict_reachability_check_unhealthy_on_server_error():
+    def opener(request, timeout):
+        raise HTTPError("https://exemplo.com", 503, "Unavailable", None, None)
+
+    check = DataSourceReachabilityCheck(
+        "teste", "https://exemplo.com", opener=opener, strict=True
+    )
+
+    assert check.check(make_settings()).healthy is False
+
+
+def test_strict_reachability_check_healthy_on_2xx():
+    def opener(request, timeout):
+        return FakeResponse()
+
+    check = DataSourceReachabilityCheck(
+        "teste", "https://exemplo.com", opener=opener, strict=True
+    )
+
+    assert check.check(make_settings()).healthy is True
+
+
+def test_bacen_probe_targets_the_real_series_endpoint_in_strict_mode():
+    from iip.sources.bacen import BASE_URL
+
+    bacen = next(c for c in default_data_source_checks() if c.name == "source_bacen")
+    captured = {}
+
+    def opener(request, timeout):
+        captured["url"] = request.full_url
+        raise HTTPError(request.full_url, 404, "Not Found", None, None)
+
+    bacen._opener = opener
+    result = bacen.check(make_settings())
+
+    # A raiz do dominio devolvia 404 e passava como "servidor no ar".
+    assert captured["url"].startswith(BASE_URL.format(code=432))
+    assert result.healthy is False
+
+
 def test_reachability_check_unhealthy_on_connection_error():
     def opener(request, timeout):
         raise URLError("nome nao resolvido")

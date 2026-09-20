@@ -254,11 +254,15 @@ class DataSourceReachabilityCheck:
         *,
         timeout: float = 5.0,
         opener=None,
+        strict: bool = False,
     ) -> None:
         self._source_name = source_name
         self._url = url
         self._timeout = timeout
         self._opener = opener or urlopen
+        # strict: `url` is a real endpoint the project depends on (not a
+        # domain root), so any HTTP error status means it is broken.
+        self._strict = strict
 
     @property
     def name(self) -> str:
@@ -275,6 +279,12 @@ class DataSourceReachabilityCheck:
             status = getattr(response, "status", 200)
             return HealthResult(name=self.name, healthy=True, message=f"HTTP {status}")
         except HTTPError as exc:
+            if self._strict:
+                return HealthResult(
+                    name=self.name,
+                    healthy=False,
+                    message=f"HTTP {exc.code} no endpoint verificado",
+                )
             # The server answered — just not with 2xx/3xx to a bare
             # HEAD. That still means it's reachable.
             return HealthResult(
@@ -297,7 +307,15 @@ def default_data_source_checks() -> tuple[DataSourceReachabilityCheck, ...]:
     source's check is one line, not a hunt through the CLI."""
     return (
         DataSourceReachabilityCheck("cvm", "https://dados.cvm.gov.br"),
-        DataSourceReachabilityCheck("bacen", "https://api.bcb.gov.br"),
+        # A raiz do api.bcb.gov.br redireciona para uma pagina 404, entao
+        # a sonda usa o endpoint real da serie SGS (Meta Selic, ultimo
+        # valor) e trata qualquer erro HTTP como falha.
+        DataSourceReachabilityCheck(
+            "bacen",
+            "https://api.bcb.gov.br/dados/serie/bcdata.sgs.432/dados/ultimos/1"
+            "?formato=json",
+            strict=True,
+        ),
         DataSourceReachabilityCheck("ibge", "https://servicodados.ibge.gov.br"),
         DataSourceReachabilityCheck("bolsai", "https://api.usebolsai.com"),
         DataSourceReachabilityCheck("brapi", "https://brapi.dev"),
