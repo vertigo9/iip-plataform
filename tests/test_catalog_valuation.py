@@ -369,6 +369,23 @@ def test_auto_valuation_uses_the_nav_for_a_listed_fi_infra(tmp_path, monkeypatch
     assert "valuation_score não fornecido" not in result.output
 
 
+def test_auto_valuation_uses_the_nav_for_an_etf(tmp_path, monkeypatch):
+    result = _analyze_typed(
+        tmp_path,
+        monkeypatch,
+        "LFTB11",
+        "etf",
+        sector="Renda Fixa",
+        industry="ETF de Renda Fixa",
+        price=126.93,
+        nav_per_share=126.66,
+    )
+
+    assert result.exit_code == 0, result.output
+    assert "Valuation automático: NAV" in result.output
+    assert "valuation_score não fornecido" not in result.output
+
+
 def test_fixed_income_without_a_market_price_stays_neutral_and_says_why(
     tmp_path, monkeypatch
 ):

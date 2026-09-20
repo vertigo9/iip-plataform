@@ -98,7 +98,8 @@ class ETFAnalyzer(BaseAnalyzer):
     def _analyze_etf_growth(self, fin: dict) -> PillarScore:
         """AUM trajectory — a growing ETF tends toward better liquidity
         and lower closure risk; a shrinking one risks delisting."""
-        aum = fin.get("aum_millions", 100)
+        # o template preenche assets_under_management_millions; aum_millions é o nome antigo
+        aum = fin.get("assets_under_management_millions", fin.get("aum_millions", 100))
         net_inflows_ytd = fin.get("net_inflows_ytd_millions", 0)
         aum_growth_3y = fin.get("aum_growth_3y_pct", 0)
 

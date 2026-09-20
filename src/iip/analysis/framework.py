@@ -259,6 +259,10 @@ class EquityAnalyzer(BaseAnalyzer):
         )
 
 
+# Prazo médio dos contratos que ainda soma pontos no pilar de modelo de negócio (FII).
+_FII_LEASE_TERM_CAP_YEARS = 10
+
+
 class FIIAnalyzer(BaseAnalyzer):
     def __init__(self):
         self.pillar_weights = {
@@ -299,8 +303,12 @@ class FIIAnalyzer(BaseAnalyzer):
             "Avg Lease Term": lease,
             "Tenant Concentration": round(tenant * 100, 2),
         }
+        # 10 pontos por ano de prazo, com teto em 10 anos (100 pontos, a escala dos
+        # outros dois termos): sem o teto, um WALE de 13 anos valia 134 pontos e
+        # compensava vacância ou concentração no pilar
+        lease_points = min(max(lease, 0), _FII_LEASE_TERM_CAP_YEARS) * 10
         score = min(
-            (occupancy * 100 + lease * 10 + max(0, 100 - tenant * 200)) / 3, 100.0
+            (occupancy * 100 + lease_points + max(0, 100 - tenant * 200)) / 3, 100.0
         )
         return PillarScore(
             pillar=Pillar.BUSINESS_MODEL,
