@@ -16,10 +16,11 @@ keeps the neutral value and reports the reasons.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from iip.decision.valuation_bridge import ValuationSnapshot as DecisionSnapshot
 from iip.decision.valuation_bridge import valuation_score
+from iip.portfolio_data.valuation_exceptions import ValuationExceptions
 from iip.portfolio_data.valuation_methods import evaluate_valuations, first_valuation
 
 
@@ -42,6 +43,39 @@ def catalog_valuation_for_decision(
     price: float | None,
     financials: Mapping[str, float | None],
     ntnb_real_yield: float | None,
+    exceptions: ValuationExceptions | None = None,
+) -> CatalogValuation:
+    result = _catalog_valuation(
+        ticker=ticker,
+        asset_class=asset_class,
+        sector=sector,
+        industry=industry,
+        price=price,
+        financials=financials,
+        ntnb_real_yield=ntnb_real_yield,
+        exceptions=exceptions,
+    )
+    declared = exceptions.for_ticker(ticker) if exceptions else ()
+    if not declared:
+        return result
+    # a decisão cita as exceções metodológicas que valeram para o ativo (rastreabilidade)
+    note = (
+        f" [exceções metodológicas: {', '.join(i.id for i in declared)}; "
+        f"hash {exceptions.content_hash}]"
+    )
+    return replace(result, explanation=result.explanation + note)
+
+
+def _catalog_valuation(
+    *,
+    ticker: str,
+    asset_class: str,
+    sector: str,
+    industry: str,
+    price: float | None,
+    financials: Mapping[str, float | None],
+    ntnb_real_yield: float | None,
+    exceptions: ValuationExceptions | None,
 ) -> CatalogValuation:
     attempts = evaluate_valuations(
         ticker=ticker,
@@ -50,6 +84,7 @@ def catalog_valuation_for_decision(
         industry=industry,
         price=price,
         inputs={**financials, "ntnb_real_yield": ntnb_real_yield},
+        exceptions=exceptions,
     )
     snapshot = first_valuation(attempts)
     if snapshot is None:

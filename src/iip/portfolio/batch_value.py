@@ -29,6 +29,11 @@ from iip.portfolio.batch_core import FetchPlan, fetch_template_for, resolve_fetc
 from iip.portfolio.look_through_value import default_fetch_cda, look_through_inputs
 from iip.portfolio.refresh import _template_type_for, missing_required_market_data
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
+from iip.portfolio_data.valuation_exceptions import (
+    NO_EXCEPTIONS,
+    ValuationExceptions,
+    exceptions_for,
+)
 from iip.portfolio_data.valuation_methods import (
     MethodAttempt,
     evaluate_valuations,
@@ -65,6 +70,8 @@ class ValuationRunResult:
     outcomes: tuple[ValuationOutcome, ...]
     ntnb_rate: NtnbRate | None
     ntnb_note: str
+    # as exceções metodológicas usadas na rodada (rastreabilidade: o hash vai na nota)
+    exceptions: ValuationExceptions = NO_EXCEPTIONS
 
     @property
     def succeeded(self) -> tuple[ValuationOutcome, ...]:
@@ -116,6 +123,7 @@ def value_portfolio(
     fetch_rate: Callable[[], NtnbRate | None] | None = None,
     fetch_cda: Callable[[str], CdaPortfolio] | None = None,
     bridge_cls: Callable[[str], object] | None = None,
+    exceptions: ValuationExceptions | None = None,
 ) -> ValuationRunResult:
     # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
     # previous-year CVM file, NAV trend): skip them -- fewer downloads, and fewer
@@ -129,6 +137,10 @@ def value_portfolio(
         fii_analysis_inputs=False,
     )
     fetch_rate = fetch_rate or _default_fetch_rate
+    # sem exceções passadas, valem as do vault (se houver); arquivo inválido levanta aqui,
+    # antes de avaliar qualquer posição
+    if exceptions is None:
+        exceptions = exceptions_for(vault_path)
 
     rate: NtnbRate | None = None
     try:
@@ -224,6 +236,7 @@ def value_portfolio(
                     fetch_equity=fetchers.equity,
                     plan=plan,
                     market_inputs=market_inputs,
+                    exceptions=exceptions,
                 )
                 extra_inputs, look_through_note = look.inputs, look.note
             used_inputs = {**financials, **market_inputs, **extra_inputs}
@@ -234,6 +247,7 @@ def value_portfolio(
                 industry=industry,
                 price=price,
                 inputs=used_inputs,
+                exceptions=exceptions,
             )
         # isolamento por posição, mesmo padrão de refresh_portfolio
         except Exception as exc:  # noqa: BLE001
@@ -300,4 +314,4 @@ def value_portfolio(
             )
         )
 
-    return ValuationRunResult(tuple(outcomes), rate, ntnb_note)
+    return ValuationRunResult(tuple(outcomes), rate, ntnb_note, exceptions)

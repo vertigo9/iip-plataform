@@ -105,6 +105,8 @@ def test_only_the_snapshot_reader_and_the_exposure_look_at_closed_positions():
         "src/iip/portfolio/registry.py",
         "src/iip/portfolio/vault_snapshot.py",
         "src/iip/portfolio/exposure.py",
+        # valida o ticker de uma exceção contra TODAS as ações, encerradas incluídas
+        "src/iip/portfolio_data/valuation_exceptions.py",
     }
 
 

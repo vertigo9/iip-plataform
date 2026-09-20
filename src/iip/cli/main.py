@@ -684,6 +684,26 @@ def analyze_portfolio_command(
         raise SystemExit(1)
 
 
+def _load_valuation_exceptions(vault_path: str):
+    """As exceções metodológicas de valuation do vault (vazias se não há arquivo). Um arquivo
+    inválido para o comando com o motivo: nunca cai em silêncio para "sem exceções"."""
+    from iip.portfolio_data.valuation_exceptions import exceptions_for
+
+    try:
+        exceptions = exceptions_for(vault_path)
+    except ValueError as exc:
+        console.print(
+            f"[bold red]Exceções metodológicas de valuation inválidas:[/] {exc}"
+        )
+        raise SystemExit(1) from exc
+    if exceptions.items:
+        console.print(
+            f"[dim]Exceções metodológicas de valuation: {len(exceptions.items)} "
+            f"(hash {exceptions.content_hash}).[/]"
+        )
+    return exceptions
+
+
 # ``analyze --type`` value -> valuation catalog class, where they differ. fixed_income
 # maps to fi_infra (NAV only): a fund WITHOUT a market price (AXIA3) still gets no
 # score, because the catalog reports the missing price instead of inventing a margin.
@@ -698,6 +718,7 @@ def _auto_valuation_score(
     from iip.decision.catalog_valuation import catalog_valuation_for_decision
     from iip.portfolio.batch_value import _default_fetch_rate
 
+    exceptions = _load_valuation_exceptions(str(get_settings().obsidian_vault))
     rate = None
     try:
         found = _default_fetch_rate()
@@ -719,6 +740,7 @@ def _auto_valuation_score(
         price=price,
         financials=financials,
         ntnb_real_yield=rate,
+        exceptions=exceptions,
     )
     if result.score is None:
         console.print(
@@ -1559,6 +1581,7 @@ def macro_sensitivity_command(vault: str | None, report: bool) -> None:
         scenario_set,
         store=MacroStore(vault_path),
         today=_dt.date.today(),  # noqa: DTZ011
+        exceptions=_load_valuation_exceptions(vault_path),
     )
 
     if result.base_rate is not None:
@@ -2036,6 +2059,105 @@ def portfolio_layers_command(vault: str | None, report: bool) -> None:
         )
 
 
+@cli.command("valuation-exceptions")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--init",
+    is_flag=True,
+    default=False,
+    help="Cria 02_Portfolio/Excecoes_Valuation.json com as exceções declaradas pelo usuário "
+    "(CSUD3: Graham excluído), se ainda não existir (nunca sobrescreve um arquivo editado).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Excecoes_Valuation.md (sobrescrita a cada execução).",
+)
+def valuation_exceptions_command(vault: str | None, init: bool, report: bool) -> None:
+    """Mostra e valida as exceções metodológicas de valuation (por ativo, com motivo e data de
+    revisão obrigatória), que prevalecem sobre as palavras-chave do setor.
+
+    Uma exceção vencida continua aplicada e é sinalizada; nada a remove sozinho. Não altera
+    valuation nem decisão: só descreve o que as regras declaradas fazem. Arquivo inválido para
+    o comando com o motivo."""
+    import datetime as _dt
+
+    from iip.obsidian.valuation_exceptions_report import (
+        effect_of,
+        write_exceptions_report,
+    )
+    from iip.portfolio_data.valuation_exceptions import (
+        DEFAULT_EXCEPTIONS,
+        EXCEPTIONS_RELATIVE_PATH,
+        NO_EXCEPTIONS,
+        load_exceptions,
+        save_exceptions,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    try:
+        exceptions = load_exceptions(vault_path)
+        if exceptions is None and init:
+            console.print(
+                f"[dim]Criado: {save_exceptions(vault_path, DEFAULT_EXCEPTIONS)}[/]"
+            )
+            exceptions = DEFAULT_EXCEPTIONS
+    except ValueError as exc:
+        console.print(
+            f"[bold red]Exceções metodológicas de valuation inválidas:[/] {exc}"
+        )
+        raise SystemExit(1) from exc
+    if exceptions is None:
+        console.print(
+            "[yellow]Sem arquivo de exceções: valem só as regras por palavra-chave do setor. "
+            "Rode com --init para criar a partir das exceções declaradas (editável).[/]"
+        )
+        exceptions = NO_EXCEPTIONS
+
+    # data de calendário (vencimento das revisões), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    console.print(
+        f"[bold]Exceções {exceptions.version}[/] (hash {exceptions.content_hash}) — "
+        f"{EXCEPTIONS_RELATIVE_PATH.as_posix()}"
+    )
+    table = Table(title="Exceções metodológicas de valuation")
+    table.add_column("Id")
+    table.add_column("Ativo")
+    table.add_column("Ação")
+    table.add_column("Efeito hoje")
+    table.add_column("Revisão até")
+    table.add_column("Situação")
+    for item in exceptions.items:
+        vencida = item.overdue(hoje)
+        table.add_row(
+            item.id,
+            item.ticker,
+            "exclui" if item.action == "exclude" else "lidera",
+            effect_of(item, exceptions),
+            item.review_by,
+            "[red]VENCIDA[/]" if vencida else "vigente",
+        )
+    console.print(table)
+    for item in exceptions.overdue(hoje):
+        console.print(
+            f"[yellow]{item.id} está com a revisão vencida (era até {item.review_by}): "
+            "continua aplicada; revise ou renove a data.[/]"
+        )
+    console.print(
+        "[dim]Exceção é regra metodológica declarada, não conclusão sobre o valor justo; "
+        "prevalece sobre as palavras-chave do setor.[/]"
+    )
+    if report:
+        console.print(
+            f"[dim]{write_exceptions_report(vault_path, exceptions, hoje)}[/]"
+        )
+
+
 @cli.command("decide-portfolio")
 @click.option(
     "--vault",
@@ -2262,6 +2384,7 @@ def value_portfolio_command(
             "[dim]IIP_BOLSAI_API_KEY não definida — sem preço/LPA/VPA, Graham não calcula.[/]"
         )
 
+    exceptions = _load_valuation_exceptions(vault_path)
     console.print("[dim]Avaliando carteira...[/]\n")
     resultado = value_portfolio(
         bolsai_api_key=bolsai_key,
@@ -2269,6 +2392,7 @@ def value_portfolio_command(
         vault_path=vault_path,
         persist=persist,
         ano=ano,
+        exceptions=exceptions,
     )
     console.print(f"[dim]{resultado.ntnb_note}[/]\n")
 
