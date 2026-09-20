@@ -392,23 +392,41 @@ def test_fi_infra_with_failed_price_fetch_is_an_error():
     assert result.outcomes[0].status == "erro"
 
 
-def test_unlisted_fixed_income_like_axia3_is_still_skipped_without_fetching():
+def _no_fetch(*a, **kw):
+    raise AssertionError("must not fetch")
+
+
+def test_a_plain_fixed_income_position_is_still_skipped_without_fetching():
+    # renda fixa que NÃO é um FMP-FGTS continua sem método (nada a avaliar)
+    plain = PortfolioAsset("TESOURO1", "fixed_income", subtype="Tesouro", cnpj="1")
+
+    result = value_portfolio(
+        bolsai_api_key="k",
+        brapi_token="b",
+        positions=(plain,),
+        fetch_fixed_income=_no_fetch,
+        fetch_rate=lambda: RATE,
+    )
+    assert result.outcomes[0].status == "pulado"
+    assert "fixed_income" in result.outcomes[0].detail
+
+
+def test_an_fmp_fgts_without_a_registry_classification_is_skipped_without_fetching():
+    # o FMP-FGTS agora tem método (transparência), mas sem setor/indústria no registro
+    # não se avalia, e nada é buscado
     axia = PortfolioAsset(
         "AXIA3", "fixed_income", subtype="Daycoval FMP FGTS", cnpj="1"
     )
-
-    def fetch_fixed_income(*a, **kw):
-        raise AssertionError("must not fetch: no market ticker to price against")
 
     result = value_portfolio(
         bolsai_api_key="k",
         brapi_token="b",
         positions=(axia,),
-        fetch_fixed_income=fetch_fixed_income,
+        fetch_fixed_income=_no_fetch,
         fetch_rate=lambda: RATE,
     )
     assert result.outcomes[0].status == "pulado"
-    assert "fixed_income" in result.outcomes[0].detail
+    assert "sector/industry" in result.outcomes[0].detail
 
 
 def _etf(ticker="LFTB11"):

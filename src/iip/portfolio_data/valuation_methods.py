@@ -73,6 +73,12 @@ from .valuation import ValuationMethod, ValuationSnapshot, build_snapshot
 
 GRAHAM_MULTIPLIER = 22.5
 
+# Look-through valuation of a fund that only carries stocks (see
+# ``iip.portfolio_data.look_through``): it needs at least this share of net assets in
+# stocks whose margin of safety was actually computed -- 90% is the minimum the FMP-FGTS
+# regulation requires in stocks.
+LOOK_THROUGH_MIN_COVERAGE = 0.90
+
 # Methods appropriate per asset class, in order of preference. Classes with no
 # entry (fixed_income, ...) have no method catalogued yet -- reported as such,
 # not guessed.
@@ -98,6 +104,10 @@ METHODS_BY_ASSET_CLASS: dict[str, tuple[ValuationMethod, ...]] = {
     # "margem" aqui é o prêmio/desconto sobre o NAV, não um sinal de preço errado; e
     # não há método de renda (o LFTB11 acumula, não distribui).
     "etf": (ValuationMethod.NAV,),
+    # FMP-FGTS (AXIA3): a fund with no market price, valued through what it holds. The
+    # NAV is the reference and the fair value moves it by the weighted margin of safety
+    # of the underlying stock(s), which the equity catalog computes.
+    "fmp_fgts": (ValuationMethod.LOOK_THROUGH,),
 }
 
 # Per-method sector/industry exclusions: lowercase substrings matched against
@@ -302,6 +312,29 @@ def _nav(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
     return round(nav, 2), f"VP/cota={nav:.2f}"
 
 
+def _look_through(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
+    nav = inputs.get("nav_per_share")
+    margin = inputs.get("look_through_margin")
+    coverage = inputs.get("look_through_coverage")
+    if nav is None or nav <= 0:
+        return None, "cota patrimonial indisponível"
+    if margin is None or coverage is None:
+        return None, (
+            "a margem de segurança da ação subjacente não pôde ser calculada "
+            "(sem método aplicável ao subjacente, ou sem dado)"
+        )
+    if coverage < LOOK_THROUGH_MIN_COVERAGE:
+        return None, (
+            f"só {coverage:.0%} do patrimônio está em ações avaliadas (mínimo "
+            f"{LOOK_THROUGH_MIN_COVERAGE:.0%}): a transparência ficaria incompleta"
+        )
+    # a fração restante (títulos públicos, caixa, valores a pagar) fica ao NAV: margem zero
+    return round(nav * (1.0 + margin), 4), (
+        f"cota={nav:.4f} x (1 {margin:+.2%}), margem ponderada das ações que "
+        f"cobrem {coverage:.1%} do patrimônio"
+    )
+
+
 def _yield_income(inputs: Mapping[str, float | None]) -> tuple[float | None, str]:
     dps = inputs.get("dividend_per_share")
     rate = inputs.get("ntnb_real_yield")
@@ -326,6 +359,7 @@ CALCULATORS: dict[
     ValuationMethod.BAZIN: _bazin,
     ValuationMethod.NAV: _nav,
     ValuationMethod.YIELD: _yield_income,
+    ValuationMethod.LOOK_THROUGH: _look_through,
 }
 
 

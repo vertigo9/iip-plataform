@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 
 from iip.portfolio.batch_analyze import _sector_industry_for
 from iip.portfolio.batch_core import FetchPlan, fetch_template_for, resolve_fetchers
+from iip.portfolio.look_through_value import default_fetch_cda, look_through_inputs
 from iip.portfolio.refresh import _template_type_for, missing_required_market_data
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
 from iip.portfolio_data.valuation_methods import (
@@ -34,6 +35,7 @@ from iip.portfolio_data.valuation_methods import (
     first_valuation,
     has_calculator,
 )
+from iip.sources.cvm_cda import CdaPortfolio
 from iip.sources.shared_caches import with_shared_fetch_caches
 from iip.sources.tesouro_direto import NtnbRate
 
@@ -74,11 +76,15 @@ class ValuationRunResult:
 
 def _valuation_class(position: PortfolioAsset) -> str | None:
     """The valuation catalog class: the refresh template type, except that listed
-    FI-Infra funds get their own class ("fi_infra") -- the rest of ``fixed_income``
-    (AXIA3, a FMP-FGTS with no market ticker) has no price to value against."""
+    FI-Infra funds get their own class ("fi_infra") and the FMP-FGTS (AXIA3, no market
+    ticker, so no price) gets "fmp_fgts", valued through what it holds."""
     template_type = _template_type_for(position)
-    if template_type == "fixed_income" and position.subtype == "FI-Infra":
-        return "fi_infra"
+    if template_type == "fixed_income":
+        if position.subtype == "FI-Infra":
+            return "fi_infra"
+        subtype = (position.subtype or "").upper()
+        if "FMP" in subtype and "FGTS" in subtype:
+            return "fmp_fgts"
     return template_type
 
 
@@ -103,6 +109,7 @@ def value_portfolio(
     fetch_fiagro: Callable[..., tuple[dict, object]] | None = None,
     fetch_fixed_income: Callable[..., tuple[dict, object]] | None = None,
     fetch_rate: Callable[[], NtnbRate | None] | None = None,
+    fetch_cda: Callable[[str], CdaPortfolio] | None = None,
     bridge_cls: Callable[[str], object] | None = None,
 ) -> ValuationRunResult:
     # Valuation does not read the analyzer-only FII inputs (Pátria spreadsheet,
@@ -199,13 +206,28 @@ def value_portfolio(
                 outcomes.append(ValuationOutcome(position.ticker, "erro", incomplete))
                 continue
             price = template.get("price")
+            financials = template.get("financials", {})
+            extra_inputs: dict[str, float | None] = {}
+            look_through_note = ""
+            if template_type == "fmp_fgts":
+                # a cota não tem preço de mercado: compara-se com o próprio NAV, e o valor
+                # justo vem do que o fundo carrega (ver iip.portfolio_data.look_through)
+                price = financials.get("nav_per_share")
+                look = look_through_inputs(
+                    cnpj=position.cnpj,
+                    fetch_cda=fetch_cda or default_fetch_cda,
+                    fetch_equity=fetchers.equity,
+                    plan=plan,
+                    market_inputs=market_inputs,
+                )
+                extra_inputs, look_through_note = look.inputs, look.note
             attempts = evaluate_valuations(
                 ticker=position.ticker,
                 asset_class=template_type,
                 sector=sector,
                 industry=industry,
                 price=price,
-                inputs={**template.get("financials", {}), **market_inputs},
+                inputs={**financials, **market_inputs, **extra_inputs},
             )
         # isolamento por posição, mesmo padrão de refresh_portfolio
         except Exception as exc:  # noqa: BLE001
@@ -223,7 +245,8 @@ def value_portfolio(
                 ValuationOutcome(
                     position.ticker,
                     "pulado",
-                    f"nenhum método produziu valor — {why}",
+                    f"nenhum método produziu valor — {why}"
+                    + (f" ({look_through_note})" if look_through_note else ""),
                     price=price,
                     attempts=attempts,
                     asset_class=template_type,
@@ -237,10 +260,15 @@ def value_portfolio(
             for a in attempts
             if a.snapshot
         )
+        if look_through_note:
+            detail += f" — {look_through_note}"
         if bridge is not None:
             try:
                 bridge.sync_valuation_projection(
-                    snapshot, position.ticker, template_type
+                    snapshot,
+                    position.ticker,
+                    # o FMP-FGTS mora na pasta de renda fixa do vault
+                    "fixed_income" if template_type == "fmp_fgts" else template_type,
                 )
                 detail += f" (persistido: {snapshot.method.value})"
             except Exception as exc:  # noqa: BLE001 — isolamento por posição

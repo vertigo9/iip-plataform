@@ -16,6 +16,7 @@ class ValuationMethod(StrEnum):
     BOOK = "Book"
     RELATIVE = "Relative"
     GRAHAM = "Graham"
+    LOOK_THROUGH = "Transparência"
 
 
 @dataclass(frozen=True)

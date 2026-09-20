@@ -142,7 +142,8 @@ def fetch_template_for(
                 bolsai_api_key=plan.bolsai_api_key,
             )
         return fetchers.fiagro(ticker, cnpj, plan.ano, plan.mes, plan.brapi_token)
-    if template_type == "fixed_income":
+    if template_type in ("fixed_income", "fmp_fgts"):
+        # o FMP-FGTS (AXIA3) não tem ticker próprio: só a cota da CVM, nunca um preço
         return fetchers.fixed_income(ticker, cnpj, plan.ano, plan.mes)
     if template_type == "fi_infra":
         # só o FI-Infra listado chega aqui, então o símbolo é o ticker B3 do próprio
