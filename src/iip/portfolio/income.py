@@ -59,8 +59,9 @@ OUTLIER_TOLERANCE = 0.25
 MIN_REGULAR_SHARE = 2 / 3
 # mais zeros/negativos que isto entre os últimos 12 meses e a série não é confiável
 MAX_INVALID_IN_12 = 5
-# a série mais velha que isto (meses de calendário) já perdeu meses que a CVM publicou
-STALE_AFTER_MONTHS = 3
+# a CVM publica o mês M por volta da metade de M+1: uma última competência com mais de
+# isto (meses de calendário) atrás já perdeu pelo menos um mês publicado
+STALE_AFTER_MONTHS = 2
 
 # motivos de exclusão (o texto vai para a nota)
 NO_SERIES = "sem série mensal de distribuição por cota nas fontes atuais"
@@ -73,6 +74,8 @@ class IncomeLine:
     market_value: float
     status: str  # "projetada" ou "sem projeção"
     reason: str = ""
+    # regular | absent | zero | split | few | irregular (o motivo em texto está em reason)
+    code: str = ""
     months: tuple[MonthlyDistribution, ...] = ()  # os meses que entraram na mediana
     unusual: tuple[str, ...] = ()  # períodos fora do padrão dentro da janela
     repeated: tuple[str, ...] = ()  # períodos repetidos, descartados
@@ -144,7 +147,9 @@ def _project(
         key=lambda o: o.period,
     )
     if not observed:
-        return IncomeLine(**base, status="sem projeção", reason=NO_SERIES)
+        return IncomeLine(
+            **base, status="sem projeção", reason=NO_SERIES, code="absent"
+        )
 
     recent = observed[-12:]
     last_period = observed[-1].period[:7]
@@ -153,6 +158,7 @@ def _project(
         return IncomeLine(
             **base,
             status="sem projeção",
+            code="zero",
             last_period=last_period,
             reason=(
                 f"a CVM informa rendimento zero ou negativo em {invalid_recent} dos "
@@ -179,6 +185,7 @@ def _project(
         return IncomeLine(
             **base,
             status="sem projeção",
+            code="split",
             last_period=last_period,
             reason="desdobramento ou grupamento na janela: o valor por cota não é "
             "comparável entre os meses",
@@ -187,6 +194,7 @@ def _project(
         return IncomeLine(
             **base,
             status="sem projeção",
+            code="few",
             last_period=last_period,
             reason=f"só {len(sample)} mês(es) utilizável(is) na janela (mínimo "
             f"{MIN_MONTHS})",
@@ -210,6 +218,7 @@ def _project(
         return IncomeLine(
             **base,
             status="sem projeção",
+            code="irregular",
             last_period=last_period,
             months=history,
             unusual=unusual,
@@ -224,6 +233,7 @@ def _project(
     return IncomeLine(
         **base,
         status="projetada",
+        code="regular",
         months=history,
         unusual=unusual,
         repeated=tuple(r for r in repeated if r >= sample[0].period[:7]),
@@ -259,6 +269,7 @@ def build_income(
                     position.market_value,
                     "sem projeção",
                     NO_SERIES,
+                    code="absent",
                 )
             )
             continue

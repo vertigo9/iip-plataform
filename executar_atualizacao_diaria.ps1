@@ -73,7 +73,26 @@ Write-Output "--- Decisao da carteira ---" | Tee-Object -FilePath $LogFile -Appe
 python -m iip.cli.main decide-portfolio --persist --report --alert-file $AlertaDecisoes 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DecideExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode ===" | Tee-Object -FilePath $LogFile -Append
+# Series mensais da CVM (FIIs) -> vault/02_Portfolio/Historical e a nota Series.md. A renda
+# projetada le dessas series; sem este passo elas ficam congeladas. O --min-age-days faz o
+# comando so baixar quando a ultima atualizacao tem mais de 6 dias (o dado e mensal e a CVM
+# atualiza o arquivo toda semana), entao nas outras noites ele nao faz nada. O arquivo de
+# alerta so existe se alguma serie MUDOU para pior; e apagado antes para nao reavisar.
+$AlertaSeries = Join-Path $LogDir "alertas_series.txt"
+if (Test-Path $AlertaSeries) { Remove-Item $AlertaSeries -Force }
+Write-Output "--- Series mensais da CVM ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main collect-fii-history --min-age-days 6 --report --alert-file $AlertaSeries 2>&1 | Tee-Object -FilePath $LogFile -Append
+$SeriesExitCode = $LASTEXITCODE
+
+# Leituras da carteira que nao usam rede: renda projetada (Renda.md) e exposicao
+# (Exposicao.md). Ficam atualizadas com a serie e o snapshot mais recentes.
+Write-Output "--- Renda projetada e exposicao ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main portfolio-income --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$IncomeExitCode = $LASTEXITCODE
+python -m iip.cli.main portfolio-exposure --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$ExposureExitCode = $LASTEXITCODE
+
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -97,6 +116,24 @@ if ($DecideExitCode -ne 0) {
     Notificar-Windows "IIP: falha na decisao da carteira" $msg4 "Warning"
 }
 
+if ($SeriesExitCode -ne 0) {
+    $msg5 = "A atualizacao das series mensais da CVM falhou hoje (a renda projetada pode estar com dado velho). Veja " + $LogFile
+    Notificar-Windows "IIP: falha nas series da CVM" $msg5 "Warning"
+}
+
+if ($IncomeExitCode -ne 0 -or $ExposureExitCode -ne 0) {
+    $msg6 = "A renda projetada ou a exposicao da carteira nao foram geradas hoje. Veja " + $LogFile
+    Notificar-Windows "IIP: falha na renda ou na exposicao" $msg6 "Warning"
+}
+
+# Serie que piorou (ausente, defasada, zerada, irregular): avisa, mas nao e falha do job.
+if (Test-Path $AlertaSeries) {
+    $Series = @(Get-Content $AlertaSeries -Encoding UTF8)
+    $ResumoSeries = ($Series | Select-Object -First 4) -join "; "
+    if ($Series.Count -gt 4) { $ResumoSeries += "; e mais " + ($Series.Count - 4) }
+    Notificar-Windows ("IIP: " + $Series.Count + " serie(s) da CVM pioraram") $ResumoSeries "Warning"
+}
+
 # Mudanca de decisao nao e falha: nao entra no codigo de saida, so avisa.
 if (Test-Path $AlertaDecisoes) {
     $Mudancas = @(Get-Content $AlertaDecisoes -Encoding UTF8)
@@ -107,7 +144,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0) {
     exit 0
 }
 exit 1

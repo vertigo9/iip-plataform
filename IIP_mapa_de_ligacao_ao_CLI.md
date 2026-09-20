@@ -72,9 +72,9 @@ Por isso o próximo bloco não é mais funcionalidade, e sim **confiabilidade**:
 
 | # | O quê | Situação hoje | Esforço |
 |---|---|---|---|
-| A1 | **Rodar o `collect-fii-history` sozinho** (agendador; semanal basta, a CVM atualiza o arquivo semanalmente e o dado é mensal) | só existe o comando | pequeno |
-| A2 | **Estado de cada série** (última competência, idade, meses, situação: ok / defasada / zero / irregular / ausente), gravado no vault | a nota `Renda.md` já classifica por posição, mas o estado não é persistido nem tem data de atualização | pequeno |
-| A3 | **Alerta** para série defasada, ausente, zerada/negativa ou que passou de regular a irregular, pelo mesmo arquivo de alerta e notificação do `decide-portfolio` | a classificação existe; o aviso não | pequeno |
+| A1 | **Rodar o `collect-fii-history` sozinho** | **FEITO (20/09/2026)**: passo no `executar_atualizacao_diaria.ps1` com `--min-age-days 6` (só baixa quando a última atualização tem mais de 6 dias); o mesmo job agora gera `Renda.md` e `Exposicao.md` | pequeno |
+| A2 | **Estado de cada série** | **FEITO (20/09/2026)**: `Historical/_estado.json` (situação, última competência, meses, data da atualização, defasada) e a nota `02_Portfolio/Series.md` | pequeno |
+| A3 | **Alerta** de série ausente, defasada, zerada ou que piorou | **FEITO (20/09/2026)**: `--alert-file` e notificação do Windows, por MUDANÇA para pior (uma série que já estava ruim não reavisa toda semana). Defasada = última competência com mais de 2 meses de calendário | pequeno |
 | A4 | **Validação cruzada com o relatório do gestor**, começando pelos 4 fundos sem projeção (AFHI11, BTCI11, VGIP11, XPML11) | conferido só com o balanço da CVM, em 2 fundos | médio (depende dos PDFs de cada gestora) |
 | A5 | **Painel**: levar `Decisoes`, `Exposicao` e `Renda` ao `Dashboard.md`, que hoje só mostra score e valuation | notas separadas, sem link no painel | pequeno a médio |
 
@@ -93,6 +93,21 @@ Por isso o próximo bloco não é mais funcionalidade, e sim **confiabilidade**:
 6. **Nível 3 e o lixo**: PR de limpeza à parte, com o seu OK.
 
 **Ordem:** A1 → A3 → A2 → A5 → A4; depois B; o resto conforme os insumos que dependem de você.
+
+## Decisões do usuário (20/09/2026)
+
+Sobre a proposta de política de peso-alvo e integração macroeconômica:
+
+- **Prioridade da alocação: renda recorrente** (sustentabilidade dos proventos primeiro; crescimento e preservação de capital secundários).
+- **Macro: contexto, cenários e ajuste das premissas de valuation.** Não influencia aportes nem pesos.
+- **Autonomia do Decision Engine: propor aportes e rebalanceamentos para aprovação.** Nada é executado sozinho (o projeto não tem integração com corretora).
+- **Ordem: Bloco A (confiabilidade) e a Entrega B (macro) agora**; o contrato da política de peso-alvo entra quando o usuário definir os pesos.
+
+**Restrições que estas decisões trazem para o desenho** (registradas para não se perderem):
+
+- A política é um **contrato versionado** (classes reais da carteira, peso-alvo, mínimo, máximo, banda, limites por ativo, gestora, setor e emissor, regras de exceção), não constantes no código, e os pesos são **do usuário**.
+- **Macro versionado**: os coletores de BACEN/IBGE guardam só data e valor, sem data de publicação nem revisão. Ao persistir, gravar a **data de coleta** de cada observação; só o que foi coletado a partir de então é "conhecido em tal data". Dado macro anterior não serve para backtest de decisão.
+- Renda recorrente como prioridade reforça o Bloco A (a renda projetada e a qualidade dela) e faz da sustentabilidade dos proventos o critério central de elegibilidade na política.
 
 ## O que esta lista não promete
 
