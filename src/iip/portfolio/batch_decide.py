@@ -41,6 +41,10 @@ from iip.portfolio.evidence_lookup import (
 from iip.portfolio.look_through_value import default_fetch_cda, look_through_inputs
 from iip.portfolio.refresh import _template_type_for, missing_required_market_data
 from iip.portfolio.registry import PortfolioAsset, assets_refreshable_now
+from iip.portfolio_data.valuation_exceptions import (
+    ValuationExceptions,
+    exceptions_for,
+)
 from iip.sources.cvm_cda import CdaPortfolio
 from iip.sources.shared_caches import with_shared_fetch_caches
 from iip.sources.tesouro_direto import NtnbRate
@@ -150,6 +154,7 @@ def decide_portfolio(
     positions: tuple[PortfolioAsset, ...] | None = None,
     today: _dt.date | None = None,
     deps: _Deps | None = None,
+    exceptions: ValuationExceptions | None = None,
 ) -> DecisionRunResult:
     from iip.analysis import AssetData
     from iip.cli.main import ANALYZERS
@@ -162,6 +167,10 @@ def decide_portfolio(
     from iip.knowledge.models import Verdict as KnowledgeVerdict
 
     deps = deps or _Deps()
+    # as exceções metodológicas do vault valem para a decisão como para o valuation; um
+    # arquivo inválido levanta ValueError aqui, antes de decidir qualquer posição
+    if exceptions is None:
+        exceptions = exceptions_for(vault_path)
     fetchers = resolve_fetchers(
         fii=deps.fetch_fii,
         etf=deps.fetch_etf,
@@ -257,6 +266,7 @@ def decide_portfolio(
                     fetch_equity=fetchers.equity,
                     plan=plan,
                     market_inputs=market_inputs,
+                    exceptions=exceptions,
                 )
                 financials.update(look.inputs)
                 look_through_note = look.note
@@ -279,6 +289,7 @@ def decide_portfolio(
                 price=price,
                 financials=financials,
                 ntnb_real_yield=rate.real_yield if rate else None,
+                exceptions=exceptions,
             )
             intelligence_input, bridge_warnings = analysis_to_intelligence_input(
                 report,

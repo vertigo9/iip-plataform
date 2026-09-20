@@ -15,6 +15,7 @@ from iip.portfolio_data.valuation import (
     ValuationSnapshot,
     build_snapshot,
 )
+from iip.portfolio_data.valuation_exceptions import exceptions_for
 from iip.portfolio_data.valuation_methods import evaluate_valuations, first_valuation
 from iip.universal.concentration import all_concentrations
 from iip.universal.portfolio_state import PortfolioState
@@ -54,6 +55,8 @@ class AssetE2ERunner:
     ) -> None:
         self.bridge = bridge_factory(vault_path)
         self.analyzer_factory = analyzer_factory
+        # as exceções metodológicas do vault valem também aqui (arquivo inválido levanta)
+        self._exceptions = exceptions_for(vault_path)
 
     def run(
         self,
@@ -119,6 +122,7 @@ class AssetE2ERunner:
                 industry=template.get("industry") or "",
                 price=template.get("price"),
                 inputs={**template.get("financials", {}), **(market_inputs or {})},
+                exceptions=self._exceptions,
             )
             valuation = first_valuation(attempts)
             if valuation is None:
