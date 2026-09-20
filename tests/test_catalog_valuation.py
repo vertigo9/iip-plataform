@@ -93,10 +93,10 @@ def test_a_value_without_market_price_gives_no_score():
 
 
 def test_class_without_an_implemented_method_gives_no_score():
-    result = _value(asset_class="etf")
+    result = _value(asset_class="fixed_income")
 
     assert result.score is None
-    assert "etf" in result.explanation
+    assert "fixed_income" in result.explanation
 
 
 def test_missing_ntnb_rate_never_invents_a_bazin_ceiling():

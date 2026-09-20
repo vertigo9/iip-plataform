@@ -151,7 +151,10 @@ def test_missing_price_still_gives_fair_value_without_margin_of_safety():
 
 def test_class_without_catalog_reports_not_applicable():
     attempts = evaluate_valuations(
-        ticker="IVVB11", asset_class="etf", price=1.0, inputs={"lpa": 1.0, "vpa": 1.0}
+        ticker="AXIA3",
+        asset_class="fixed_income",
+        price=1.0,
+        inputs={"lpa": 1.0, "vpa": 1.0},
     )
 
     assert len(attempts) == 1
@@ -364,7 +367,7 @@ def test_order_does_not_touch_classes_without_bazin():
         ValuationMethod.NAV,
         ValuationMethod.YIELD,
     )
-    assert ordered_methods("etf") == ()
+    assert ordered_methods("fixed_income") == ()
 
 
 def test_evaluation_puts_the_lead_method_first_so_it_is_the_one_persisted():
@@ -487,3 +490,27 @@ def test_fi_infra_is_valued_by_nav_only_and_the_rest_of_fixed_income_is_not():
         inputs={"nav_per_share": 101.17},
     )
     assert attempts[0].snapshot.fair_value == 101.17
+
+
+def test_etf_is_valued_by_nav_only():
+    attempts = evaluate_valuations(
+        ticker="LFTB11",
+        asset_class="etf",
+        price=126.93,
+        inputs={"nav_per_share": 126.66, "lpa": 9.0, "vpa": 9.0},
+    )
+
+    assert [a.method for a in attempts] == [ValuationMethod.NAV]
+    snapshot = first_valuation(attempts)
+    assert snapshot.fair_value == 126.66
+    # o preço acima do NAV é prêmio (margem negativa), e Graham/Bazin nem são tentados
+    assert snapshot.margin_of_safety == pytest.approx(-0.002127, abs=1e-6)
+
+
+def test_etf_without_a_nav_reports_insufficient_data_instead_of_a_value():
+    attempts = evaluate_valuations(
+        ticker="LFTB11", asset_class="etf", price=126.93, inputs={}
+    )
+
+    assert attempts[0].status == "insufficient_data"
+    assert first_valuation(attempts) is None

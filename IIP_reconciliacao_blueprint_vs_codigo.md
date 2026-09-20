@@ -101,14 +101,14 @@ Investigação adicional (não fazia parte do escopo original desta reconciliaç
 
 ## Pendências em aberto — valuation sem fonte de NAV (19/09/2026)
 
-Estado do `value-portfolio --report` em 19/09/2026: **35 posições avaliadas, 0 erro, 2 puladas**.
-As duas puladas ficam assim de propósito até haver uma fonte de NAV confiável; nada foi
-inventado para preenchê-las.
+Estado do `value-portfolio --report` em 19/09/2026: **35 posições avaliadas, 0 erro, 2 puladas**;
+depois da fonte do Investo (abaixo), o **LFTB11 passa a ser avaliado: 36 avaliadas, 1 pulada** (só
+o AXIA3). A pulada fica assim de propósito; nada foi inventado para preenchê-la.
 
 | Ativo | Por que está sem valuation | O que já foi verificado | Caminho para retomar |
 |---|---|---|---|
 | **AXIA3** | Não é ação: é o rótulo de um FMP-FGTS Daycoval (subjacente Eletrobras ON) que **não negocia em bolsa** — não há preço de mercado para comparar com o NAV. O ticker "AXIA3" é o da própria ação da Eletrobras, outro ativo. | A CVM (Informe Diário) traz a cota do fundo; o fetch nunca busca preço para ele de propósito, para não atribuir a cotação da ação da Eletrobras a este fundo. | Definir o que "valor justo" significa para um fundo sem preço (ex.: comparar a cota com o valor de resgate/avaliação da própria gestora) ou tirá-lo do escopo de valuation. É decisão de método, não só de fonte. |
-| **LFTB11** | ETF Investo (MarketVector Brazil Treasury 760 Day). **Sem NAV** na fonte que usamos. | CNPJ 56.176.507/0001-55 está correto e consta no cadastro da CVM (`registro_classe`/`registro_fundo`) como **FIIM**, mas **não aparece no Informe Diário** (o dataset usado para cota/NAV de ETF e FI-Infra). O bolsai também não serve ETF de renda fixa pelo endpoint de FIIs. | Achar a cota diária em outro canal: relatório/portal da gestora (Investo), dados de ETF da B3, ou outro dataset da CVM para FIIM. Com a cota, basta a classe `etf` no catálogo (`METHODS_BY_ASSET_CLASS`, só NAV) e o fetch expor `nav_per_share` — o desenho foi testado em 19/09 e descartado só por falta de dado. |
+| ~~**LFTB11**~~ ✅ resolvido (19/09/2026) | Era: ETF Investo (MarketVector Brazil Treasury 760 Day) sem NAV na fonte usada (fora do Informe Diário da CVM, onde consta como FIIM, e fora do bolsai). | A fonte é a página oficial do fundo (investoetf.com/etf/lftb11), cujo JavaScript lê endpoints públicos sem login, conferidos ao vivo: `/api/produtos/historico/LFTB11` (467 cotas patrimoniais diárias, de 31/10/2024, cota 100,00, a 17/09/2026, 126,66; sem lacuna > 5 dias nem queda diária > 1%; +26,66% desde o lançamento e PL de R$ 5.853.536.873,51, ambos batendo com a página) e `/api/produtos/LFTB11` (ficha, com o CNPJ 56.176.507/0001-55, que o harvester confere: cota de outro fundo nunca entra). O preço de mercado vem do brapi, que cota o LFTB11. | Classe `etf` no catálogo, só NAV (`METHODS_BY_ASSET_CLASS`), e `sources/investo_etf.py` (+ harvester) preenchendo `nav_per_share`, o PL e o valor de mercado em `fetch_etf_template_live`. Só o LFTB11 entra em `VERIFIED_TICKERS`. Ao vivo: NAV 126,66 vs preço 126,93, margem −0,21%. O NAV é D-1 e o preço é mais novo, então o prêmio carrega essa defasagem (o aviso diz isso); NAV com mais de 7 dias não é usado. Num ETF o preço acompanha o NAV por criação/resgate, então essa "margem" é prêmio/desconto, não sinal de preço errado. Ainda não ligado ao `analyze --decide --auto-valuation`. |
 
 Como já foi resolvido para os demais: CRAA11 (bolsai, endpoint de FIIs), CDII11/JURO11/CPTI11 (cota do
 Informe Diário da CVM + preço do brapi, classe `fi_infra`).
