@@ -966,10 +966,11 @@ def value_portfolio_command(
     "auto_valuation",
     is_flag=True,
     default=False,
-    help="Só com --decide e --type equity, fii, agro ou fixed_income: calcula a nota "
+    help="Só com --decide e --type equity, fii, agro, etf ou fixed_income: calcula a nota "
     "de valuation pelo método principal do catálogo (ações: Bazin em setores de "
     "dividendo, Graham nos demais; FIIs e FIAGRO (--type agro): NAV, o patrimônio por "
-    "cota; FI-Infra listado (--type fixed_income): NAV, a cota da CVM contra o preço; "
+    "cota; FI-Infra listado (--type fixed_income): NAV, a cota da CVM contra o preço; ETF (--type etf): NAV, a cota da gestora contra o "
+    "preço; o FMP-FGTS (AXIA3) só sai no value-portfolio, que busca a carteira na CDA; "
     "Bazin/Yield usam a NTN-B longa, buscada agora). O --data-file precisa trazer os "
     "insumos (lpa/vpa/dividend_per_share nas ações; nav_per_share nos demais, mais o "
     "preço) e, nos fundos, sector/industry = estrutura/segmento (Tijolo, Papel...). "
