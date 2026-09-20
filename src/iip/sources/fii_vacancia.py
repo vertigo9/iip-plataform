@@ -50,6 +50,22 @@ lidos ao vivo nos PDFs de 19/09/2026 (texto do ``pypdf``, sem OCR):
     leitura, e o chamador a mostra. O valor de agosto/2026 é 99,8%: só o Pueri Domus
     (97%) não está cheio.
 
+Prazo médio remanescente (``avg_lease_term_years``). Critério, decidido em
+19/09/2026: WALE (weighted average lease expiry) e WAULT (weighted average unexpired
+lease term) são o mesmo conceito, o prazo médio que FALTA até os contratos vencerem,
+ponderado por receita ou por área; a Pátria já usa o "WALE" dela nesse campo. Entra
+o número que o relatório declara como um valor único do fundo, em anos, rotulado
+WALE, WAULT ou "prazo médio remanescente": ALZR11 (``WALE 9,5 anos``), TRXF11
+(``Wale 13.17 years``), RBVA11 (``6,4 anos Wault``) e KNRI11 (``Prazo Médio
+Remanescente ... 2,72 anos``). NÃO entra a duração TOTAL contratada (o KNRI11 declara
+9,32 anos de "Prazo Médio dos Contratos Firmados", contra 2,72 remanescentes: não é a
+mesma coisa), nem o BTLG11 (o "WAULT 5 anos" está dentro de um gráfico de vencimentos,
+inteiro e sem definição) e nem os shoppings (HGBS11, HSML11, XPML11 não o declaram).
+A ponderação (receita ou área) não é uniforme entre as gestoras e a maioria não a diz;
+o chamador avisa. Atenção ao efeito: o ``FIIAnalyzer`` dá 10 pontos por ano de prazo,
+sem teto no termo (13 anos valem 131 pontos no pilar), então o prazo pesa bem mais que
+a ocupação no score.
+
 Base da medida. A Pátria usa ``1 - vacância financeira`` (ponderada por receita)
 como ``occupancy_rate``. Aqui a financeira também vem primeiro; só quando o
 relatório não a informa se usa a física, e a base fica registrada em
@@ -101,6 +117,13 @@ class VacanciaReading:
         if pct is None:
             return None
         return round(1.0 - pct / 100.0, 6)
+
+
+@dataclass(frozen=True)
+class LeaseTermReading:
+    years: float
+    # o rótulo como o relatório o escreve ("WALE", "WAULT", "Prazo Médio Remanescente")
+    label: str
 
 
 def _normalize(text: str) -> str:
@@ -312,6 +335,52 @@ def parse_hedge(text: str) -> VacanciaReading | None:
     )
 
 
+def _lease_years(raw: str, *, decimal_comma: bool) -> float | None:
+    try:
+        value = float(raw.replace(",", ".") if decimal_comma else raw)
+    except ValueError:
+        return None
+    # um prazo médio de contratos de locação: nada de zero nem de séculos
+    return value if 0.0 < value <= 50.0 else None
+
+
+_LEASE_ALZR = re.compile(r"wale (\d+(?:,\d+)?) anos")
+_LEASE_TRX = re.compile(r"wale (\d+\.\d+) years")
+_LEASE_RBVA = re.compile(r"(\d+(?:,\d+)?) anos wault\d?")
+_LEASE_KNRI = re.compile(
+    r"prazo medio remanescente\d* dos contratos do fundo esta em (\d+(?:,\d+)?) anos"
+)
+
+
+def parse_lease_alzr(text: str) -> LeaseTermReading | None:
+    match = _LEASE_ALZR.search(_normalize(text))
+    years = _lease_years(match.group(1), decimal_comma=True) if match else None
+    return LeaseTermReading(years, "WALE") if years is not None else None
+
+
+def parse_lease_trx(text: str) -> LeaseTermReading | None:
+    match = _LEASE_TRX.search(_normalize(text))
+    years = _lease_years(match.group(1), decimal_comma=False) if match else None
+    return LeaseTermReading(years, "WALE") if years is not None else None
+
+
+def parse_lease_rbva(text: str) -> LeaseTermReading | None:
+    match = _LEASE_RBVA.search(_normalize(text))
+    years = _lease_years(match.group(1), decimal_comma=True) if match else None
+    return LeaseTermReading(years, "WAULT") if years is not None else None
+
+
+def parse_lease_knri(text: str) -> LeaseTermReading | None:
+    # só o prazo REMANESCENTE: o "Prazo Médio dos Contratos Firmados" é a duração total
+    match = _LEASE_KNRI.search(_normalize(text))
+    years = _lease_years(match.group(1), decimal_comma=True) if match else None
+    return (
+        LeaseTermReading(years, "Prazo Médio Remanescente")
+        if years is not None
+        else None
+    )
+
+
 @dataclass(frozen=True)
 class VacanciaProfile:
     layout: str
@@ -319,18 +388,34 @@ class VacanciaProfile:
     # páginas do PDF lidas: os destaques ficam no começo, e ler o documento
     # inteiro só aumenta a chance de casar um trecho de outro contexto
     max_pages: int
+    # prazo médio remanescente (WALE/WAULT), só onde o relatório o declara com clareza
+    lease_parser: Callable[[str], LeaseTermReading | None] | None = None
 
 
 # Só entra aqui o ticker cujo layout foi lido ao vivo (ver docstring do módulo).
 PROFILES: dict[str, VacanciaProfile] = {
-    "TRXF11": VacanciaProfile("trx_investor_report", parse_trx, max_pages=6),
+    "TRXF11": VacanciaProfile(
+        "trx_investor_report", parse_trx, max_pages=6, lease_parser=parse_lease_trx
+    ),
     "BTLG11": VacanciaProfile("btg_relatorio_gerencial", parse_btg, max_pages=6),
     "HGBS11": VacanciaProfile("hedge_relatorio_gestao", parse_hedge, max_pages=10),
-    "RBVA11": VacanciaProfile("rio_bravo_relatorio_gerencial", parse_rbva, max_pages=6),
-    "KNRI11": VacanciaProfile("kinea_carta_do_gestor", parse_knri, max_pages=6),
+    "RBVA11": VacanciaProfile(
+        "rio_bravo_relatorio_gerencial",
+        parse_rbva,
+        max_pages=6,
+        lease_parser=parse_lease_rbva,
+    ),
+    "KNRI11": VacanciaProfile(
+        "kinea_carta_do_gestor", parse_knri, max_pages=16, lease_parser=parse_lease_knri
+    ),
     "HSML11": VacanciaProfile("hsi_relatorio_gerencial", parse_hsi, max_pages=15),
     "XPML11": VacanciaProfile("xp_relatorio_gerencial", parse_xp, max_pages=21),
-    "ALZR11": VacanciaProfile("alianza_relatorio_gerencial", parse_alzr, max_pages=40),
+    "ALZR11": VacanciaProfile(
+        "alianza_relatorio_gerencial",
+        parse_alzr,
+        max_pages=40,
+        lease_parser=parse_lease_alzr,
+    ),
 }
 
 

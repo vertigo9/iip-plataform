@@ -9,6 +9,7 @@ import pytest
 from iip.cli.fetch_template import _enrich_fii_with_vacancia_report
 from iip.sources import hsi_mziq, xp_mziq
 from iip.sources.fii_vacancia import (
+    LeaseTermReading,
     VacanciaReading,
     latest_alianza_url,
     latest_hedge_url,
@@ -20,6 +21,10 @@ from iip.sources.fii_vacancia import (
     parse_hedge,
     parse_hsi,
     parse_knri,
+    parse_lease_alzr,
+    parse_lease_knri,
+    parse_lease_rbva,
+    parse_lease_trx,
     parse_rbva,
     parse_trx,
     parse_xp,
@@ -145,6 +150,34 @@ ALZR_TEXT = ALZR_SUMMARY_FITS + ALZR_BLOCKS
 # ABL própria e ABL alugada dos 3 blocos acima, feitas à mão
 ALZR_OWN_ABL = 8178 + 19026 * 0.9998 + 33795
 ALZR_LEASED_ABL = 8178 + 19026 * 0.9998 * 0.97 + 33795
+
+
+# trechos reais dos relatórios (agosto/2026) com o prazo médio declarado
+LEASE_ALZR = """Indicadores Imobiliários Agosto 2026
+ABL Total¹ 288.677 m²
+Número de Ativos¹ 26
+Número de Locatários¹ 20
+WALE 9,5 anos
+¹ Considera os ativos adquiridos na 8ª Emissão de Cotas: Fleury, BTS Shopee e"""
+
+LEASE_TRX = """Revenue by Contract Type
+Atypical 73.10% and Typical 26.90%
+Wale
+13.17 years
+Asset Value per m²"""
+
+LEASE_RBVA = """Valor de Mercado
+6,4 anos
+Wault⁴
+R$
+ 1,75
+ milhões
+Volume médio diário"""
+
+LEASE_KNRI = """RECEITA POR TIPO DE CONTRATO12 RECEITA POR ÍNDICE DE REAJUSTE
+O Prazo Médio dos Contratos Firmados13 pelo Fundo é de 9,32 anos sendo de 7,86 anos para os escritórios e 11,61 anos
+para os ativos logísticos. O Prazo Médio Remanescente14 dos contratos do fundo está em 2,72 anos, com 2,64 anos
+para escritórios e 2,85 anos para ativos logísticos. Com datas de vencimento e de revisionais nos próximos anos"""
 
 
 def test_trx_reads_both_measures_and_prefers_financial():
@@ -590,3 +623,101 @@ def test_enrichment_shows_the_note_of_a_calculated_occupancy(monkeypatch):
     assert fetched == ["occupancy_rate"]
     assert any("vacância física" in w for w in warnings)  # a base
     assert any("occupancy_rate: ocupação CALCULADA" in w for w in warnings)  # o método
+
+
+def test_each_manager_lease_term_is_read_with_the_label_the_report_uses():
+    assert parse_lease_alzr(LEASE_ALZR) == LeaseTermReading(9.5, "WALE")
+    assert parse_lease_trx(LEASE_TRX) == LeaseTermReading(13.17, "WALE")
+    assert parse_lease_rbva(LEASE_RBVA) == LeaseTermReading(6.4, "WAULT")
+    assert parse_lease_knri(LEASE_KNRI) == LeaseTermReading(
+        2.72, "Prazo Médio Remanescente"
+    )
+
+
+def test_knri_takes_the_remaining_term_and_never_the_total_contract_duration():
+    reading = parse_lease_knri(LEASE_KNRI)
+    assert reading.years == 2.72  # not 9,32 (contratos firmados), 7,86 nor 11,61
+
+
+def test_knri_refuses_a_text_with_only_the_total_contract_duration():
+    only_total = (
+        "O Prazo Médio dos Contratos Firmados13 pelo Fundo é de 9,32 anos sendo de "
+        "7,86 anos para os escritórios e 11,61 anos para os ativos logísticos."
+    )
+    assert parse_lease_knri(only_total) is None
+
+
+@pytest.mark.parametrize(
+    "parser",
+    [parse_lease_alzr, parse_lease_trx, parse_lease_rbva, parse_lease_knri],
+)
+def test_lease_parsers_return_none_when_the_report_does_not_declare_it(parser):
+    assert parser("Relatório sem prazo médio declarado") is None
+    assert parser("") is None
+
+
+@pytest.mark.parametrize("years", ["0,0", "80,0"])
+def test_a_lease_term_outside_a_plausible_range_is_refused(years):
+    assert parse_lease_alzr(f"WALE {years} anos") is None
+
+
+def test_only_the_four_clear_declarations_have_a_lease_parser():
+    with_parser = {
+        t
+        for t in (
+            "TRXF11",
+            "BTLG11",
+            "HGBS11",
+            "RBVA11",
+            "KNRI11",
+            "HSML11",
+            "XPML11",
+            "ALZR11",
+        )
+        if profile_for_ticker(t).lease_parser is not None
+    }
+    # BTLG11: o "WAULT 5 anos" está dentro de um gráfico de vencimentos, arredondado e
+    # sem definição; os shoppings (HGBS11, HSML11, XPML11) não declaram prazo
+    assert with_parser == {"TRXF11", "RBVA11", "KNRI11", "ALZR11"}
+
+
+def test_enrichment_fills_the_lease_term_and_says_which_label_it_came_from(
+    monkeypatch,
+):
+    occupancy = VacanciaReading("kinea_carta_do_gestor", financial_vacancy_pct=5.14)
+    lease = LeaseTermReading(2.72, "Prazo Médio Remanescente")
+    _stub_fetch(
+        monkeypatch, FetchedVacancia("KNRI11", "https://r.pdf", occupancy, lease)
+    )
+    financials, fetched, warnings = _enrich_fii_with_vacancia_report({}, "KNRI11")
+    assert financials["avg_lease_term_years"] == 2.72
+    assert fetched == ["occupancy_rate", "avg_lease_term_years"]
+    assert any(
+        "avg_lease_term_years = 2.72 anos" in w and "Prazo Médio Remanescente" in w
+        for w in warnings
+    )
+
+
+def test_enrichment_fills_the_lease_term_even_when_the_occupancy_layout_changed(
+    monkeypatch,
+):
+    lease = LeaseTermReading(9.5, "WALE")
+    _stub_fetch(monkeypatch, FetchedVacancia("ALZR11", "https://r.pdf", None, lease))
+    financials, fetched, warnings = _enrich_fii_with_vacancia_report(
+        {"occupancy_rate": 0.85}, "ALZR11"
+    )
+    assert financials == {"occupancy_rate": 0.85, "avg_lease_term_years": 9.5}
+    assert fetched == ["avg_lease_term_years"]
+    assert "layout" in warnings[0]
+
+
+def test_enrichment_leaves_the_lease_term_alone_when_the_report_declares_none(
+    monkeypatch,
+):
+    occupancy = VacanciaReading("btg_relatorio_gerencial", financial_vacancy_pct=1.2)
+    _stub_fetch(monkeypatch, FetchedVacancia("BTLG11", "https://r.pdf", occupancy))
+    financials, fetched, _ = _enrich_fii_with_vacancia_report(
+        {"avg_lease_term_years": 5}, "BTLG11"
+    )
+    assert financials["avg_lease_term_years"] == 5
+    assert fetched == ["occupancy_rate"]

@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 
 from . import btg_mziq, hsi_mziq, xp_mziq
 from .fii_vacancia import (
+    LeaseTermReading,
     VacanciaReading,
     latest_alianza_url,
     latest_hedge_url,
@@ -36,6 +37,8 @@ class FetchedVacancia:
     ticker: str
     source_url: str
     reading: VacanciaReading | None
+    # prazo médio remanescente, independente da vacância (um pode sair sem o outro)
+    lease_term: LeaseTermReading | None = None
 
 
 class FiiVacanciaHTTPHarvester:
@@ -119,4 +122,5 @@ class FiiVacanciaHTTPHarvester:
         text = "\n".join(
             page.extract_text() or "" for page in reader.pages[: profile.max_pages]
         )
-        return FetchedVacancia(ticker, url, profile.parser(text))
+        lease_term = profile.lease_parser(text) if profile.lease_parser else None
+        return FetchedVacancia(ticker, url, profile.parser(text), lease_term)
