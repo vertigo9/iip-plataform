@@ -38,6 +38,7 @@ _CLASS_TITLES = {
     "fiagro": "FIAGROs",
     "fi_infra": "FI-Infra",
     "etf": "ETFs",
+    "fmp_fgts": "FMP-FGTS",
 }
 
 _READING_GUIDE = """\
@@ -48,8 +49,17 @@ tecnologia e ativos intangíveis (nesses, fica sem valor).
 - **Bazin** (ações): dividendo por ação (dividendos e JCP pagos no ano fiscal ÷ ações) \
 dividido pela NTN-B longa real, em vez dos 6% fixos. Exige 3 anos de dividendos e \
 payout de no máximo 100%.
-- **NAV** (FIIs, FIAGROs e FI-Infra): o patrimônio por cota. Âncora de todos os FIIs e FIAGROs; \
-nos FI-Infra listados (só NAV) é a cota do Informe Diário da CVM.
+- **NAV** (FIIs, FIAGROs, FI-Infra e ETFs): o patrimônio por cota. Âncora de todos os FIIs e FIAGROs; \
+nos FI-Infra listados (só NAV) é a cota do Informe Diário da CVM; no ETF (LFTB11) vem do site \
+oficial da gestora, e a "margem" é o prêmio ou desconto do preço sobre o NAV, não um sinal de \
+preço errado, já que o preço acompanha o NAV por criação e resgate de cotas.
+- **Transparência** (FMP-FGTS, o AXIA3): o fundo não tem preço de mercado, então se avalia o que \
+ele carrega. `NAV × (1 + Σ peso × margem de segurança da ação subjacente)`, com o peso de cada \
+empresa tirado da composição da carteira (CDA da CVM, do fim do mês, ~3 semanas de defasagem) e a \
+margem calculada pelo mesmo caminho das ações (Graham/Bazin). O "preço" da tabela é o próprio NAV \
+da cota, porque só se sai do fundo ao valor patrimonial. Só vale com pelo menos 90% do patrimônio em \
+ações avaliadas; o resto (títulos públicos e caixa) fica ao NAV. É a margem da empresa traduzida \
+para a cota, não uma opinião de que a cota "vale" mais.
 - **Yield** (FIIs de tijolo): a renda de 12 meses por cota dividida pela NTN-B longa real \
 MAIS um prêmio de risco de FII de 3,0 p.p. (o mercado paga hoje, em mediana, ~3,7 p.p. sobre a \
 NTN-B aos FIIs de tijolo; sem o prêmio o teto sairia +16% a +174% acima do preço). O prêmio é \
