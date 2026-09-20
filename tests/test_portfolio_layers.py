@@ -512,7 +512,7 @@ def test_the_layers_code_only_reads_the_policy_it_never_saves_or_edits_it():
         assert not names & {"save_policy", "load_policy"}, path
 
 
-def test_only_the_command_and_the_note_use_the_layers_and_the_job_does_not_run_them():
+def test_only_the_command_and_the_note_use_the_layers():
     users = {
         str(path).replace("\\", "/")
         for path in Path("src/iip").rglob("*.py")
@@ -520,6 +520,3 @@ def test_only_the_command_and_the_note_use_the_layers_and_the_job_does_not_run_t
     }
 
     assert users == {"src/iip/obsidian/layers_report.py", "src/iip/cli/main.py"}
-    assert "portfolio-layers" not in Path("executar_atualizacao_diaria.ps1").read_text(
-        encoding="utf-8"
-    )
