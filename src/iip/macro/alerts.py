@@ -306,7 +306,9 @@ def _validate_message(rule: AlertRule) -> None:
         )
 
 
-def _validate_rule(rule: AlertRule) -> None:  # noqa: C901 - uma checagem por regra do contrato
+def _validate_rule(
+    rule: AlertRule,
+) -> None:  # noqa: C901 - uma checagem por regra do contrato
     if not rule.id.strip():
         raise ValueError("regra sem id")
     indicator = INDICATORS.get(rule.indicator)
@@ -436,9 +438,9 @@ def _parse_rule(item: object) -> AlertRule:
             kind=str(item["kind"]),
             severity=str(item["severity"]),
             message=str(item["message"]),
-            threshold=None
-            if item.get("threshold") is None
-            else float(item["threshold"]),
+            threshold=(
+                None if item.get("threshold") is None else float(item["threshold"])
+            ),
             unit=str(item.get("unit", "")),
             window_days=item.get("window_days"),
             direction=str(item.get("direction", "both")),
@@ -453,7 +455,8 @@ def _parse_rule(item: object) -> AlertRule:
 
 def load_rules(vault_path: str | Path) -> RuleSet | None:
     """O conjunto gravado no vault, ou ``None`` se não há arquivo. Um arquivo que existe mas
-    está errado levanta ``ValueError`` com o motivo: nunca cai em silêncio para o padrão."""
+    está errado levanta ``ValueError`` com o motivo: nunca cai em silêncio para o padrão.
+    """
     path = Path(vault_path) / RULES_RELATIVE_PATH
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
@@ -519,7 +522,8 @@ class RuleEvaluation:
 
 def _series(store: MacroStore, indicator_id: str, view: str) -> list[tuple[str, float]]:
     """(competência, valor) distintos, em ordem. ``latest``: o valor mais recente de cada
-    competência; ``first``: o primeiro valor coletado dela (antes de qualquer revisão)."""
+    competência; ``first``: o primeiro valor coletado dela (antes de qualquer revisão).
+    """
     if view == "first":
         chosen: dict[str, float] = {}
         for obs in store.observations(indicator_id):
@@ -902,9 +906,9 @@ def _data_alerts(
     context: MacroContext, rule_set: RuleSet, previous: dict[str, str], today: _dt.date
 ) -> tuple[list[Alert], dict[str, str]]:
     quality = rule_set.data_quality
-    found: list[
-        tuple[str, str, str | None, str]
-    ] = []  # (chave, indicador, competência, motivo)
+    found: list[tuple[str, str, str | None, str]] = (
+        []
+    )  # (chave, indicador, competência, motivo)
     for reading in context.readings:
         ind = reading.indicator
         if reading.missing and quality.missing:
@@ -1097,7 +1101,8 @@ def run_alerts(
 
 def load_state(vault_path: str | Path) -> dict | None:
     """O estado gravado, ou ``None`` na primeira execução. Um estado ilegível levanta
-    ``ValueError``: recomeçar do zero em silêncio reavisaria tudo o que já foi avisado."""
+    ``ValueError``: recomeçar do zero em silêncio reavisaria tudo o que já foi avisado.
+    """
     path = Path(vault_path) / STATE_RELATIVE_PATH
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
