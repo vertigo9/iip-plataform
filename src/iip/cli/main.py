@@ -749,6 +749,163 @@ def _lead_and_others(attempts) -> tuple[str, str, str]:
     )
 
 
+@cli.command("decide-portfolio")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--ano",
+    type=int,
+    default=None,
+    help="Ano fiscal da DFP (padrão: ano anterior). Os FIIs usam sempre o ano corrente.",
+)
+@click.option(
+    "--persist",
+    is_flag=True,
+    default=False,
+    help="Grava cada decisão em 03_Decisions (DEC-<ticker>-<data>, append-only: rodar "
+    "de novo no mesmo dia não regrava). Sem esta opção nada é gravado.",
+)
+@click.option(
+    "--ticker",
+    "tickers",
+    multiple=True,
+    help="Decide só estas posições da carteira (repita a opção). Padrão: todas.",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Decisoes.md (sobrescrita a cada execução, exceto se "
+    "nenhuma posição foi decidida); independente de --persist.",
+)
+def decide_portfolio_command(
+    vault: str | None,
+    ano: int | None,
+    persist: bool,
+    report: bool,
+    tickers: tuple[str, ...],
+) -> None:
+    """Decide a carteira inteira: análise + valuation + evidência real -> decisão.
+
+    Uma busca por posição alimenta o analisador e o valuation (a cota do bolsai não é
+    gasta duas vezes). Cita as evidências mais recentes que já existem no vault; sem
+    nenhuma, a posição é pulada. O sinal de tese é sempre Neutro. Nunca inventa dado."""
+    from iip.portfolio.batch_decide import decide_portfolio
+    from iip.portfolio.registry import assets_refreshable_now
+
+    positions = None
+    if tickers:
+        wanted = {t.strip().upper() for t in tickers}
+        positions = tuple(a for a in assets_refreshable_now() if a.ticker in wanted)
+        unknown = wanted - {a.ticker for a in positions}
+        if unknown:
+            console.print(
+                f"[bold red]Fora da carteira (ou sem fetch): {', '.join(sorted(unknown))}[/]"
+            )
+            raise SystemExit(1)
+
+    bolsai_key = _unwrap_secret(get_settings().bolsai_api_key)
+    brapi_token = _unwrap_secret(get_settings().brapi_token)
+    vault_path = vault or str(get_settings().obsidian_vault)
+
+    if not bolsai_key:
+        console.print(
+            "[dim]IIP_BOLSAI_API_KEY não definida — sem preço/LPA/VPA, várias posições "
+            "ficam sem dado.[/]"
+        )
+
+    console.print("[dim]Decidindo a carteira...[/]\n")
+    resultado = decide_portfolio(
+        bolsai_api_key=bolsai_key,
+        brapi_token=brapi_token,
+        vault_path=vault_path,
+        persist=persist,
+        ano=ano,
+        positions=positions,
+    )
+    console.print(f"[dim]{resultado.ntnb_note}[/]\n")
+
+    table = Table(title=f"Decisões da carteira — {resultado.decision_date:%d/%m/%Y}")
+    table.add_column("Ticker")
+    table.add_column("Decisão")
+    table.add_column("Anterior")
+    table.add_column("Score", justify="right")
+    table.add_column("Conf.", justify="right")
+    table.add_column("Análise", justify="right")
+    table.add_column("Valuation", justify="right")
+    table.add_column("Status")
+
+    verdict_color = {
+        "COMPRAR": "bold green",
+        "MANTER": "green",
+        "AGUARDAR": "yellow",
+        "REDUZIR": "red",
+        "VENDER": "bold red",
+    }
+    for outcome in resultado.outcomes:
+        cor = {"ok": "green", "erro": "red", "pulado": "yellow"}[outcome.status]
+        if outcome.status == "ok":
+            table.add_row(
+                outcome.ticker,
+                f"[{verdict_color.get(outcome.verdict, 'white')}]{outcome.verdict}[/]",
+                outcome.previous_verdict or "—",
+                f"{outcome.score:.2f}",
+                f"{outcome.confidence:.2f}",
+                f"{outcome.analysis_score:.1f}",
+                (
+                    "—"
+                    if outcome.valuation_score is None
+                    else f"{outcome.valuation_score:.2f}"
+                ),
+                f"[{cor}]{outcome.persisted or 'ok'}[/]",
+            )
+        else:
+            table.add_row(
+                outcome.ticker,
+                "—",
+                "—",
+                "—",
+                "—",
+                "—",
+                "—",
+                f"[{cor}]{outcome.status}[/]",
+            )
+    console.print(table)
+
+    for outcome in (*resultado.skipped, *resultado.failed):
+        console.print(f"[dim]{outcome.ticker} · {outcome.status}: {outcome.detail}[/]")
+    for outcome in resultado.changed:
+        console.print(
+            f"[bold]{outcome.ticker}:[/] {outcome.previous_verdict} -> {outcome.verdict}"
+        )
+    console.print(
+        f"\n[bold]Resumo:[/] {len(resultado.succeeded)} decididas, "
+        f"{len(resultado.failed)} erro, {len(resultado.skipped)} pulado"
+    )
+    console.print(
+        "[dim]A decisão resume o que o projeto mede; não é ordem de compra ou venda. "
+        "Sinal de tese: Neutro; sem valuation a nota é neutra (5,0).[/]"
+    )
+
+    if report and not resultado.succeeded:
+        console.print(
+            "[yellow]Relatório NÃO gravado: nenhuma posição foi decidida nesta rodada; "
+            "a nota anterior foi mantida.[/]"
+        )
+    elif report:
+        from iip.obsidian.decision_report import write_decision_report
+
+        console.print(
+            f"[dim]Relatório de decisões: {write_decision_report(vault_path, resultado)}[/]"
+        )
+
+    if resultado.failed:
+        raise SystemExit(1)
+
+
 @cli.command("value-portfolio")
 @click.option(
     "--vault",
