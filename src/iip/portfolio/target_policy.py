@@ -24,6 +24,14 @@ Regras de consistência (violá-las é ``ValueError`` com o motivo; nunca há fa
   - a política ``aprovada`` exige todas as linhas ativas ``definido``, a regra de soma escolhida
     e cumprida; o monitoramento só pode ligar com a política aprovada;
   - a soma dos alvos já definidos nunca passa de 100%.
+
+Estágio da posição (``stage``): ``estabelecida`` (padrão) ou ``em_construcao``. Uma posição em
+construção tem alvo, mínimo e máximo FINAIS e uma previsão de conclusão (``completion_date``
+e/ou ``completion_condition``); a tolerância continua sendo só a margem de atenção em torno do
+alvo, nunca um indicador de progresso. ``read_weight`` lê o peso atual contra a faixa e distingue
+"em formação" (abaixo da faixa numa posição em construção: esperado, não é desvio) de um desvio
+de verdade; é uma leitura pura, informativa: nada é sinalizado enquanto o monitoramento estiver
+desligado, e nada compra, vende, aporta ou rebalanceia.
 """
 
 from __future__ import annotations
@@ -42,6 +50,8 @@ SNAPSHOT_RELATIVE_PATH = Path("02_Portfolio") / "Current.md"
 POLICY_SCHEMA = "target-weights-1"
 
 LINE_STATUSES = ("pendente", "definido", "revisavel", "inativo")
+STAGE_ESTABLISHED, STAGE_BUILDING = "estabelecida", "em_construcao"
+STAGES = (STAGE_ESTABLISHED, STAGE_BUILDING)
 APPROVAL_STATUSES = ("pendente", "aprovada")
 SUM_RULES = (None, "total_100", "reserva")
 KINDS = ("asset", "group")
@@ -75,6 +85,9 @@ _LINE_KEYS = frozenset(
         "status",
         "rationale",
         "decided_on",
+        "stage",
+        "completion_date",
+        "completion_condition",
     }
 )
 _ROOT_KEYS = frozenset(
@@ -110,6 +123,10 @@ class PolicyLine:
     status: str = "pendente"
     rationale: str = ""
     decided_on: str | None = None
+    # estágio da posição; em_construcao exige a previsão de conclusão (data e/ou condição)
+    stage: str = STAGE_ESTABLISHED
+    completion_date: str | None = None
+    completion_condition: str = ""
 
     @property
     def numbers(self) -> tuple[float | None, ...]:
@@ -147,7 +164,9 @@ class TargetPolicy:
     def content_hash(self) -> str:
         """Hash do conteúdo de política (tudo menos a origem). Duas leituras com o mesmo hash
         são a mesma política."""
-        canonical = json.dumps(_payload(self, with_origin=False), sort_keys=True)
+        canonical = json.dumps(
+            _payload(self, with_origin=False, hash_view=True), sort_keys=True
+        )
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:16]
 
     def line(self, line_id: str) -> PolicyLine | None:
@@ -222,6 +241,40 @@ def _validate_line(line: PolicyLine) -> None:  # noqa: C901 - uma checagem por r
                 f"a faixa (alvo + tolerância = {target + tolerance:g}) passa do máximo "
                 f"({high:g})",
             )
+    if line.stage not in STAGES:
+        raise _fail(label, f"stage {line.stage!r} (use {' ou '.join(STAGES)})")
+    if line.completion_date is not None:
+        try:
+            _dt.date.fromisoformat(line.completion_date)
+        except ValueError as exc:
+            raise _fail(
+                label, f"completion_date {line.completion_date!r} não é AAAA-MM-DD"
+            ) from exc
+    has_completion = bool(line.completion_date) or bool(
+        line.completion_condition.strip()
+    )
+    if line.stage == STAGE_ESTABLISHED and has_completion:
+        raise _fail(
+            label,
+            "completion_date/completion_condition só valem para posição em_construcao",
+        )
+    if line.stage == STAGE_BUILDING and line.status != "inativo":
+        if not has_completion:
+            raise _fail(
+                label,
+                "em_construcao exige a previsão de conclusão "
+                "(completion_date ou completion_condition)",
+            )
+        if (
+            line.completion_date
+            and line.decided_on
+            and line.completion_date < line.decided_on
+        ):
+            raise _fail(
+                label,
+                f"completion_date ({line.completion_date}) anterior à data da decisão "
+                f"({line.decided_on})",
+            )
     if line.status == "definido":
         if not line.complete:
             raise _fail(label, "definido exige alvo, tolerância, mínimo e máximo")
@@ -288,8 +341,8 @@ def validate(policy: TargetPolicy) -> None:
 # --- serialização --------------------------------------------------------------------------
 
 
-def _line_payload(line: PolicyLine) -> dict:
-    return {
+def _line_payload(line: PolicyLine, *, hash_view: bool = False) -> dict:
+    payload = {
         "id": line.id,
         "name": line.name,
         "asset_class": line.asset_class,
@@ -304,9 +357,26 @@ def _line_payload(line: PolicyLine) -> dict:
         "rationale": line.rationale,
         "decided_on": line.decided_on,
     }
+    extra = {
+        "stage": line.stage,
+        "completion_date": line.completion_date,
+        "completion_condition": line.completion_condition,
+    }
+    # o arquivo mostra sempre os campos de estágio; o hash só os vê quando fogem do padrão,
+    # para uma política sem posição em construção manter o mesmo hash de antes do estágio
+    default = (
+        line.stage == STAGE_ESTABLISHED
+        and not line.completion_date
+        and not line.completion_condition
+    )
+    if not (hash_view and default):
+        payload.update(extra)
+    return payload
 
 
-def _payload(policy: TargetPolicy, *, with_origin: bool = True) -> dict:
+def _payload(
+    policy: TargetPolicy, *, with_origin: bool = True, hash_view: bool = False
+) -> dict:
     payload = {
         "type": "target_weight_policy",
         "schema": POLICY_SCHEMA,
@@ -319,7 +389,7 @@ def _payload(policy: TargetPolicy, *, with_origin: bool = True) -> dict:
         },
         "sum_rule": policy.sum_rule,
         "execution": "nenhum aporte, venda ou rebalanceamento é executado por esta política",
-        "lines": [_line_payload(ln) for ln in policy.lines],
+        "lines": [_line_payload(ln, hash_view=hash_view) for ln in policy.lines],
         "retired": [
             {"id": r.id, "closed_on": r.closed_on, "note": r.note}
             for r in policy.retired
@@ -365,6 +435,9 @@ def _parse_line(item: object) -> PolicyLine:
             status=str(item.get("status", "pendente")),
             rationale=str(item.get("rationale", "")),
             decided_on=item.get("decided_on"),
+            stage=str(item.get("stage", STAGE_ESTABLISHED)),
+            completion_date=item.get("completion_date"),
+            completion_condition=str(item.get("completion_condition", "")),
         )
     except TypeError as exc:
         raise _fail(label, f"valor mal formado ({exc})") from exc
@@ -588,3 +661,51 @@ def reconcile(policy: TargetPolicy, rows: tuple[SnapshotRow, ...]) -> Reconcilia
         tuple(missing_members),
         tuple(new_members),
     )
+
+
+# --- leitura do peso atual contra a faixa (pura, informativa) ------------------------------
+
+_READ_EPSILON = 1e-9
+DEVIATION_STATES = frozenset({"fora_da_faixa", "abaixo_do_minimo", "acima_do_maximo"})
+
+
+@dataclass(frozen=True)
+class WeightReading:
+    """Como o peso atual de uma linha se compara com a faixa dela. ``is_deviation`` é o que um
+    monitor futuro sinalizaria; "em formação" NÃO é desvio."""
+
+    state: str  # sem_faixa, inativa, na_faixa, em_formacao ou um de DEVIATION_STATES
+    label: str
+
+    @property
+    def is_deviation(self) -> bool:
+        return self.state in DEVIATION_STATES
+
+
+def read_weight(line: PolicyLine, weight_pct: float) -> WeightReading:
+    """Lê ``weight_pct`` (peso atual na base A, em %) contra ``alvo ± tolerância`` e os limites.
+
+    Posição ``estabelecida``: abaixo do mínimo ou acima do máximo são desvios; fora da faixa mas
+    dentro dos limites também. Posição ``em_construcao``: estar ABAIXO da faixa é esperado
+    ("em formação", com o aviso de estar abaixo do mínimo final quando for o caso); passar da
+    faixa ou do máximo continua sendo desvio. Sem os quatro números, não há faixa para ler.
+    Nada aqui sinaliza, decide ou executa: é só a leitura."""
+    if line.status == "inativo":
+        return WeightReading("inativa", "linha inativa")
+    if not line.complete:
+        return WeightReading("sem_faixa", "sem faixa definida")
+    target, tolerance, low, high = line.numbers
+    lower_edge, upper_edge = target - tolerance, target + tolerance
+    if weight_pct > high + _READ_EPSILON:
+        return WeightReading("acima_do_maximo", "acima do máximo")
+    if weight_pct > upper_edge + _READ_EPSILON:
+        return WeightReading("fora_da_faixa", "fora da faixa (acima do alvo)")
+    if weight_pct < lower_edge - _READ_EPSILON:
+        below_min = weight_pct < low - _READ_EPSILON
+        if line.stage == STAGE_BUILDING:
+            reason = "abaixo do mínimo final" if below_min else "abaixo da faixa"
+            return WeightReading("em_formacao", f"em formação: {reason}")
+        if below_min:
+            return WeightReading("abaixo_do_minimo", "abaixo do mínimo")
+        return WeightReading("fora_da_faixa", "fora da faixa (abaixo do alvo)")
+    return WeightReading("na_faixa", "dentro da faixa")

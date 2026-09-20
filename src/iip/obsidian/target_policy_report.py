@@ -12,7 +12,12 @@ import datetime as _dt
 from pathlib import Path
 
 from iip.obsidian.frontmatter import flow_line
-from iip.portfolio.target_policy import Reconciliation, TargetPolicy
+from iip.portfolio.target_policy import (
+    STAGE_BUILDING,
+    Reconciliation,
+    TargetPolicy,
+    read_weight,
+)
 
 REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Politica_Pesos_Alvo.md"
 
@@ -37,6 +42,13 @@ def _pp(value: float | None) -> str:
     return "—" if value is None else f"{value:.2f}".replace(".", ",") + " p.p."
 
 
+def _reading(line, weight_pct: float) -> str:
+    reading = read_weight(line, weight_pct)
+    if reading.state in ("sem_faixa", "inativa"):
+        return "—"
+    return f"**{reading.label}**" if reading.is_deviation else reading.label
+
+
 def _frontmatter(
     policy: TargetPolicy, rec: Reconciliation, today: _dt.date
 ) -> list[str]:
@@ -54,6 +66,10 @@ def _frontmatter(
         flow_line("regra_de_soma", policy.sum_rule),
         flow_line("linhas", len(policy.lines)),
         flow_line("linhas_por_status", statuses),
+        flow_line(
+            "linhas_em_construcao",
+            [ln.id for ln in policy.lines if ln.stage == STAGE_BUILDING],
+        ),
         flow_line("posicoes_sem_linha", [r.id for r in rec.uncovered]),
         flow_line("linhas_sem_posicao", [ln.id for ln in rec.absent_lines]),
         "---",
@@ -99,8 +115,8 @@ def render_policy_report(
         "Os campos vazios (—) são seus: nenhum percentual foi preenchido pelo IIP.",
         "",
         "| Linha | Classe | Composição | Valor | Peso atual (base A) | Alvo | Tolerância | "
-        "Mínimo | Máximo | Status |",
-        "|---|---|---|---:|---:|---:|---:|---:|---:|---|",
+        "Mínimo | Máximo | Status | Estágio | Leitura do peso atual |",
+        "|---|---|---|---:|---:|---:|---:|---:|---:|---|---|---|",
     ]
     for item in sorted(rec.weights, key=lambda w: -w.weight_pct):
         line = item.line
@@ -114,8 +130,40 @@ def render_policy_report(
             f"| `{line.id}` {'' if line.name == line.id else '· ' + line.name} | "
             f"{line.asset_class} | {composition} | {_brl(item.value)} | "
             f"{_pct(item.weight_pct)} | {_pct(line.target_pct)} | {_pp(line.tolerance_pp)} | "
-            f"{_pct(line.min_pct)} | {_pct(line.max_pct)} | {line.status} |"
+            f"{_pct(line.min_pct)} | {_pct(line.max_pct)} | {line.status} | "
+            f"{'em construção' if line.stage == STAGE_BUILDING else 'estabelecida'} | "
+            f"{_reading(line, item.weight_pct)} |"
         )
+    lines += [
+        "",
+        "A leitura do peso atual compara o peso com `alvo ± tolerância` e os limites, só para "
+        "linhas com os quatro números. É informativa: o monitoramento continua "
+        f"{'ligado' if policy.monitoring_enabled else 'desligado'} e nada é sinalizado nem "
+        "executado por ela. Numa posição **em construção**, estar abaixo da faixa é "
+        '"em formação" (esperado), não desvio; passar da faixa ou do máximo continua '
+        "sendo desvio.",
+    ]
+    building = [ln for ln in policy.lines if ln.stage == STAGE_BUILDING]
+    lines += ["", "## Posições em construção", ""]
+    if building:
+        weights = {w.line.id: w.weight_pct for w in rec.weights}
+        for line in building:
+            completion = ", ".join(
+                part
+                for part in (
+                    f"até {line.completion_date}" if line.completion_date else "",
+                    line.completion_condition.strip(),
+                )
+                if part
+            )
+            lines.append(
+                f"- `{line.id}`: peso atual {_pct(weights.get(line.id))}, alvo final "
+                f"{_pct(line.target_pct)} (mín. {_pct(line.min_pct)}, máx. "
+                f"{_pct(line.max_pct)}); conclusão prevista: {completion or '—'}."
+                + (f" Justificativa: {line.rationale}" if line.rationale else "")
+            )
+    else:
+        lines.append("Nenhuma posição em construção.")
     lines += ["", "## Reconciliação com o snapshot", ""]
     if rec.consistent and not rec.missing_members:
         lines.append(
@@ -158,6 +206,10 @@ def render_policy_report(
         "`[mínimo, máximo]`: a tolerância dispara o sinal, o limite é o teto rígido.",
         "- Uma linha `definido` tem alvo, tolerância, mínimo, máximo e data da decisão. Os "
         "status são `pendente`, `definido`, `revisavel` e `inativo`.",
+        "- O estágio é `estabelecida` (padrão) ou `em_construcao`. Uma posição em construção "
+        "exige a previsão de conclusão (`completion_date` e/ou `completion_condition`); "
+        "alvo, mínimo e máximo são os FINAIS e a tolerância segue sendo só a margem de "
+        "atenção em torno do alvo, não um indicador de progresso.",
         "- A soma dos alvos definidos nunca passa de 100%. A política só vira `aprovada` com "
         "todas as linhas ativas `definido` e a regra de soma escolhida e cumprida; só então "
         "o monitoramento pode ligar.",
@@ -167,7 +219,7 @@ def render_policy_report(
         "## Como preencher",
         "",
         "Edite `02_Portfolio/Politica_Pesos_Alvo.json` (campos `target_pct`, `tolerance_pp`, "
-        "`min_pct`, `max_pct`, `status`, `rationale`, `decided_on`) ou passe os valores ao "
+        "`min_pct`, `max_pct`, `status`, `rationale`, `decided_on`, e, se a posição estiver sendo formada, `stage`, `completion_date`, `completion_condition`) ou passe os valores ao "
         "assistente. Rode `iip target-policy --report` para validar e atualizar esta nota.",
         "",
     ]
