@@ -894,6 +894,26 @@ def portfolio_exposure_command(
     help="Primeiro ano da série (a coleta refaz a série inteira desde este ano).",
 )
 @click.option(
+    "--min-age-days",
+    type=int,
+    default=None,
+    help="Só atualiza a série cuja última atualização tem mais de N dias (ou nunca foi "
+    "atualizada). É como o agendador roda toda noite e baixa só uma vez por semana.",
+)
+@click.option(
+    "--alert-file",
+    type=click.Path(),
+    default=None,
+    help="Grava uma linha por série que MUDOU para pior (ausente, defasada, zerada, "
+    "irregular); sem mudança, apaga o arquivo da rodada anterior.",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Series.md (estado de cada série).",
+)
+@click.option(
     "--vault",
     type=click.Path(),
     default=None,
@@ -906,19 +926,35 @@ def portfolio_exposure_command(
     help="Não persiste evidência Atlas no vault, só a série em 02_Portfolio/Historical.",
 )
 def collect_fii_history_command(
-    tickers: tuple[str, ...], desde_ano: int, vault: str | None, sem_evidencia: bool
+    tickers: tuple[str, ...],
+    desde_ano: int,
+    min_age_days: int | None,
+    alert_file: str | None,
+    report: bool,
+    vault: str | None,
+    sem_evidencia: bool,
 ) -> None:
     """Atualiza a série mensal da CVM (Informe Mensal de FII) de cada FII da carteira.
 
     Sem isto a série guardada em 02_Portfolio/Historical não muda mais, e a renda projetada
     e o painel de distribuições ficam velhos. Um zip por ano cobre todos os fundos (baixado
-    uma vez). A série guardada só é substituída se a coleta não trouxer menos meses."""
+    uma vez). A série guardada só é substituída se a coleta não trouxer menos meses. Depois
+    da coleta grava o estado de cada série (situação, última competência, data da
+    atualização) e avisa o que mudou para pior."""
     import datetime as _dt
 
     from iip.knowledge.bridge import KnowledgeBridge
     from iip.portfolio.fii_history_refresh import fii_positions, refresh_fii_histories
     from iip.portfolio.historical_series import HistoricalSeriesStore
     from iip.portfolio.registry import PORTFOLIO_ASSETS
+    from iip.portfolio.series_state import (
+        SeriesState,
+        compute_state,
+        load_state_file,
+        save_state_file,
+        series_alerts,
+        write_alert_file,
+    )
 
     positions = fii_positions(PORTFOLIO_ASSETS)
     if tickers:
@@ -931,19 +967,44 @@ def collect_fii_history_command(
             )
             raise SystemExit(1)
 
-    # data de calendário (último ano a buscar), não timestamp
+    # data de calendário (último ano a buscar e idade das séries), não timestamp
     hoje = _dt.date.today()  # noqa: DTZ011
     if desde_ano > hoje.year:
         console.print("[bold red]--desde-ano não pode ser depois do ano corrente.[/]")
         raise SystemExit(1)
 
     vault_path = vault or str(get_settings().obsidian_vault)
+    previous = load_state_file(vault_path)
+
+    due = positions
+    if min_age_days is not None:
+
+        def _age(ticker: str) -> int | None:
+            stamp = (previous.get(ticker) or {}).get("refreshed_at")
+            try:
+                return (hoje - _dt.date.fromisoformat(stamp)).days if stamp else None
+            except ValueError:
+                return None
+
+        due = tuple(
+            p
+            for p in positions
+            if _age(p.ticker) is None or _age(p.ticker) > min_age_days
+        )
+        if not due:
+            console.print(
+                f"[dim]Séries em dia: todas atualizadas há {min_age_days} dias ou menos; "
+                "nada a baixar.[/]"
+            )
+            return
+
     console.print(
-        f"[dim]Atualizando {len(positions)} série(s) da CVM ({desde_ano} a {hoje.year})...[/]\n"
+        f"[dim]Atualizando {len(due)} série(s) da CVM ({desde_ano} a {hoje.year})...[/]\n"
     )
+    store = HistoricalSeriesStore(vault_path)
     outcomes = refresh_fii_histories(
-        positions,
-        store=HistoricalSeriesStore(vault_path),
+        due,
+        store=store,
         years=range(desde_ano, hoje.year + 1),
         bridge=None if sem_evidencia else KnowledgeBridge(vault_path),
     )
@@ -969,11 +1030,48 @@ def collect_fii_history_command(
             console.print(
                 f"[dim]{outcome.ticker} · {outcome.status}: {outcome.detail}[/]"
             )
+
+    refreshed_ok = {o.ticker for o in outcomes if o.status == "ok"}
+    states = tuple(
+        compute_state(
+            p.ticker,
+            store,
+            today=hoje,
+            refreshed_at=(
+                hoje.isoformat()
+                if p.ticker in refreshed_ok
+                else (previous.get(p.ticker) or {}).get("refreshed_at")
+            ),
+        )
+        for p in positions
+    )
+    alerts = series_alerts(previous, states)
+    # o estado dos que não foram pedidos agora continua como estava
+    kept = tuple(
+        SeriesState.from_dict(t, d)
+        for t, d in previous.items()
+        if t not in {s.ticker for s in states}
+    )
+    save_state_file(vault_path, (*states, *kept))
+
+    problems = [s for s in states if s.code != "regular" or s.stale]
     console.print(
         f"\n[bold]Resumo:[/] {sum(o.status == 'ok' for o in outcomes)} ok, "
         f"{sum(o.status == 'erro' for o in outcomes)} erro, "
-        f"{sum(o.status == 'pulado' for o in outcomes)} pulado"
+        f"{sum(o.status == 'pulado' for o in outcomes)} pulado; "
+        f"{len(problems)} série(s) com problema"
     )
+    for alert in alerts:
+        console.print(f"[yellow]{alert.line()}[/]")
+    if alert_file:
+        write_alert_file(alert_file, alerts)
+    if report:
+        from iip.obsidian.series_report import write_series_report
+
+        console.print(
+            "[dim]Estado das séries: "
+            f"{write_series_report(vault_path, (*states, *kept), alerts, today_iso=hoje.isoformat())}[/]"
+        )
     if any(o.status == "erro" for o in outcomes):
         raise SystemExit(1)
 
