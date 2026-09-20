@@ -349,8 +349,10 @@ que uma soubesse da outra). Antes de escrever algo novo:
    só pelo nome exato.
 2. Se achar algo parecido, leia a docstring do módulo antes de decidir se é
    duplicata de verdade ou um conceito genuinamente diferente (nem tudo que
-   parece igual é igual — veja `iip.orchestration.portfolio_cycle` vs.
-   `iip.system.pipeline` como exemplo real de "parecido mas não é").
+   parece igual é igual — o `iip.orchestration.portfolio_cycle` tem a mesma
+   forma de um pipeline de onboarding de ativos que já existiu no projeto
+   (removido por falta de consumidor), mas modela outra coisa: um ciclo
+   recorrente sobre uma carteira já cadastrada).
 3. Se for duplicata, não apague o mais antigo sem checar se algum teste
    trava o comportamento dele — documente a relação entre os dois em vez de
    forçar a fusão.

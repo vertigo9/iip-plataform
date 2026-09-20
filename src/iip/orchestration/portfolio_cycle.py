@@ -1,7 +1,8 @@
 """Portfolio-wide closed-loop orchestration.
 
-Distinct concept from ``iip.system.pipeline.FullSystemPipeline`` (the
-canonical asset-onboarding pipeline) despite the same staged-executor
+Distinct concept from ``FullSystemPipeline`` (an asset-onboarding pipeline
+that lived in ``iip.system`` until the Level-3 cleanup removed it, having
+no consumer) despite the same staged-executor
 shape (Stage enum + ORDER tuple + injected handlers) — confirmed by
 audit, not assumed from the shape alone. This one models a
 **recurring cycle over an already-onboarded portfolio**: its stages
