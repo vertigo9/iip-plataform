@@ -63,7 +63,17 @@ Write-Output "--- Valuation da carteira ---" | Tee-Object -FilePath $LogFile -Ap
 python -m iip.cli.main value-portfolio --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $ValueExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode ===" | Tee-Object -FilePath $LogFile -Append
+# Decisao da carteira -> 03_Decisions (uma DEC por posicao, append-only) e
+# vault/02_Portfolio/Decisoes.md. Roda depois do valuation de proposito: o cache do bolsai
+# (acima) ja tem as respostas, entao quase nao gasta cota. O arquivo de alerta so existe
+# se alguma decisao mudou desde a anterior; e apagado antes para nunca reavisar o de ontem.
+$AlertaDecisoes = Join-Path $LogDir "alertas_decisao.txt"
+if (Test-Path $AlertaDecisoes) { Remove-Item $AlertaDecisoes -Force }
+Write-Output "--- Decisao da carteira ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main decide-portfolio --persist --report --alert-file $AlertaDecisoes 2>&1 | Tee-Object -FilePath $LogFile -Append
+$DecideExitCode = $LASTEXITCODE
+
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -82,7 +92,22 @@ if ($ValueExitCode -ne 0) {
     Notificar-Windows "IIP: falha no valuation da carteira" $msg3 "Warning"
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0) {
+if ($DecideExitCode -ne 0) {
+    $msg4 = "A decisao da carteira teve posicoes com erro hoje (a nota Decisoes.md pode estar parcial). Veja " + $LogFile
+    Notificar-Windows "IIP: falha na decisao da carteira" $msg4 "Warning"
+}
+
+# Mudanca de decisao nao e falha: nao entra no codigo de saida, so avisa.
+if (Test-Path $AlertaDecisoes) {
+    $Mudancas = @(Get-Content $AlertaDecisoes -Encoding UTF8)
+    $Resumo = ($Mudancas | Select-Object -First 5) -join "; "
+    if ($Mudancas.Count -gt 5) { $Resumo += "; e mais " + ($Mudancas.Count - 5) }
+    $Icone = "Information"
+    if ($Resumo -match "piora") { $Icone = "Warning" }
+    Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
+}
+
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0) {
     exit 0
 }
 exit 1

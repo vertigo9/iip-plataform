@@ -775,6 +775,14 @@ def _lead_and_others(attempts) -> tuple[str, str, str]:
     help="Decide só estas posições da carteira (repita a opção). Padrão: todas.",
 )
 @click.option(
+    "--alert-file",
+    type=click.Path(),
+    default=None,
+    help="Grava aqui uma linha por decisão que mudou desde a anterior (pioras primeiro); "
+    "sem mudança, apaga o arquivo da rodada anterior. É o que o agendador lê para "
+    "notificar.",
+)
+@click.option(
     "--report",
     is_flag=True,
     default=False,
@@ -787,6 +795,7 @@ def decide_portfolio_command(
     persist: bool,
     report: bool,
     tickers: tuple[str, ...],
+    alert_file: str | None,
 ) -> None:
     """Decide a carteira inteira: análise + valuation + evidência real -> decisão.
 
@@ -877,10 +886,15 @@ def decide_portfolio_command(
 
     for outcome in (*resultado.skipped, *resultado.failed):
         console.print(f"[dim]{outcome.ticker} · {outcome.status}: {outcome.detail}[/]")
-    for outcome in resultado.changed:
+    from iip.portfolio.decision_alerts import decision_changes, write_alert_file
+
+    for change in decision_changes(resultado):
         console.print(
-            f"[bold]{outcome.ticker}:[/] {outcome.previous_verdict} -> {outcome.verdict}"
+            f"[bold]{change.ticker}:[/] {change.previous} -> {change.current}"
+            f" ({change.direction})"
         )
+    if alert_file:
+        write_alert_file(alert_file, resultado)
     console.print(
         f"\n[bold]Resumo:[/] {len(resultado.succeeded)} decididas, "
         f"{len(resultado.failed)} erro, {len(resultado.skipped)} pulado"
