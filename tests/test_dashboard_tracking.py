@@ -101,6 +101,9 @@ def test_every_block_reads_a_key_that_its_note_actually_writes():
                         monthly_income=9.0,
                         months=(MonthlyDistribution("2026-08", 0.9),),
                         code="regular",
+                        effective_estimate=0.9,
+                        effective_income=9.0,
+                        estimate_source="cvm",
                     ),
                     IncomeLine(
                         "XPML11",
@@ -141,6 +144,9 @@ def test_every_block_reads_a_key_that_its_note_actually_writes():
         dash.INCOME_MONTHLY_KEY,
         dash.INCOME_COVERAGE_KEY,
         dash.INCOME_EXCLUDED_KEY,
+        dash.INCOME_CVM_MONTHLY_KEY,
+        dash.INCOME_HYBRID_KEY,
+        dash.INCOME_ADJUSTMENTS_KEY,
     ):
         assert key in income
     assert dash.SERIES_TOTAL_KEY in series and dash.SERIES_PROBLEMS_KEY in series
@@ -158,6 +164,9 @@ def test_the_dashboard_template_uses_each_key_it_defines():
         dash.INCOME_MONTHLY_KEY,
         dash.INCOME_COVERAGE_KEY,
         dash.INCOME_EXCLUDED_KEY,
+        dash.INCOME_CVM_MONTHLY_KEY,
+        dash.INCOME_HYBRID_KEY,
+        dash.INCOME_ADJUSTMENTS_KEY,
         dash.SERIES_PROBLEMS_KEY,
         dash.SERIES_TOTAL_KEY,
     ):
@@ -269,6 +278,9 @@ def test_the_income_frontmatter_lists_only_funds_with_a_series_but_no_projection
                 months=(MonthlyDistribution("2026-08", 0.9),),
                 code="regular",
                 last_period="2026-08",
+                effective_estimate=0.9,
+                effective_income=9.0,
+                estimate_source="cvm",
             ),
             IncomeLine(
                 "XPML11",

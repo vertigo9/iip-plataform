@@ -94,6 +94,9 @@ Por isso o próximo bloco não é mais funcionalidade, e sim **confiabilidade**:
 
 **Ordem:** A1 → A3 → A2 → A5 → A4; depois B; o resto conforme os insumos que dependem de você.
 
+
+**Regra da estimativa de renda (decisão do usuário, 20/09/2026, registrada no `portfolio-income`):** valores do gestor nunca substituem a série da CVM em silêncio; são outra fonte, com proveniência e validação próprias. A CVM é preservada (`cvm_estimate`); o que entra no total é a estimativa efetiva (`effective_estimate`), com `estimate_source` (cvm, manager, cvm_capped_by_manager), `validation_status`, `manager_reported_distribution` (com data do relatório e fonte) e `override_reason`. (1) A CVM não projeta e o gestor declara: entra o gestor (XPML11, R$ 0,92, +R$ 46/mês). (2) A validação diverge e o gestor declara MENOS: o consolidado usa o gestor como limite conservador provisório (BTLG11: R$ 0,81 contra R$ 0,908 da CVM, −R$ 10,84/mês); se declara mais, vale a CVM. (3) Nos demais casos vale a CVM. O total passa a ser HÍBRIDO e a nota diz isso e detalha a composição. Total em 20/09/2026: R$ 762,95 (CVM pura R$ 727,79 + 46,00 − 10,84). Nada disso altera aporte nem peso-alvo.
+
 ## Decisões do usuário (20/09/2026)
 
 Sobre a proposta de política de peso-alvo e integração macroeconômica:

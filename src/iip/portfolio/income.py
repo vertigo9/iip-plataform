@@ -36,7 +36,7 @@ cota nas fontes atuais. É renda BRUTA estimada, não uma promessa nem uma previ
 from __future__ import annotations
 
 import datetime as _dt
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from iip.portfolio.historical_series import (
     HistoricalObservation,
@@ -80,8 +80,33 @@ class IncomeLine:
     unusual: tuple[str, ...] = ()  # períodos fora do padrão dentro da janela
     repeated: tuple[str, ...] = ()  # períodos repetidos, descartados
     last_period: str | None = None
-    per_unit: float | None = None
+    per_unit: float | None = (
+        None  # a estimativa da CVM (cvm_estimate), sempre preservada
+    )
     monthly_income: float | None = None
+    # --- o que o gestor declara e a estimativa que vale (ver apply_manager_estimates) ---
+    manager_reported_distribution: float | None = None
+    manager_reference: str | None = (
+        None  # data do relatório / da distribuição, se conhecida
+    )
+    manager_source_url: str | None = None
+    validation_status: str | None = None  # a situação da validação cruzada, se houve
+    effective_estimate: float | None = None  # R$/cota que entra no total
+    effective_income: float | None = None
+    estimate_source: str = ""  # cvm | manager | cvm_capped_by_manager
+    override_reason: str = ""
+
+    @property
+    def cvm_estimate(self) -> float | None:
+        return self.per_unit
+
+
+# de onde vem a estimativa efetiva, em português, para as notas
+SOURCE_LABELS = {
+    "cvm": "CVM",
+    "manager": "gestor",
+    "cvm_capped_by_manager": "CVM limitada pelo gestor",
+}
 
 
 @dataclass(frozen=True)
@@ -97,16 +122,38 @@ class IncomeReport:
         return tuple(ln for ln in self.lines if ln.status == "projetada")
 
     @property
+    def effective_lines(self) -> tuple[IncomeLine, ...]:
+        """As posições que entram no total: a estimativa da CVM ou, onde a regra manda, a do
+        gestor."""
+        return tuple(ln for ln in self.lines if ln.effective_income is not None)
+
+    @property
     def excluded(self) -> tuple[IncomeLine, ...]:
-        return tuple(ln for ln in self.lines if ln.status != "projetada")
+        """As que ficam fora do total: sem estimativa efetiva (nem da CVM, nem do gestor)."""
+        return tuple(ln for ln in self.lines if ln.effective_income is None)
 
     @property
     def monthly_income(self) -> float:
+        """O total, com a estimativa efetiva de cada posição (híbrido se houver do gestor)."""
+        return sum(ln.effective_income or 0.0 for ln in self.effective_lines)
+
+    @property
+    def cvm_monthly_income(self) -> float:
+        """O total só das projeções da CVM, sem nenhum ajuste do gestor."""
         return sum(ln.monthly_income or 0.0 for ln in self.projected)
 
     @property
+    def adjustments(self) -> tuple[IncomeLine, ...]:
+        """As posições cuja estimativa efetiva NÃO é a da CVM pura."""
+        return tuple(ln for ln in self.effective_lines if ln.estimate_source != "cvm")
+
+    @property
+    def is_hybrid(self) -> bool:
+        return bool(self.adjustments)
+
+    @property
     def covered_share(self) -> float:
-        return sum(ln.market_value for ln in self.projected) / self.total_value
+        return sum(ln.market_value for ln in self.effective_lines) / self.total_value
 
     @property
     def stale_series(self) -> tuple[IncomeLine, ...]:
@@ -243,12 +290,67 @@ def _project(
     )
 
 
+def _effective(line: IncomeLine, check) -> IncomeLine:
+    """Aplica a regra de estimativa efetiva a uma posição.
+
+    A estimativa da CVM nunca é sobrescrita nem descartada (``per_unit`` continua nela); a
+    efetiva é outro campo, com a fonte e o motivo. As regras (decisão do usuário, 20/09/2026):
+
+      - a CVM não projeta e o gestor declara (``so_gestor``): entra o valor do gestor, como
+        estimativa do gestor;
+      - a validação DIVERGE e o gestor declara MENOS que a CVM: o consolidado fica no valor do
+        gestor (limite conservador provisório, até a divergência ser esclarecida); se o gestor
+        declara mais, mantém a CVM (a divergência não infla a renda);
+      - nos demais casos (confere, mudança recente, sem gestor) vale a CVM.
+    """
+    cvm = line.per_unit if line.status == "projetada" else None
+    declared = getattr(check, "declared", None) if check is not None else None
+    status = getattr(check, "status", None) if check is not None else None
+    common = {
+        "manager_reported_distribution": declared,
+        "manager_reference": getattr(check, "reference", None) if check else None,
+        "manager_source_url": getattr(check, "source_url", None) if check else None,
+        "validation_status": status,
+    }
+    if declared and cvm is None and status == "so_gestor":
+        return replace(
+            line,
+            **common,
+            effective_estimate=declared,
+            effective_income=declared * line.quantity,
+            estimate_source="manager",
+            override_reason="a série da CVM não permite projetar este fundo; entra a "
+            "estimativa declarada pelo gestor, identificada como tal",
+        )
+    if declared and cvm is not None and status == "diverge" and declared < cvm:
+        return replace(
+            line,
+            **common,
+            effective_estimate=declared,
+            effective_income=declared * line.quantity,
+            estimate_source="cvm_capped_by_manager",
+            override_reason="a CVM e o gestor divergem e o gestor declara menos: o "
+            "consolidado usa o valor do gestor como limite conservador provisório, até a "
+            "divergência ser esclarecida; o valor da CVM segue registrado ao lado",
+        )
+    if cvm is None:
+        return replace(line, **common)
+    return replace(
+        line,
+        **common,
+        effective_estimate=cvm,
+        effective_income=line.monthly_income,
+        estimate_source="cvm",
+    )
+
+
 def build_income(
     state: PortfolioState,
     store: HistoricalSeriesStore,
     *,
     today: _dt.date,
     window: int = DEFAULT_WINDOW,
+    checks: dict | None = None,
 ) -> IncomeReport:
     positions = tuple(p for p in state.positions if p.market_value > 0)
     total = sum(p.market_value for p in positions)
@@ -279,10 +381,12 @@ def build_income(
         as_of = _dt.date.fromisoformat(state.as_of)
     except ValueError:
         as_of = None
+    checks = checks or {}
+    lines = [_effective(ln, checks.get(ln.ticker)) for ln in lines]
     lines.sort(
         key=lambda ln: (
-            ln.status != "projetada",
-            -(ln.monthly_income or 0.0),
+            ln.effective_income is None,
+            -(ln.effective_income or 0.0),
             ln.ticker,
         )
     )

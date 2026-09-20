@@ -1228,13 +1228,23 @@ def validate_income_command(
     help="Quantos meses entram na mediana da distribuição por cota (mínimo 3).",
 )
 @click.option(
+    "--somente-cvm",
+    is_flag=True,
+    default=False,
+    help="Ignora os valores do gestor (iip validate-income) e mostra só a projeção da CVM.",
+)
+@click.option(
     "--report",
     is_flag=True,
     default=False,
     help="Grava a nota 02_Portfolio/Renda.md (sobrescrita a cada execução).",
 )
 def portfolio_income_command(
-    vault: str | None, snapshot_file: str | None, janela: int, report: bool
+    vault: str | None,
+    snapshot_file: str | None,
+    janela: int,
+    somente_cvm: bool,
+    report: bool,
 ) -> None:
     """Renda mensal projetada: mediana da distribuição por cota (série da CVM) x quantidade.
 
@@ -1244,7 +1254,8 @@ def portfolio_income_command(
     import datetime as _dt
 
     from iip.portfolio.historical_series import HistoricalSeriesStore
-    from iip.portfolio.income import build_income
+    from iip.portfolio.income import SOURCE_LABELS, build_income
+    from iip.portfolio.income_cross_check import load_validation
     from iip.portfolio.vault_snapshot import parse_current_snapshot
 
     vault_path = vault or str(get_settings().obsidian_vault)
@@ -1264,30 +1275,53 @@ def portfolio_income_command(
             # data de calendário (idade da série), não timestamp
             today=_dt.date.today(),  # noqa: DTZ011
             window=janela,
+            checks=None if somente_cvm else load_validation(vault_path),
         )
     except ValueError as exc:
         console.print(f"[bold red]Não consegui projetar:[/] {exc}")
         raise SystemExit(1) from exc
 
+    hibrida = " (estimativa HÍBRIDA)" if result.is_hybrid else ""
     console.print(
-        f"[bold]Renda mensal projetada: R$ {result.monthly_income:,.2f}[/] "
-        f"({len(result.projected)} posições, {result.covered_share:.1%} do valor da carteira)"
+        f"[bold]Renda mensal projetada: R$ {result.monthly_income:,.2f}{hibrida}[/] "
+        f"({len(result.effective_lines)} posições, {result.covered_share:.1%} do valor da "
+        "carteira)"
     )
-    table = Table(title="Projetadas (mediana da distribuição por cota)")
+    if result.is_hybrid:
+        console.print(
+            f"[dim]Só a CVM: R$ {result.cvm_monthly_income:,.2f}. A diferença vem de "
+            "valores declarados pelo gestor, identificados abaixo.[/]"
+        )
+    table = Table(title="Entram no total (mediana da distribuição por cota)")
     table.add_column("Ticker")
     table.add_column("Qtd", justify="right")
-    table.add_column("R$/cota", justify="right")
+    table.add_column("CVM", justify="right")
+    table.add_column("Gestor", justify="right")
+    table.add_column("Efetiva", justify="right")
     table.add_column("R$/mês", justify="right")
-    table.add_column("Atípicos")
-    for line in result.projected:
+    table.add_column("Fonte")
+    for line in result.effective_lines:
         table.add_row(
             line.ticker,
             f"{line.quantity:.0f}",
-            f"{line.per_unit:.4f}",
-            f"{line.monthly_income:,.2f}",
-            ", ".join(line.unusual) or "—",
+            (
+                f"{line.cvm_estimate:.4f}"
+                if line.cvm_estimate is not None
+                else "sem projeção"
+            ),
+            (
+                f"{line.manager_reported_distribution:.4f}"
+                if line.manager_reported_distribution is not None
+                else "—"
+            ),
+            f"{line.effective_estimate:.4f}",
+            f"{line.effective_income:,.2f}",
+            SOURCE_LABELS.get(line.estimate_source, line.estimate_source)
+            + ("" if line.estimate_source == "cvm" else " *"),
         )
     console.print(table)
+    for line in result.adjustments:
+        console.print(f"[yellow]* {line.ticker}:[/] {line.override_reason}")
     for line in result.excluded:
         if line.last_period:
             console.print(f"[yellow]{line.ticker} sem projeção:[/] {line.reason}")

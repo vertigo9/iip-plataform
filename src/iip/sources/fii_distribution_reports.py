@@ -43,6 +43,9 @@ class DeclaredDistribution:
     # AAAA-MM a que o número se refere, quando a fonte diz (a planilha da Pátria diz; os
     # PDFs em geral não trazem o mês de forma legível): sem ele compara-se com o último mês
     competencia: str | None = None
+    # a data do relatório e/ou da distribuição, como se consegue ler dele (frase ou nome do
+    # arquivo); ``None`` quando não dá para saber
+    reference: str | None = None
 
 
 def _number(raw: str, *, decimal_comma: bool = True) -> float | None:
@@ -61,7 +64,12 @@ def _first(pattern: str, text: str, *, flags: int = re.IGNORECASE) -> re.Match |
 
 
 def parse_xp(text: str) -> tuple[float, str] | None:
-    match = _first(r"divulgou a distribuição de R\$ ?([\d.,]+)\S? por cota", text)
+    # a frase inteira, com a data da divulgação e a do pagamento, vira a evidência
+    match = _first(
+        r"(?:No dia \d{2}/\d{2}/\d{4} )?o Fundo divulgou a distribuição de "
+        r"R\$ ?([\d.,]+)\S? por cota(?:, com pagamento em \d{2}/\d{2}/\d{2,4})?",
+        text,
+    )
     value = _number(match.group(1)) if match else None
     return (value, match.group(0)) if match and value else None
 
@@ -128,6 +136,49 @@ def supports(ticker: str) -> bool:
     return ticker.strip().upper() in PARSERS
 
 
+_MONTHS_EN = {
+    "january": "01", "february": "02", "march": "03", "april": "04", "may": "05",
+    "june": "06", "july": "07", "august": "08", "september": "09", "october": "10",
+    "november": "11", "december": "12",
+}  # fmt: skip
+
+
+_MONTHS_PT = {
+    "jan": "01", "fev": "02", "mar": "03", "abr": "04", "mai": "05", "jun": "06",
+    "jul": "07", "ago": "08", "set": "09", "out": "10", "nov": "11", "dez": "12",
+}  # fmt: skip
+
+
+def reference_hint(evidence: str, source_url: str) -> str | None:
+    """Data do relatório ou da distribuição, do que a fonte deixa ver: as datas escritas na
+    própria frase (divulgação, pagamento) e o mês que o nome do arquivo indica."""
+    parts: list[str] = []
+    dates = re.findall(r"\b(\d{2}/\d{2}/\d{2,4})\b", evidence)
+    if dates:
+        parts.append("na frase: " + ", ".join(dates))
+    name = source_url.rsplit("/", 1)[-1]
+    period = None
+    if match := re.search(r"REL(\d{2})(\d{2})(\d{4})", name):
+        period = f"{match.group(3)}-{match.group(2)}"  # REL31082026 = 31/08/2026
+    elif match := re.search(r"(\d{4})[-_](\d{2})", name):
+        period = f"{match.group(1)}-{match.group(2)}"
+    elif match := re.search(r"(\d{2})-(\d{4})", name):
+        period = f"{match.group(2)}-{match.group(1)}"
+    elif match := re.search(
+        r"[._-](jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\.?(\d{2})(?!\d)",
+        name,
+        re.IGNORECASE,
+    ):
+        month = _MONTHS_PT[match.group(1).lower()]
+        period = f"20{match.group(2)}-{month}"  # xp_malls_fii_ago.26 = agosto de 2026
+    elif match := re.search(r"([A-Za-z]+)-(\d{4})", name):
+        month = _MONTHS_EN.get(match.group(1).lower())
+        period = f"{match.group(2)}-{month}" if month else None
+    if period:
+        parts.append(f"relatório de {period}")
+    return "; ".join(parts) or None
+
+
 def read_declared(
     ticker: str, text: str, source_url: str
 ) -> DeclaredDistribution | None:
@@ -140,4 +191,10 @@ def read_declared(
     if found is None:
         return None
     value, evidence = found
-    return DeclaredDistribution(ticker.strip().upper(), value, source_url, evidence)
+    return DeclaredDistribution(
+        ticker.strip().upper(),
+        value,
+        source_url,
+        evidence,
+        reference=reference_hint(evidence, source_url),
+    )
