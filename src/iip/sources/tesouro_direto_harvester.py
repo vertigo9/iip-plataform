@@ -25,6 +25,7 @@ from .tesouro_direto import (
     URL,
     NtnbRate,
     long_ntnb_rate,
+    long_ntnb_series,
     parse_rates,
 )
 
@@ -42,6 +43,23 @@ class TesouroDiretoHTTPHarvester:
         self._opener = opener or urlopen
         self.timeout = timeout
         self.user_agent = user_agent
+
+    def fetch_long_ntnb_series(self) -> tuple[NtnbRate, ...]:
+        """A taxa da NTN-B mais longa de cada dia útil do começo do arquivo (cerca de um mês),
+        da mais antiga à mais nova."""
+        request = Request(
+            URL,
+            headers={
+                "User-Agent": self.user_agent,
+                "Range": f"bytes=0-{_HEAD_BYTES - 1}",
+            },
+            method="GET",
+        )
+        response = self._opener(request, timeout=self.timeout)
+        raw_status = getattr(response, "status", 200)
+        status = 200 if raw_status is None else int(raw_status)
+        text = response.read().decode("latin-1")
+        return long_ntnb_series(parse_rates(text, drop_last_line=status == 206))
 
     def fetch_long_ntnb_rate(
         self,

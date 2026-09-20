@@ -22,6 +22,7 @@ from iip.macro.contract import (
     IBGE_SIDRA,
     INDICATORS,
     QUARTERLY,
+    TESOURO_DIRETO,
     MacroIndicator,
     indicator,
 )
@@ -61,14 +62,31 @@ def _months_ago(day: _dt.date, months: int) -> _dt.date:
     return _dt.date(total // 12, total % 12 + 1, 1)
 
 
+Points = tuple[tuple[str, float | None, bool], ...]
+
+
 def fetch_points(
     ind: MacroIndicator,
     *,
     today: _dt.date,
     bacen: Any,
     ibge: Any,
-) -> tuple[tuple[str, float | None, bool], ...]:
-    """Os pontos da fonte como (competência, valor, provisório). Levanta se a fonte falha."""
+    tesouro: Any = None,
+) -> tuple[Points, dict[str, str]]:
+    """Os pontos da fonte como (competência, valor, provisório) e as notas de proveniência por
+    competência (o vencimento da NTN-B). Levanta se a fonte falha."""
+    if ind.source == TESOURO_DIRETO:
+        series = tesouro.fetch_long_ntnb_series()
+        return (
+            tuple(
+                (r.reference_date.isoformat(), round(r.real_yield * 100, 4), False)
+                for r in series
+            ),
+            {
+                r.reference_date.isoformat(): f"{r.title}, vencimento {r.maturity:%d/%m/%Y}"
+                for r in series
+            },
+        )
     if ind.source == BACEN_SGS:
         from iip.sources.bacen import build_target
 
@@ -77,14 +95,17 @@ def fetch_points(
         else:
             start = _months_ago(today, MONTHLY_WINDOW_MONTHS)
         fetched = bacen.fetch(build_target(int(ind.source_ref), start, today))
-        return tuple(
-            (
-                _bacen_reference(p.date, ind.frequency),
-                p.value,
-                ind.accumulates_in_month
-                and (p.date.year, p.date.month) == (today.year, today.month),
-            )
-            for p in fetched.points
+        return (
+            tuple(
+                (
+                    _bacen_reference(p.date, ind.frequency),
+                    p.value,
+                    ind.accumulates_in_month
+                    and (p.date.year, p.date.month) == (today.year, today.month),
+                )
+                for p in fetched.points
+            ),
+            {},
         )
     if ind.source == IBGE_SIDRA:
         from iip.sources.ibge import build_target as build_ibge
@@ -104,7 +125,7 @@ def fetch_points(
             # o IBGE marca "sem dado" com texto; o leitor devolve None: não vira zero
             if reference is not None and p.value is not None:
                 points.append((reference, p.value, False))
-        return tuple(points)
+        return tuple(points), {}
     raise ValueError(f"fonte desconhecida para {ind.id}: {ind.source}")
 
 
@@ -115,13 +136,16 @@ def collect_indicator(
     today: _dt.date,
     bacen: Any,
     ibge: Any,
+    tesouro: Any = None,
 ) -> CollectOutcome:
     stamp = today.isoformat()
     try:
-        points = fetch_points(ind, today=today, bacen=bacen, ibge=ibge)
+        points, notes = fetch_points(
+            ind, today=today, bacen=bacen, ibge=ibge, tesouro=tesouro
+        )
         if not points:
             raise ValueError("a fonte não devolveu nenhum ponto")
-        result = store.ingest(ind.id, points, collected_at=stamp)
+        result = store.ingest(ind.id, points, collected_at=stamp, notes=notes)
     # isolamento por indicador, como nos lotes da carteira
     except Exception as exc:  # noqa: BLE001
         detail = f"{type(exc).__name__}: {exc}"
@@ -145,6 +169,7 @@ def collect_macro(
     today: _dt.date,
     bacen: Any = None,
     ibge: Any = None,
+    tesouro: Any = None,
     on_outcome: Callable[[CollectOutcome], None] | None = None,
 ) -> tuple[CollectOutcome, ...]:
     """Coleta os indicadores pedidos (todos do catálogo, sem lista). Um id fora do catálogo
@@ -162,9 +187,15 @@ def collect_macro(
         from iip.sources.ibge_harvester import IbgeHTTPHarvester
 
         ibge = IbgeHTTPHarvester()
+    if tesouro is None:
+        from iip.sources.tesouro_direto_harvester import TesouroDiretoHTTPHarvester
+
+        tesouro = TesouroDiretoHTTPHarvester()
     outcomes = []
     for ind in chosen:
-        outcome = collect_indicator(ind, store, today=today, bacen=bacen, ibge=ibge)
+        outcome = collect_indicator(
+            ind, store, today=today, bacen=bacen, ibge=ibge, tesouro=tesouro
+        )
         outcomes.append(outcome)
         if on_outcome:
             on_outcome(outcome)

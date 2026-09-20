@@ -72,6 +72,7 @@ class MacroStore:
         points: tuple[tuple[str, float | None, bool], ...],
         *,
         collected_at: str,
+        notes: dict[str, str] | None = None,
     ) -> IngestResult:
         """``points``: (competência, valor, provisório). Devolve o que entrou de novo, o que
         foi revisado e o que já estava igual."""
@@ -90,7 +91,12 @@ class MacroStore:
             else:
                 revised += 1
             added = MacroObservation(
-                indicator_id, reference, value, collected_at, provisional
+                indicator_id,
+                reference,
+                value,
+                collected_at,
+                provisional,
+                (notes or {}).get(reference, ""),
             )
             existing.append(added)
             latest_by_ref[reference] = added

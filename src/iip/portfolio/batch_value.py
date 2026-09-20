@@ -53,6 +53,11 @@ class ValuationOutcome:
         None  # the catalog class ("equity", "fii", "fiagro", "fi_infra")
     )
     segment: str | None = None  # "sector / industry" as used to pick the methods
+    # what the methods were fed, kept so a sensitivity run can re-evaluate them offline
+    # (iip.macro.sensitivity) without fetching anything again
+    sector: str | None = None
+    industry: str | None = None
+    inputs: dict | None = None
 
 
 @dataclass(frozen=True)
@@ -221,13 +226,14 @@ def value_portfolio(
                     market_inputs=market_inputs,
                 )
                 extra_inputs, look_through_note = look.inputs, look.note
+            used_inputs = {**financials, **market_inputs, **extra_inputs}
             attempts = evaluate_valuations(
                 ticker=position.ticker,
                 asset_class=template_type,
                 sector=sector,
                 industry=industry,
                 price=price,
-                inputs={**financials, **market_inputs, **extra_inputs},
+                inputs=used_inputs,
             )
         # isolamento por posição, mesmo padrão de refresh_portfolio
         except Exception as exc:  # noqa: BLE001
@@ -251,6 +257,9 @@ def value_portfolio(
                     attempts=attempts,
                     asset_class=template_type,
                     segment=f"{sector} / {industry}",
+                    sector=sector,
+                    industry=industry,
+                    inputs=used_inputs,
                 )
             )
             continue
@@ -285,6 +294,9 @@ def value_portfolio(
                 attempts,
                 template_type,
                 f"{sector} / {industry}",
+                sector,
+                industry,
+                used_inputs,
             )
         )
 

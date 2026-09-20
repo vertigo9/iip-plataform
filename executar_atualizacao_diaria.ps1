@@ -108,12 +108,20 @@ $MacroExitCode = $LASTEXITCODE
 python -m iip.cli.main macro-context --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $MacroContextExitCode = $LASTEXITCODE
 
+# Sensibilidade do Bazin e do Yield a cenarios de juros e inflacao (Sensibilidade.md). Reusa os
+# insumos que o value-portfolio --report guardou (nao busca nada) e os cenarios versionados de
+# 07_Research/Macro/cenarios.json. Sensibilidade das premissas: nao recomenda e nao altera
+# aporte nem peso.
+Write-Output "--- Sensibilidade macro ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main macro-sensitivity --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$SensitivityExitCode = $LASTEXITCODE
+
 # Painel: cada bloco le o cabecalho das notas geradas acima, por isso vem por ultimo.
 Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
 python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DashboardExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -142,8 +150,8 @@ if ($SeriesExitCode -ne 0) {
     Notificar-Windows "IIP: falha nas series da CVM" $msg5 "Warning"
 }
 
-if ($MacroExitCode -ne 0 -or $MacroContextExitCode -ne 0) {
-    $msg7 = "A coleta ou o contexto macro (BACEN/IBGE) falharam hoje. Veja " + $LogFile
+if ($MacroExitCode -ne 0 -or $MacroContextExitCode -ne 0 -or $SensitivityExitCode -ne 0) {
+    $msg7 = "A coleta, o contexto ou a sensibilidade macro (BACEN/IBGE/Tesouro) falharam hoje. Veja " + $LogFile
     Notificar-Windows "IIP: falha no macro" $msg7 "Warning"
 }
 
@@ -170,7 +178,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0) {
     exit 0
 }
 exit 1

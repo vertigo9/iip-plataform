@@ -22,6 +22,7 @@ from iip.macro.contract import (
     INDICATORS,
     MONTHLY,
     QUARTERLY,
+    TESOURO_DIRETO,
     indicator,
 )
 from iip.macro.store import MacroStore
@@ -49,7 +50,7 @@ def _clear_settings_cache(monkeypatch):
 
 def test_the_catalog_is_internally_consistent():
     for ind in INDICATORS.values():
-        assert ind.source in (BACEN_SGS, IBGE_SIDRA)
+        assert ind.source in (BACEN_SGS, IBGE_SIDRA, TESOURO_DIRETO)
         assert ind.frequency in (DAILY, MONTHLY, QUARTERLY)
         assert ind.category in CATEGORY_LABELS
         assert ind.change_kind in ("pp", "pct", "none")
@@ -57,6 +58,8 @@ def test_the_catalog_is_internally_consistent():
         assert ind.stale_after_days > 0
         if ind.source == BACEN_SGS:
             assert ind.source_ref.isdigit()
+        elif ind.source == TESOURO_DIRETO:
+            assert ind.source_ref
         else:
             agregado, variavel = ind.source_ref.split("/")
             assert agregado.isdigit() and variavel.isdigit()
