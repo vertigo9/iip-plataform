@@ -50,9 +50,10 @@ do ano (``net_inflows_ytd_millions``): cotas em circulação = PL / cota patrimo
 ambos oficiais, e o fluxo é a variação de cotas x a cota patrimonial. É uma estimativa
 derivada, declarada como tal.
 
-NÃO usado: a composição com pesos ("Principais ativos") é HTML estático, cobre 12 dos
-17 ativos e não tem data, então não se sabe a que dia se refere; e a cesta de
-integralização (XLSX) traz quantidades por lote de criação, não pesos.
+NÃO usado daqui: a composição com pesos ("Principais ativos") é HTML estático, cobre 12
+dos 17 ativos e não tem data, então não se sabe a que dia se refere; e a cesta de
+integralização (XLSX) traz quantidades por lote de criação, não pesos. A composição vem da
+CDA da CVM, que é datada e completa: ver ``iip.sources.cvm_cda_etf``.
 
 Só entra em ``VERIFIED_TICKERS`` o ETF cujos endpoints foram lidos ao vivo: a API aceita
 qualquer código, mas só se confia no que foi visto.

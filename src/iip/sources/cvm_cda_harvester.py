@@ -8,6 +8,7 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from .cvm_cda import CdaError, CdaPortfolio, build_url, parse_cda_zip
+from .cvm_cda_etf import CdaEtfPortfolio, parse_cda_etf_zip
 
 
 @dataclass(frozen=True)
@@ -59,3 +60,32 @@ class CvmCdaHTTPHarvester:
             f"sem CDA utilizável para o CNPJ {cnpj}: "
             + (", ".join(tried) or "nenhum mês")
         )
+
+
+@dataclass(frozen=True)
+class FetchedEtfCda:
+    portfolio: CdaEtfPortfolio
+    url: str
+
+
+def fetch_etf(
+    harvester: CvmCdaHTTPHarvester, cnpj: str, *, months: Iterable[str]
+) -> FetchedEtfCda:
+    """Como ``CvmCdaHTTPHarvester.fetch``, para um ETF de renda fixa (arquivo
+    ``cda_fie``): a carteira no primeiro mês publicado em que o fundo aparece."""
+    tried = []
+    for month in months:
+        url = build_url(month)
+        body = harvester._download(url)
+        if body is None:
+            tried.append(f"{month} (não publicado)")
+            continue
+        portfolio = parse_cda_etf_zip(body, cnpj, month)
+        if portfolio is None:
+            tried.append(f"{month} (fundo ausente)")
+            continue
+        return FetchedEtfCda(portfolio, url)
+    raise CdaError(
+        f"sem CDA de ETF utilizável para o CNPJ {cnpj}: "
+        + (", ".join(tried) or "nenhum mês")
+    )

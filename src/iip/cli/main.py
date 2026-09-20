@@ -1609,6 +1609,56 @@ def collect_investo_documents_command(
     )
 
 
+@cli.command("etf-composition")
+@click.option("--ticker", required=True, help="ETF de renda fixa da carteira (LFTB11).")
+@click.option(
+    "--persist",
+    is_flag=True,
+    default=False,
+    help="Grava a seção IIP:portfolio_composition na nota 'Carteira e Crédito' do ativo "
+    "no vault. Sem esta opção só mostra.",
+)
+@click.option(
+    "--vault",
+    type=click.Path(),
+    default=None,
+    help="Caminho do vault Obsidian (padrão: IIP_OBSIDIAN_VAULT). Só usado com --persist.",
+)
+def etf_composition_command(ticker: str, persist: bool, vault: str | None) -> None:
+    """Mostra a composição da carteira de um ETF de renda fixa, lida da CDA da CVM
+    (``iip.sources.cvm_cda_etf``): peso por vencimento, prazo médio e o que vence em mais
+    de 10 anos. Só descreve; não entra em score nem valuation."""
+    from iip.portfolio.etf_composition import default_fetch_etf_cda, render_composition
+    from iip.portfolio.registry import get_asset
+    from iip.sources.cvm_cda import CdaError
+
+    symbol = ticker.strip().upper()
+    asset = get_asset(symbol)
+    if asset is None or asset.subtype != "ETF Renda Fixa" or not asset.cnpj:
+        console.print(
+            f"[bold red]{symbol} não é um ETF de renda fixa com CNPJ no registro.[/]"
+        )
+        raise SystemExit(1)
+
+    try:
+        fetched = default_fetch_etf_cda(asset.cnpj)
+    except CdaError as exc:
+        console.print(f"[bold red]Não consegui ler a carteira de {symbol}:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    content = render_composition(fetched.portfolio, fetched.url)
+    console.print(content, markup=False, highlight=False)
+
+    if persist:
+        from iip.knowledge.bridge import KnowledgeBridge
+
+        vault_path = vault or str(get_settings().obsidian_vault)
+        result = KnowledgeBridge(vault_path).sync_asset_section(
+            symbol, "etf", "portfolio", "IIP:portfolio_composition", content
+        )
+        console.print(f"[dim]Vault: {result.status.value} — {result.path}[/]")
+
+
 @cli.command("collect-equity-documents")
 @click.option(
     "--ticker",
