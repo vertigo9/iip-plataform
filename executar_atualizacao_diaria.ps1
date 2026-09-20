@@ -104,6 +104,14 @@ $IncomeExitCode = $LASTEXITCODE
 python -m iip.cli.main portfolio-exposure --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $ExposureExitCode = $LASTEXITCODE
 
+# Camadas do patrimonio (Camadas.md): o mesmo snapshot por classe, ativo, setor, segmento e tipo,
+# cada percentual com o seu denominador. Nao usa rede. SO LEITURA do Current.md, do registro e da
+# politica de pesos-alvo (que nao e alterada): nao define alvo nem limite, nao sinaliza nada e nao
+# decide, aporta nem rebalanceia. So falha se o snapshot nao puder ser lido.
+Write-Output "--- Camadas do patrimonio ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main portfolio-layers --report 2>&1 | Tee-Object -FilePath $LogFile -Append
+$LayersExitCode = $LASTEXITCODE
+
 # Macro (BACEN SGS e IBGE SIDRA): guarda cada valor com a data da coleta e escreve o contexto
 # (07_Research/Macro/Contexto_Macro.md). So contexto: nao decide aporte nem peso. O
 # armazenamento so grava o que mudou, entao rodar toda noite nao duplica nada.
@@ -136,7 +144,7 @@ Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
 python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DashboardExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, alertas_macro: $MacroAlertExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, camadas: $LayersExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, alertas_macro: $MacroAlertExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -175,6 +183,11 @@ if ($ValidateExitCode -ne 0 -or $IncomeExitCode -ne 0 -or $ExposureExitCode -ne 
     Notificar-Windows "IIP: falha na renda ou na exposicao" $msg6 "Warning"
 }
 
+if ($LayersExitCode -ne 0) {
+    $msg8 = "A nota Camadas.md (o patrimonio por classe, setor, segmento e tipo) nao foi gerada hoje: o Current.md nao pode ser lido. Veja " + $LogFile
+    Notificar-Windows "IIP: falha nas camadas do patrimonio" $msg8 "Warning"
+}
+
 # Serie que piorou (ausente, defasada, zerada, irregular): avisa, mas nao e falha do job.
 if (Test-Path $AlertaSeries) {
     $Series = @(Get-Content $AlertaSeries -Encoding UTF8)
@@ -201,7 +214,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0 -and $MacroAlertExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $LayersExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0 -and $MacroAlertExitCode -eq 0) {
     exit 0
 }
 exit 1
