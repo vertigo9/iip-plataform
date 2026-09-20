@@ -33,6 +33,7 @@ DAILY, MONTHLY, QUARTERLY = "daily", "monthly", "quarterly"
 
 BACEN_SGS = "bacen_sgs"
 IBGE_SIDRA = "ibge_sidra"
+TESOURO_DIRETO = "tesouro_direto"
 
 # categorias e os rótulos que a nota usa
 CATEGORY_LABELS = {
@@ -78,6 +79,8 @@ class MacroObservation:
     value: float | None
     collected_at: str  # AAAA-MM-DD da coleta
     provisional: bool = False
+    # proveniência extra da observação (a NTN-B: o vencimento do título de que a taxa saiu)
+    note: str = ""
 
 
 INDICATORS: dict[str, MacroIndicator] = {
@@ -260,6 +263,22 @@ INDICATORS: dict[str, MacroIndicator] = {
             "A desocupação do trimestre, direto do IBGE.",
             "IBGE = BACEN",
             stale_after_days=160,
+            relevant_for=("Ações", "FII"),
+            change_kind="pp",
+        ),
+        MacroIndicator(
+            "ntnb_longa_real",
+            "Taxa real da NTN-B longa (Tesouro IPCA+ com Juros Semestrais)",
+            TESOURO_DIRETO,
+            "NTN-B mais longa",
+            "% ao ano, real (sobre o IPCA)",
+            DAILY,
+            "juros",
+            "A taxa de venda do Tesouro para o vencimento mais longo da NTN-B: o custo de "
+            "oportunidade real que o Bazin e o Yield usam. É taxa REAL (IPCA + x%); não se "
+            "compara direto com a Selic, que é nominal.",
+            "Tesouro Transparente (a mesma fonte que o valuation já usa)",
+            stale_after_days=10,
             relevant_for=("Ações", "FII"),
             change_kind="pp",
         ),

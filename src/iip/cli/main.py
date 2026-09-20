@@ -1434,6 +1434,176 @@ def collect_macro_command(indicators: tuple[str, ...], vault: str | None) -> Non
         raise SystemExit(1)
 
 
+@cli.command("macro-scenarios")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--init",
+    is_flag=True,
+    default=False,
+    help="Cria 07_Research/Macro/cenarios.json a partir do conjunto-padrão, se ainda não "
+    "existir (nunca sobrescreve um arquivo editado).",
+)
+def macro_scenarios_command(vault: str | None, init: bool) -> None:
+    """Mostra os cenários de juros e inflação (versão, hash e choques).
+
+    Os choques vivem no arquivo do vault, versionados; o conjunto-padrão é um ponto de partida
+    editável, não uma previsão."""
+    from iip.macro.scenarios import (
+        DEFAULT_SCENARIOS,
+        SCENARIOS_RELATIVE_PATH,
+        TRANSMISSION_RULE,
+        load_scenarios,
+        save_scenarios,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    try:
+        current = load_scenarios(vault_path)
+    except ValueError as exc:
+        console.print(f"[bold red]Cenários inválidos:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    if current is None:
+        if not init:
+            console.print(
+                "[yellow]Sem arquivo de cenários. Rode com --init para criar a partir do "
+                "conjunto-padrão (editável).[/]"
+            )
+            raise SystemExit(1)
+        console.print(
+            f"[dim]Criado: {save_scenarios(vault_path, DEFAULT_SCENARIOS)}[/]"
+        )
+        current = DEFAULT_SCENARIOS
+
+    console.print(
+        f"[bold]Cenários {current.version}[/] (hash {current.content_hash}) — "
+        f"{SCENARIOS_RELATIVE_PATH.as_posix()}"
+    )
+    console.print(f"[dim]{current.origin}[/]")
+    table = Table(title="Choques (p.p.)")
+    table.add_column("Cenário")
+    table.add_column("Juros nominais", justify="right")
+    table.add_column("Inflação esperada", justify="right")
+    table.add_column("Taxa real direta", justify="right")
+    table.add_column("Desloc. da taxa real", justify="right")
+    for sc in current.scenarios:
+        table.add_row(
+            sc.id,
+            f"{sc.nominal_rate_shock_pp:+.2f}",
+            f"{sc.inflation_shock_pp:+.2f}",
+            f"{sc.real_yield_shock_pp:+.2f}",
+            f"{sc.real_yield_shift_pp:+.2f}",
+        )
+    console.print(table)
+    console.print(f"[dim]Regra: {TRANSMISSION_RULE}[/]")
+
+
+@cli.command("macro-sensitivity")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 07_Research/Macro/Sensibilidade.md (sobrescrita a cada execução).",
+)
+def macro_sensitivity_command(vault: str | None, report: bool) -> None:
+    """Reavalia o Bazin e o Yield com a taxa real da NTN-B deslocada por cada cenário.
+
+    Usa os insumos da última rodada de `value-portfolio --report` (não busca nada). É
+    sensibilidade das premissas: não é recomendação e não altera aporte, peso-alvo nem
+    rebalanceamento."""
+    import datetime as _dt
+
+    from iip.macro.scenarios import load_scenarios
+    from iip.macro.sensitivity import run_sensitivity
+    from iip.macro.store import MacroStore
+    from iip.portfolio.valuation_inputs import load_valuation_inputs
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    try:
+        scenario_set = load_scenarios(vault_path)
+    except ValueError as exc:
+        console.print(f"[bold red]Cenários inválidos:[/] {exc}")
+        raise SystemExit(1) from exc
+    if scenario_set is None:
+        console.print(
+            "[yellow]Sem cenários: rode `iip macro-scenarios --init` e, se quiser, edite o "
+            "arquivo.[/]"
+        )
+        raise SystemExit(1)
+    inputs = load_valuation_inputs(vault_path)
+    if inputs is None:
+        console.print(
+            "[yellow]Sem insumos de valuation: rode `iip value-portfolio --report` primeiro "
+            "(ele guarda os insumos que esta sensibilidade reusa).[/]"
+        )
+        raise SystemExit(1)
+
+    # data de calendário (idade dos insumos), não timestamp
+    result = run_sensitivity(
+        inputs,
+        scenario_set,
+        store=MacroStore(vault_path),
+        today=_dt.date.today(),  # noqa: DTZ011
+    )
+
+    if result.base_rate is not None:
+        console.print(
+            f"[bold]Taxa observada:[/] IPCA + {result.base_rate.real_yield:.2%} "
+            f"(NTN-B {result.base_rate.maturity}, ref. {result.base_rate.reference_date}); "
+            f"insumos de {result.inputs_run_date}."
+        )
+    for warning in result.warnings:
+        console.print(f"[yellow]Aviso:[/] {warning}")
+
+    sensitive = [a for a in result.assets if a.sensitive_methods]
+    table = Table(title="Sensibilidade do valor justo (variação sobre a base)")
+    table.add_column("Ativo")
+    table.add_column("Modelo")
+    table.add_column("Base", justify="right")
+    for scenario_id, _, shift in result.scenarios:
+        table.add_column(f"{scenario_id} ({shift:+.2f})", justify="right")
+    for asset in sensitive:
+        for index, base in enumerate(asset.base):
+            if base.method not in asset.sensitive_methods:
+                continue
+            cells = []
+            for outcome in asset.scenarios:
+                other = outcome.methods[index]
+                if other.fair_value is None or not base.fair_value:
+                    cells.append("sem valor")
+                else:
+                    cells.append(
+                        f"{(other.fair_value / base.fair_value - 1) * 100:+.0f}%"
+                    )
+            table.add_row(
+                asset.ticker,
+                base.method,
+                f"{base.fair_value:.2f}" if base.fair_value is not None else "—",
+                *cells,
+            )
+    console.print(table)
+    console.print(
+        f"[dim]{len(sensitive)} de {len(result.assets)} ativos sensíveis; os demais não usam "
+        "a taxa. Sensibilidade das premissas, não recomendação; não altera aporte nem peso "
+        f"(cenários {result.scenario_version}, hash {result.scenario_hash}).[/]"
+    )
+    if report:
+        from iip.obsidian.sensitivity_report import write_sensitivity_report
+
+        console.print(
+            f"[dim]{write_sensitivity_report(vault_path, result, scenario_set)}[/]"
+        )
+
+
 @cli.command("macro-context")
 @click.option(
     "--vault",
@@ -1811,6 +1981,18 @@ def value_portfolio_command(
             as_of=_dt.date.today(),  # noqa: DTZ011
         )
         console.print(f"[dim]Relatório de valuation: {written}[/]")
+
+        from iip.portfolio.valuation_inputs import (
+            build_valuation_inputs,
+            save_valuation_inputs,
+        )
+
+        # data de calendário (a data da rodada), não timestamp
+        run_date = _dt.date.today()  # noqa: DTZ011
+        saved = save_valuation_inputs(
+            vault_path, build_valuation_inputs(resultado, run_date=run_date)
+        )
+        console.print(f"[dim]Insumos do valuation (para a sensibilidade): {saved}[/]")
 
     if resultado.failed:
         raise SystemExit(1)

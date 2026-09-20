@@ -114,6 +114,33 @@ def parse_rates(
     return tuple(rows)
 
 
+def long_ntnb_series(
+    rows: tuple[TesouroRateRow, ...],
+) -> tuple[NtnbRate, ...]:
+    """A taxa real da NTN-B mais longa de CADA dia útil presente em ``rows``, da mais antiga
+    à mais nova. Mesmos critérios de ``long_ntnb_rate`` (título, taxa de venda, faixa
+    plausível), sem o limite de idade: aqui quem quer só o mais recente usa
+    ``long_ntnb_rate``; quem guarda a série usa esta."""
+    by_day: dict[date, list[TesouroRateRow]] = {}
+    for row in rows:
+        if row.titulo == NTNB_TITLE and row.taxa_venda is not None:
+            by_day.setdefault(row.data_base, []).append(row)
+    low, high = _PLAUSIBLE_REAL_YIELD
+    series = []
+    for day in sorted(by_day):
+        longest = max(by_day[day], key=lambda r: r.vencimento)
+        real_yield = longest.taxa_venda / 100.0
+        if low < real_yield < high:
+            series.append(
+                NtnbRate(
+                    reference_date=day,
+                    maturity=longest.vencimento,
+                    real_yield=round(real_yield, 6),
+                )
+            )
+    return tuple(series)
+
+
 def long_ntnb_rate(
     rows: tuple[TesouroRateRow, ...],
     *,
