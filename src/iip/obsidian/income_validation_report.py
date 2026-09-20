@@ -105,8 +105,8 @@ def render_validation_report(checks: tuple[CrossCheck, ...]) -> str:
         "- Comparo o número declarado no relatório mais recente com a projeção da CVM (mediana "
         "dos últimos meses); o mês a que o relatório se refere pode diferir do último mês da "
         "CVM em um mês.",
-        "- Sem leitor: HGRU11, LVBI11, PVBI11 (a planilha da Pátria de tijolo não traz o "
-        "rendimento), MANA11, AFHI11, BTCI11 e VGIP11.",
+        "- Sem leitor: HGRU11 e LVBI11 (a planilha da Pátria de tijolo não traz o "
+        "rendimento), MANA11, AFHI11 e VGIP11.",
         "- Conferir com UM relatório não prova a série inteira: um mês pode conferir e outros "
         "estarem errados na CVM.",
     ]

@@ -25,7 +25,15 @@ def test_cdii11_resolves_to_sparta():
 
 
 def test_btc11_resolves_to_btg():
-    result = PortfolioSourcePolicyResolver().resolve("BTCI11")
+    # BTCI11 is a closed position, so the default (active) resolver skips it, but the
+    # knowledge about its provider is preserved for when the user buys it again
+    assert PortfolioSourcePolicyResolver().resolve("BTCI11") is None
+
+    from iip.portfolio.registry import ALL_PORTFOLIO_ASSETS
+
+    result = PortfolioSourcePolicyResolver(assets=ALL_PORTFOLIO_ASSETS).resolve(
+        "BTCI11"
+    )
     assert result is not None
     assert result.institutional_provider is not None
     assert result.institutional_provider.name == "btg"
@@ -51,8 +59,8 @@ def test_all_real_portfolio_assets_can_be_resolved():
     results = PortfolioSourcePolicyResolver().resolve_many()
 
     # DATABASE v3.2: 14 equities + 21 funds + LFTB11 + Daycoval FMP/AXIA3.
-    # Total registry records = 37.
-    assert len(results) == 37
+    # Total registry records = 37, of which 35 are active (BTCI11 and PVBI11 are closed).
+    assert len(results) == 35
 
 
 def test_selected_assets_have_expected_provider():

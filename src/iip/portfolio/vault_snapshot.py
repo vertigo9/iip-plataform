@@ -23,7 +23,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from iip.portfolio.registry import PORTFOLIO_ASSETS, PortfolioAsset
+from iip.portfolio.registry import ALL_PORTFOLIO_ASSETS, PortfolioAsset
 from iip.universal.portfolio_state import PortfolioState, PositionState
 
 # Current.md labels this position by its FGTS product name; the
@@ -63,7 +63,8 @@ def _parse_pct(raw: str) -> float | None:
 
 
 def _registry_by_ticker(ticker: str) -> PortfolioAsset | None:
-    return next((a for a in PORTFOLIO_ASSETS if a.ticker == ticker), None)
+    # inclui as posições encerradas: uma que volta ao snapshot mantém a classificação
+    return next((a for a in ALL_PORTFOLIO_ASSETS if a.ticker == ticker), None)
 
 
 def _position_from_row(cells: list[str]) -> PositionState | None:

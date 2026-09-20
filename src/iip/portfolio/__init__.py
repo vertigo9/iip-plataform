@@ -12,6 +12,8 @@ from .historical_series import (
     normalize_quota_splits,
 )
 from .registry import (
+    ALL_PORTFOLIO_ASSETS,
+    CLOSED_ASSETS,
     PORTFOLIO_ASSETS,
     ClassificationProvenance,
     PortfolioAsset,
@@ -53,6 +55,8 @@ except ImportError:
     ingest_registered_assets = None
 
 __all__ = [
+    "ALL_PORTFOLIO_ASSETS",
+    "CLOSED_ASSETS",
     "PORTFOLIO_ASSETS",
     "AssetSourcePolicy",
     "AssetE2EResult",

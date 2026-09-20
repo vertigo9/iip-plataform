@@ -8,7 +8,10 @@ def test_portfolio_contains_14_equities_from_database():
 
 def test_portfolio_contains_21_funds_from_database():
     funds = assets_by_class("fund")
-    assert len(funds) == 21
+    assert len(funds) == 19  # 21 no DATABASE; BTCI11 e PVBI11 foram encerrados
+    from iip.portfolio.registry import ALL_PORTFOLIO_ASSETS
+
+    assert len([a for a in ALL_PORTFOLIO_ASSETS if a.asset_class == "fund"]) == 21
 
 
 def test_hgru11_user_classification_is_preserved():
