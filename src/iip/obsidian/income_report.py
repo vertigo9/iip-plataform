@@ -8,12 +8,19 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from iip.obsidian.dashboard import (
+    INCOME_COVERAGE_KEY,
+    INCOME_EXCLUDED_KEY,
+    INCOME_MONTHLY_KEY,
+)
+from iip.obsidian.frontmatter import flow_line
 from iip.portfolio.income import (
     MIN_REGULAR_SHARE,
     OUTLIER_TOLERANCE,
     STALE_AFTER_MONTHS,
     IncomeReport,
 )
+from iip.portfolio.series_state import CODE_LABELS
 
 REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Renda.md"
 
@@ -34,6 +41,16 @@ def render_income_report(report: IncomeReport) -> str:
         f"projected: {len(projected)}",
         f"excluded: {len(excluded)}",
         f"monthly_income: {report.monthly_income:.2f}",
+        flow_line(INCOME_MONTHLY_KEY, round(report.monthly_income, 2)),
+        flow_line(INCOME_COVERAGE_KEY, round(report.covered_share, 4)),
+        flow_line(
+            INCOME_EXCLUDED_KEY,
+            [
+                {"ticker": ln.ticker, "situacao": CODE_LABELS.get(ln.code, ln.code)}
+                for ln in excluded
+                if ln.last_period
+            ],
+        ),
         "---",
         "",
         "# Renda mensal projetada",

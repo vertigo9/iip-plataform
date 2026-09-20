@@ -10,8 +10,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from iip.obsidian.dashboard import DECISIONS_CHANGES_KEY, DECISIONS_SUMMARY_KEY
+from iip.obsidian.frontmatter import flow_line
 from iip.obsidian.valuation_report import find_asset_links
 from iip.portfolio.batch_decide import THESIS_SIGNAL, DecisionOutcome, DecisionRunResult
+from iip.portfolio.decision_alerts import decision_changes
 
 REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Decisoes.md"
 
@@ -71,6 +74,19 @@ def render_decision_report(
         f"decided: {len(ok)}",
         f"skipped: {len(result.skipped)}",
         f"errors: {len(result.failed)}",
+        flow_line(DECISIONS_SUMMARY_KEY, {v: n for v, n in counts.items() if n}),
+        flow_line(
+            DECISIONS_CHANGES_KEY,
+            [
+                {
+                    "ticker": c.ticker,
+                    "de": c.previous,
+                    "para": c.current,
+                    "sentido": c.direction,
+                }
+                for c in decision_changes(result)
+            ],
+        ),
         "---",
         "",
         f"# Decisões da carteira — {result.decision_date:%d/%m/%Y}",

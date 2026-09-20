@@ -36,6 +36,132 @@ VALUATION_NOTE_LINK = "[[Valuation|Valuation da Carteira]]"
 HIGHLIGHTS_TOP_KEY = "destaques_maiores_margens"
 HIGHLIGHTS_BOTTOM_KEY = "destaques_menores_margens"
 
+# The notes of the follow-up layer (decisions, exposure, income, series). Same rule as the
+# valuation note: the dashboard reads their YAML frontmatter with DataviewJS, so the paths and
+# the keys are defined once, here, and imported by each report.
+DECISIONS_NOTE_DV_PATH = "02_Portfolio/Decisoes"
+EXPOSURE_NOTE_DV_PATH = "02_Portfolio/Exposicao"
+INCOME_NOTE_DV_PATH = "02_Portfolio/Renda"
+SERIES_NOTE_DV_PATH = "02_Portfolio/Series"
+
+DECISIONS_SUMMARY_KEY = "resumo_decisoes"
+DECISIONS_CHANGES_KEY = "mudancas"
+EXPOSURE_FLAGS_KEY = "alertas_concentracao"
+EXPOSURE_STALE_KEY = "snapshot_defasado"
+EXPOSURE_AGE_KEY = "snapshot_dias"
+EXPOSURE_DATE_KEY = "snapshot_data"
+EXPOSURE_MISSING_KEY = "fora_do_snapshot"
+INCOME_MONTHLY_KEY = "renda_mensal"
+INCOME_COVERAGE_KEY = "cobertura_valor"
+INCOME_EXCLUDED_KEY = "sem_projecao"
+SERIES_PROBLEMS_KEY = "problemas"
+SERIES_TOTAL_KEY = "series_total"
+
+
+def _missing(note_dv_path: str, command: str) -> str:
+    return (
+        f'    dv.paragraph("Nota ainda não gerada, ou gerada por uma versão anterior sem os '
+        f'campos do painel: rode `{command}` (ou espere o job diário). Caminho: {note_dv_path}.");'
+    )
+
+
+def _tracking_section() -> list[str]:
+    """The "Acompanhamento da carteira" blocks: one per follow-up note, each reading only
+    that note's frontmatter and saying so when the note does not exist yet."""
+    return [
+        "## 🧭 Acompanhamento da Carteira",
+        "",
+        "Cada bloco lê o cabeçalho de uma nota gerada pelo job diário; nada é recalculado "
+        "aqui. Uma nota que ainda não existe aparece como aviso, não como tabela vazia.",
+        "",
+        "### Decisões",
+        "",
+        "Nota completa: [[Decisoes|Decisões da carteira]]. Gerada por "
+        "`iip decide-portfolio --report`. A decisão é uma proposta para aprovação, não uma ordem.",
+        "",
+        "```dataviewjs",
+        f'const p = dv.page("{DECISIONS_NOTE_DV_PATH}");',
+        f"if (!p || p.{DECISIONS_SUMMARY_KEY} === undefined) {{",
+        _missing(DECISIONS_NOTE_DV_PATH, "iip decide-portfolio --report"),
+        "} else {",
+        f"    const r = p.{DECISIONS_SUMMARY_KEY} || {{}};",
+        '    const resumo = Object.keys(r).map(k => r[k] + " " + k).join(", ");',
+        '    dv.paragraph("Decisões de " + String(p.date).slice(0, 10) + ": " + (resumo || "nenhuma") + ".");',
+        f"    const ch = Array.from(p.{DECISIONS_CHANGES_KEY} || []);",
+        "    if (ch.length) {",
+        '        dv.table(["Ativo", "Antes", "Agora", "Sentido"], ch.map(x => [x.ticker, x.de, x.para, x.sentido]));',
+        "    } else {",
+        '        dv.paragraph("Nenhuma decisão mudou desde a anterior.");',
+        "    }",
+        "}",
+        "```",
+        "",
+        "### Exposição e concentração",
+        "",
+        "Nota completa: [[Exposicao|Exposição da carteira]]. Gerada por "
+        "`iip portfolio-exposure --report`.",
+        "",
+        "```dataviewjs",
+        f'const p = dv.page("{EXPOSURE_NOTE_DV_PATH}");',
+        f"if (!p || p.{EXPOSURE_AGE_KEY} === undefined) {{",
+        _missing(EXPOSURE_NOTE_DV_PATH, "iip portfolio-exposure --report"),
+        "} else {",
+        f'    let txt = "Snapshot de " + String(p.{EXPOSURE_DATE_KEY}).slice(0, 10) + " (" + p.{EXPOSURE_AGE_KEY} + " dias).";',
+        f'    if (p.{EXPOSURE_STALE_KEY}) txt += " **Defasado**: os pesos já andaram com os preços.";',
+        "    dv.paragraph(txt);",
+        f"    const miss = Array.from(p.{EXPOSURE_MISSING_KEY} || []);",
+        '    if (miss.length) dv.paragraph("Fora do snapshot: " + miss.join(", ") + " (carteira incompleta).");',
+        f"    const fl = Array.from(p.{EXPOSURE_FLAGS_KEY} || []);",
+        "    if (fl.length) {",
+        '        dv.table(["Tipo", "Visão", "Grupo", "Peso"], fl.map(x => [x.tipo, x.dimensao, x.grupo, (Number(x.peso) * 100).toFixed(1) + "%"]));',
+        "    } else {",
+        '        dv.paragraph("Nenhum grupo ou posição acima dos limites de atenção.");',
+        "    }",
+        "}",
+        "```",
+        "",
+        "### Renda projetada",
+        "",
+        "Nota completa: [[Renda|Renda projetada]]. Gerada por `iip portfolio-income --report`. "
+        "Renda bruta estimada, não promessa.",
+        "",
+        "```dataviewjs",
+        f'const p = dv.page("{INCOME_NOTE_DV_PATH}");',
+        f"if (!p || p.{INCOME_MONTHLY_KEY} === undefined) {{",
+        _missing(INCOME_NOTE_DV_PATH, "iip portfolio-income --report"),
+        "} else {",
+        f'    dv.paragraph("R$ " + Number(p.{INCOME_MONTHLY_KEY}).toFixed(2) + " por mês, cobrindo " + (Number(p.{INCOME_COVERAGE_KEY}) * 100).toFixed(1) + "% do valor da carteira.");',
+        f"    const ex = Array.from(p.{INCOME_EXCLUDED_KEY} || []);",
+        "    if (ex.length) {",
+        '        dv.paragraph("Fundos com série, mas sem projeção confiável:");',
+        '        dv.table(["Fundo", "Situação"], ex.map(x => [x.ticker, x.situacao]));',
+        "    }",
+        "}",
+        "```",
+        "",
+        "### Séries mensais da CVM",
+        "",
+        "Nota completa: [[Series|Séries mensais da CVM]]. Atualizada por "
+        "`iip collect-fii-history`. São elas que alimentam a renda projetada.",
+        "",
+        "```dataviewjs",
+        f'const p = dv.page("{SERIES_NOTE_DV_PATH}");',
+        f"if (!p || p.{SERIES_TOTAL_KEY} === undefined) {{",
+        _missing(SERIES_NOTE_DV_PATH, "iip collect-fii-history --report"),
+        "} else {",
+        f"    const pr = Array.from(p.{SERIES_PROBLEMS_KEY} || []);",
+        f'    dv.paragraph(p.{SERIES_TOTAL_KEY} + " séries, " + pr.length + " com problema (dados de " + String(p.date).slice(0, 10) + ").");',
+        "    if (pr.length) {",
+        '        dv.table(["Fundo", "Situação", "Última competência", "Defasada", "Atualizada em"], pr.map(x => [x.ticker, x.situacao, x.ultima_competencia || "—", x.defasada ? "sim" : "não", x.atualizada_em || "nunca"]));',
+        "    }",
+        "}",
+        "```",
+        "",
+        "---",
+        "",
+    ]
+
+
 DASHBOARD_TEMPLATE = "\n".join(
     [
         "---",
@@ -84,6 +210,7 @@ DASHBOARD_TEMPLATE = "\n".join(
         "",
         "---",
         "",
+        *_tracking_section(),
         "## 🟢 Status do Pipeline por Ativo",
         "",
         "```dataviewjs",

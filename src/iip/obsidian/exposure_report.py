@@ -9,6 +9,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from iip.obsidian.dashboard import (
+    EXPOSURE_AGE_KEY,
+    EXPOSURE_DATE_KEY,
+    EXPOSURE_FLAGS_KEY,
+    EXPOSURE_MISSING_KEY,
+    EXPOSURE_STALE_KEY,
+)
+from iip.obsidian.frontmatter import flow_line
 from iip.portfolio.exposure import (
     LOW_COVERAGE,
     SEM_CLASSIFICACAO,
@@ -59,6 +67,24 @@ def render_exposure_report(report: ExposureReport) -> str:
         f"snapshot_date: {report.as_of.isoformat() if report.as_of else 'desconhecida'}",
         f"positions: {report.position_count}",
         f"flags: {len(report.flags)}",
+        flow_line(
+            EXPOSURE_DATE_KEY, report.as_of.isoformat() if report.as_of else None
+        ),
+        flow_line(EXPOSURE_AGE_KEY, report.age_days),
+        flow_line(EXPOSURE_STALE_KEY, report.stale),
+        flow_line(EXPOSURE_MISSING_KEY, list(report.missing_from_snapshot)),
+        flow_line(
+            EXPOSURE_FLAGS_KEY,
+            [
+                {
+                    "tipo": f.kind,
+                    "dimensao": f.dimension,
+                    "grupo": f.label,
+                    "peso": round(f.weight, 4),
+                }
+                for f in report.flags
+            ],
+        ),
         "---",
         "",
         "# Exposição e concentração da carteira",

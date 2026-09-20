@@ -92,7 +92,12 @@ $IncomeExitCode = $LASTEXITCODE
 python -m iip.cli.main portfolio-exposure --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $ExposureExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode ===" | Tee-Object -FilePath $LogFile -Append
+# Painel: cada bloco le o cabecalho das notas geradas acima, por isso vem por ultimo.
+Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
+$DashboardExitCode = $LASTEXITCODE
+
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -121,8 +126,8 @@ if ($SeriesExitCode -ne 0) {
     Notificar-Windows "IIP: falha nas series da CVM" $msg5 "Warning"
 }
 
-if ($IncomeExitCode -ne 0 -or $ExposureExitCode -ne 0) {
-    $msg6 = "A renda projetada ou a exposicao da carteira nao foram geradas hoje. Veja " + $LogFile
+if ($IncomeExitCode -ne 0 -or $ExposureExitCode -ne 0 -or $DashboardExitCode -ne 0) {
+    $msg6 = "A renda projetada, a exposicao ou o dashboard da carteira nao foram gerados hoje. Veja " + $LogFile
     Notificar-Windows "IIP: falha na renda ou na exposicao" $msg6 "Warning"
 }
 
@@ -144,7 +149,7 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0) {
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $DashboardExitCode -eq 0) {
     exit 0
 }
 exit 1

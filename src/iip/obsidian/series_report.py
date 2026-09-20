@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from iip.obsidian.dashboard import SERIES_PROBLEMS_KEY, SERIES_TOTAL_KEY
+from iip.obsidian.frontmatter import flow_line
 from iip.portfolio.income import STALE_AFTER_MONTHS
 from iip.portfolio.series_state import HEALTHY, SeriesAlert, SeriesState
 
@@ -27,6 +29,20 @@ def render_series_report(
         f"date: {today_iso}",
         f"series: {len(states)}",
         f"with_problems: {len(problems)}",
+        flow_line(SERIES_TOTAL_KEY, len(states)),
+        flow_line(
+            SERIES_PROBLEMS_KEY,
+            [
+                {
+                    "ticker": s.ticker,
+                    "situacao": s.label,
+                    "ultima_competencia": s.last_period,
+                    "defasada": s.stale,
+                    "atualizada_em": s.refreshed_at,
+                }
+                for s in problems
+            ],
+        ),
         "---",
         "",
         "# Séries mensais da CVM (FIIs)",
