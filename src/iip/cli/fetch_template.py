@@ -1443,8 +1443,9 @@ def _enrich_etf_with_investo(
 
     if not investo_etf.supports(symbol):
         return template, [], []
+    harvester = InvestoEtfHTTPHarvester()
     try:
-        fetched = InvestoEtfHTTPHarvester().fetch(symbol, expected_cnpj=cnpj)
+        fetched = harvester.fetch(symbol, expected_cnpj=cnpj)
     # enriquecimento é best-effort, nunca deve derrubar o template já montado
     except Exception as exc:  # noqa: BLE001
         return (
@@ -1484,13 +1485,109 @@ def _enrich_etf_with_investo(
             price * latest.net_assets / latest.nav_per_share, 2
         )
         fetched_fields.append("market_cap")
+    financials, analysis_fields, analysis_warnings = _investo_analysis_inputs(
+        financials, fetched, harvester, symbol
+    )
+    fetched_fields.extend(analysis_fields)
     template["financials"] = financials
     warnings = [
         f"nav_per_share = R$ {latest.nav_per_share:.2f}, a cota patrimonial de "
         f"{latest.date:%d/%m/%Y} (D-1) do site oficial da Investo; o preço de mercado "
         "vem do brapi e é mais novo, então o prêmio sobre o NAV carrega essa defasagem."
     ]
+    warnings.extend(analysis_warnings)
     return template, fetched_fields, warnings
+
+
+def _investo_analysis_inputs(
+    financials: dict[str, Any], fetched, harvester, symbol: str
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Inputs of ``ETFAnalyzer`` that were sitting at their defaults, from the same
+    Investo source (see ``iip.sources.investo_etf``): the expense ratio (read from the
+    product sheet), the year's net inflows (ESTIMATED from net assets and NAV per share)
+    and the tracking error/difference (CALCULATED from the official ETF x index series,
+    the difference from the official table). Each one says in a warning whether it was
+    read or derived. The performance table is a separate request: if it fails, the NAV
+    the valuation needs is untouched and only the two tracking fields stay at default.
+    """
+    from iip.sources import investo_etf
+
+    financials = dict(financials)
+    fields: list[str] = []
+    warnings: list[str] = []
+
+    fee = investo_etf.parse_fee_pct(fetched.product.administration_fee)
+    if fee is not None:
+        financials["expense_ratio_pct"] = fee
+        fields.append("expense_ratio_pct")
+        warnings.append(
+            f"expense_ratio_pct = {fee:g}%: a taxa de administração e gestão da ficha "
+            "do Investo (a taxa global do regulamento pode ser maior)."
+        )
+
+    year = fetched.latest.date.year
+    inflows = investo_etf.net_inflows_ytd_millions(fetched.points, year)
+    if inflows is not None:
+        financials["net_inflows_ytd_millions"] = inflows
+        fields.append("net_inflows_ytd_millions")
+        warnings.append(
+            f"net_inflows_ytd_millions = R$ {inflows:,.0f} mi ({year}): ESTIMATIVA "
+            "derivada (cotas = PL / cota patrimonial; fluxo = variação de cotas x a cota "
+            "do dia), não um número informado pelo fundo."
+        )
+
+    try:
+        returns = harvester.fetch_returns(symbol)
+    # a rentabilidade é um complemento: sem ela o NAV do valuation segue intacto
+    except Exception as exc:  # noqa: BLE001
+        warnings.append(
+            f"não consegui ler a rentabilidade de {symbol} no Investo: {exc}; "
+            "tracking_error_pct e tracking_difference_pct ficam no valor-padrão."
+        )
+        return financials, fields, warnings
+
+    weekly = investo_etf.tracking_error_pct(returns.series)
+    if weekly is None:
+        warnings.append(
+            "a série ETF x índice é curta demais para um tracking error confiável: "
+            "tracking_error_pct fica no valor-padrão."
+        )
+    else:
+        financials["tracking_error_pct"] = weekly
+        fields.append("tracking_error_pct")
+        daily = investo_etf.tracking_error_pct(
+            returns.series, window=1, windows=252, min_windows=126
+        )
+        monthly = investo_etf.tracking_error_pct(
+            returns.series, window=21, windows=12, min_windows=6
+        )
+        others = ", ".join(
+            f"{label} {value:g}%"
+            for label, value in (("diário", daily), ("mensal", monthly))
+            if value is not None
+        )
+        warnings.append(
+            f"tracking_error_pct = {weekly:g}%: CALCULADO, desvio-padrão semanal (janelas "
+            "de 5 pregões, últimas 52) da diferença de retorno ETF - índice, anualizado"
+            + (
+                f" (outras frequências: {others}; a diferença diária reverte, então o "
+                "diário exagera)."
+                if others
+                else "."
+            )
+        )
+
+    difference = investo_etf.tracking_difference_pct(returns.table)
+    if difference is not None:
+        financials["tracking_difference_pct"] = difference
+        fields.append("tracking_difference_pct")
+        since = investo_etf.tracking_difference_pct(returns.table, "lancamento")
+        warnings.append(
+            f"tracking_difference_pct = {difference:+g} p.p.: ETF - índice no último ano "
+            "(tabela oficial)"
+            + (f"; desde o lançamento, {since:+g} p.p." if since is not None else ".")
+        )
+    return financials, fields, warnings
 
 
 def _fii_defaults() -> dict[str, Any]:

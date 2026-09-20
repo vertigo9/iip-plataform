@@ -12,10 +12,13 @@ from .investo_etf import (
     InvestoEtfError,
     InvestoNavPoint,
     InvestoProduct,
+    InvestoReturns,
     history_url,
     parse_history,
     parse_product,
+    parse_returns,
     product_url,
+    returns_url,
     same_cnpj,
     supports,
 )
@@ -77,3 +80,19 @@ class InvestoEtfHTTPHarvester:
         if not points:
             raise InvestoEtfError(f"histórico de cotas de {ticker} vazio ou ilegível")
         return FetchedInvestoEtf(ticker, product, points)
+
+    def fetch_returns(self, ticker: str) -> InvestoReturns:
+        """A rentabilidade oficial (tabela por período e série diária ETF x índice).
+        Levanta ``InvestoEtfError`` se o ticker não foi verificado ou a resposta não é a
+        do fundo pedido. Separado do ``fetch``: o NAV do valuation não depende dela."""
+        ticker = ticker.strip().upper()
+        if not supports(ticker):
+            raise InvestoEtfError(f"{ticker} não é um ETF verificado nesta fonte")
+        returns = parse_returns(self._get_json(returns_url(ticker)))
+        if returns is None:
+            raise InvestoEtfError(f"rentabilidade de {ticker} fora do formato esperado")
+        if returns.ticker != ticker:
+            raise InvestoEtfError(
+                f"a rentabilidade pedida para {ticker} é a de {returns.ticker or '?'}"
+            )
+        return returns
