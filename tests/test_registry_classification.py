@@ -122,3 +122,41 @@ def test_the_lead_method_of_the_other_stocks_did_not_change(ticker, lead):
     asset = get_asset(ticker)
 
     assert ordered_methods(asset.asset_class, asset.sector, asset.industry)[0] is lead
+
+
+# --- the combined guarantee: the new classification plus the declared exception -----------
+
+
+def test_with_the_declared_exception_the_new_classification_does_not_change_the_csud3_method():
+    from iip.portfolio_data.valuation_exceptions import DEFAULT_EXCEPTIONS
+
+    asset = get_asset("CSUD3")
+
+    fit = applicability(
+        ValuationMethod.GRAHAM,
+        asset.asset_class,
+        asset.sector,
+        asset.industry,
+        ticker="CSUD3",
+        exceptions=DEFAULT_EXCEPTIONS,
+    )
+    order = ordered_methods(
+        asset.asset_class,
+        asset.sector,
+        asset.industry,
+        ticker="CSUD3",
+        exceptions=DEFAULT_EXCEPTIONS,
+    )
+
+    # o Graham segue excluído (agora por EXCEÇÃO declarada, não por palavra do setor)
+    assert fit.applicable is False
+    assert fit.reason.startswith("exceção metodológica CSUD3-graham-excluir")
+    assert ValuationMethod.BAZIN in order
+
+
+def test_the_declared_exception_targets_csud3_so_reclassifying_it_cannot_re_enable_graham():
+    from iip.portfolio_data.valuation_exceptions import DEFAULT_EXCEPTIONS
+
+    tickers = {i.ticker for i in DEFAULT_EXCEPTIONS.items if i.method == "Graham"}
+
+    assert "CSUD3" in tickers

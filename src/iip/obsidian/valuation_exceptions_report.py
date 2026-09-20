@@ -42,7 +42,22 @@ def effect_of(item: MethodException, exceptions: ValuationExceptions) -> str:
         exceptions=exceptions,
     )
     state = "aplicável" if fit.applicable else "excluído"
-    lead = order[0].value if order else "—"
+    # o líder é o primeiro método que de fato se aplica (um excluído não lidera)
+    lead = next(
+        (
+            m.value
+            for m in order
+            if applicability(
+                m,
+                asset.asset_class,
+                asset.sector or "",
+                asset.industry or "",
+                ticker=item.ticker,
+                exceptions=exceptions,
+            ).applicable
+        ),
+        "—",
+    )
     return f"{item.method} {state}; método líder: {lead}"
 
 
