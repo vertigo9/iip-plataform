@@ -14,9 +14,11 @@ from pathlib import Path
 from iip.obsidian.frontmatter import flow_line
 from iip.portfolio.target_policy import (
     STAGE_BUILDING,
+    SUM_INDIVIDUAL_REFERENCES,
     Reconciliation,
     TargetPolicy,
     read_weight,
+    target_sum,
 )
 
 REPORT_RELATIVE_PATH = Path("02_Portfolio") / "Politica_Pesos_Alvo.md"
@@ -25,6 +27,10 @@ _SUM_RULE_TEXT = {
     None: "em aberto (decisão do usuário)",
     "total_100": "os alvos somam 100%",
     "reserva": "parte fica sem alvo, como reserva de oportunidade",
+    SUM_INDIVIDUAL_REFERENCES: (
+        "os alvos são referências individuais por ativo, não uma carteira-alvo; a soma não "
+        "precisa fechar em 100%"
+    ),
 }
 
 
@@ -94,7 +100,13 @@ def render_policy_report(
         "",
         f"- **Base de cálculo {policy.base_id}**: {policy.base_description}; "
         f"{_brl(rec.total)} no snapshot atual.",
-        f"- **Soma dos alvos**: {_SUM_RULE_TEXT[policy.sum_rule]}.",
+        f"- **Soma dos alvos**: {_SUM_RULE_TEXT[policy.sum_rule]}"
+        + (
+            f" (soma atual dos alvos individuais definidos: {target_sum(policy):g}%, "
+            "informativa)."
+            if policy.sum_rule == SUM_INDIVIDUAL_REFERENCES
+            else "."
+        ),
         f"- **Monitoramento** (sinalizar qualquer saída da faixa): "
         f"{'LIGADO' if policy.monitoring_enabled else 'desligado'}"
         f"{'' if approved else ' até a política ser aprovada'}.",
@@ -210,9 +222,11 @@ def render_policy_report(
         "exige a previsão de conclusão (`completion_date` e/ou `completion_condition`); "
         "alvo, mínimo e máximo são os FINAIS e a tolerância segue sendo só a margem de "
         "atenção em torno do alvo, não um indicador de progresso.",
-        "- A soma dos alvos definidos nunca passa de 100%. A política só vira `aprovada` com "
-        "todas as linhas ativas `definido` e a regra de soma escolhida e cumprida; só então "
-        "o monitoramento pode ligar.",
+        "- A soma dos alvos definidos nunca passa de 100%, exceto na regra explícita "
+        "`referencias_individuais` (cada alvo é uma referência do ativo, não uma "
+        "carteira-alvo; a soma é só informativa). A política só vira `aprovada` com todas as "
+        "linhas ativas `definido` e a regra de soma escolhida e cumprida; só então o "
+        "monitoramento pode ligar.",
         "- Erros de configuração (JSON inválido, chave desconhecida, números incoerentes) "
         "param o comando com o motivo; nunca há valor padrão silencioso.",
         "",
