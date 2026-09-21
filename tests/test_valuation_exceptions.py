@@ -623,3 +623,12 @@ def test_the_exceptions_module_does_not_import_the_portfolio_package_at_load_tim
     assert not any(
         m and m.startswith("iip.portfolio.") or m == "iip.portfolio" for m in top
     )
+
+
+def test_the_effect_names_the_first_applicable_method_as_leader_not_an_excluded_one():
+    from iip.obsidian.valuation_exceptions_report import effect_of
+
+    # com a classificação atual do registro o Graham vem primeiro na lista; excluído, não lidera
+    text = effect_of(DEFAULT_EXCEPTIONS.items[0], DEFAULT_EXCEPTIONS)
+
+    assert text == "Graham excluído; método líder: Bazin"
