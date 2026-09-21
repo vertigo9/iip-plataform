@@ -1874,11 +1874,13 @@ def target_policy_command(vault: str | None, init: bool, report: bool) -> None:
     from iip.portfolio.target_policy import (
         POLICY_RELATIVE_PATH,
         SNAPSHOT_RELATIVE_PATH,
+        SUM_INDIVIDUAL_REFERENCES,
         build_initial_policy,
         load_policy,
         read_snapshot_rows,
         reconcile,
         save_policy,
+        target_sum,
     )
 
     vault_path = vault or str(get_settings().obsidian_vault)
@@ -1913,6 +1915,11 @@ def target_policy_command(vault: str | None, init: bool, report: bool) -> None:
         f"{'ligado' if policy.monitoring_enabled else 'desligado'}; regra de soma: "
         f"{policy.sum_rule or 'em aberto'}."
     )
+    if policy.sum_rule == SUM_INDIVIDUAL_REFERENCES:
+        console.print(
+            f"Soma dos alvos individuais definidos: {target_sum(policy):g}% (informativa: "
+            "referencias por ativo, nao uma carteira-alvo)."
+        )
     table = Table(title=f"Linhas da política — snapshot de R$ {rec.total:,.2f}")
     table.add_column("Linha")
     table.add_column("Classe")

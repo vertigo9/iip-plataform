@@ -16,14 +16,19 @@ Decisões do usuário (20/09/2026) registradas no contrato:
     registro (o fundo, não a ação: a ação AXIA3 nunca esteve na carteira);
   - BTCI11 e PVBI11 estão zerados e ficam em ``retired``, fora do universo ativo;
   - o monitoramento (sinalizar qualquer saída da faixa) fica DESLIGADO até a política ser
-    aprovada; a soma dos alvos (100% ou com reserva) segue em aberto (``sum_rule`` nulo).
+    aprovada; a soma dos alvos (100%, com reserva ou como referências individuais) é a regra
+    ``sum_rule`` (nulo = em aberto).
 
 Regras de consistência (violá-las é ``ValueError`` com o motivo; nunca há fallback silencioso):
   - ``min <= alvo <= max`` e a faixa ``alvo ± tolerância`` cabe dentro de ``[min, max]``;
   - uma linha ``definido`` tem alvo, tolerância, mín, máx e data da decisão;
   - a política ``aprovada`` exige todas as linhas ativas ``definido``, a regra de soma escolhida
     e cumprida; o monitoramento só pode ligar com a política aprovada;
-  - a soma dos alvos já definidos nunca passa de 100%.
+  - a soma dos alvos já definidos nunca passa de 100%, EXCETO na regra explícita
+    ``referencias_individuais``: nela cada alvo é uma referência DO ATIVO (para monitoramento e
+    análise), não uma carteira-alvo, e a soma é só informativa (``target_sum``). Cada linha
+    continua validada por inteiro; orçamentos por classe (nível agregado) só existirão quando
+    o usuário os definir.
 
 Estágio da posição (``stage``): ``estabelecida`` (padrão) ou ``em_construcao``. Uma posição em
 construção tem alvo, mínimo e máximo FINAIS e uma previsão de conclusão (``completion_date``
@@ -53,7 +58,8 @@ LINE_STATUSES = ("pendente", "definido", "revisavel", "inativo")
 STAGE_ESTABLISHED, STAGE_BUILDING = "estabelecida", "em_construcao"
 STAGES = (STAGE_ESTABLISHED, STAGE_BUILDING)
 APPROVAL_STATUSES = ("pendente", "aprovada")
-SUM_RULES = (None, "total_100", "reserva")
+SUM_INDIVIDUAL_REFERENCES = "referencias_individuais"
+SUM_RULES = (None, "total_100", "reserva", SUM_INDIVIDUAL_REFERENCES)
 KINDS = ("asset", "group")
 BASE_A = "A"
 BASE_A_DESCRIPTION = (
@@ -282,6 +288,17 @@ def _validate_line(line: PolicyLine) -> None:  # noqa: C901 - uma checagem por r
             raise _fail(label, "definido exige a data da decisão (decided_on)")
 
 
+def target_sum(policy: TargetPolicy) -> float:
+    """A soma dos alvos definidos das linhas ativas (em pontos percentuais). Na regra
+    ``referencias_individuais`` é só informativa: os alvos não formam uma carteira-alvo.
+    """
+    return sum(
+        ln.target_pct
+        for ln in policy.lines
+        if ln.status != "inativo" and ln.target_pct is not None
+    )
+
+
 def validate(policy: TargetPolicy) -> None:
     """Levanta ``ValueError`` com o motivo se a política não serve."""
     if not policy.version.strip():
@@ -321,8 +338,8 @@ def validate(policy: TargetPolicy) -> None:
             raise ValueError(f"retired {retired.id!r}: closed_on inválido") from exc
 
     active = [ln for ln in policy.lines if ln.status != "inativo"]
-    total = sum(ln.target_pct for ln in active if ln.target_pct is not None)
-    if total > 100 + _SUM_TOLERANCE_PP:
+    total = target_sum(policy)
+    if policy.sum_rule != SUM_INDIVIDUAL_REFERENCES and total > 100 + _SUM_TOLERANCE_PP:
         raise ValueError(f"a soma dos alvos definidos ({total:g}%) passa de 100%")
     if policy.monitoring_enabled and policy.approval_status != "aprovada":
         raise ValueError("o monitoramento só pode ligar com a política aprovada")

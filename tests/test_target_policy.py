@@ -662,3 +662,124 @@ def test_the_policy_carries_no_retired_id_as_a_line_and_retired_is_typed():
         TargetPolicy("v", "o", (PolicyLine("A", "A", "acao"),)).monitoring_enabled
         is False
     )
+
+
+# --- the individual-references sum rule ----------------------------------------------------
+
+
+def _over_100(policy):
+    """Todas as linhas com alvo 30 (soma 240%), cada uma válida por si só."""
+    lines = tuple(
+        _defined(ln, target=30.0, tolerance=2.0, low=20.0, high=40.0)
+        for ln in policy.lines
+    )
+    return replace(policy, lines=lines)
+
+
+def test_the_individual_references_rule_lets_the_targets_sum_past_100(tmp_path):
+    policy = _over_100(_policy(tmp_path))
+
+    validate(replace(policy, sum_rule="referencias_individuais"))
+
+
+@pytest.mark.parametrize("rule", [None, "total_100", "reserva"])
+def test_without_the_explicit_rule_the_sum_past_100_is_still_refused(tmp_path, rule):
+    policy = _over_100(_policy(tmp_path))
+
+    with pytest.raises(ValueError, match="passa de 100%"):
+        validate(replace(policy, sum_rule=rule))
+
+
+def test_each_line_is_still_validated_under_the_individual_references_rule(tmp_path):
+    policy = _policy(tmp_path)
+    broken = replace(
+        policy,
+        sum_rule="referencias_individuais",
+        lines=(
+            _defined(policy.lines[0], target=5.0, tolerance=2.0, low=3.0, high=5.0),
+            *policy.lines[1:],
+        ),
+    )
+
+    with pytest.raises(ValueError, match="acima do máximo|passa do máximo|fica acima"):
+        validate(broken)
+
+
+def test_the_individual_references_rule_can_be_approved_with_a_sum_past_100(tmp_path):
+    policy = _over_100(_policy(tmp_path))
+    approved = replace(
+        policy, approval_status="aprovada", sum_rule="referencias_individuais"
+    )
+
+    validate(approved)
+    save_policy(tmp_path, approved)
+    loaded = load_policy(tmp_path)
+    assert loaded.sum_rule == "referencias_individuais"
+    assert loaded.monitoring_enabled is False  # aprovar não liga o monitoramento
+
+
+def test_the_individual_references_rule_does_not_switch_monitoring_on(tmp_path):
+    policy = _policy(tmp_path)
+
+    assert (
+        replace(policy, sum_rule="referencias_individuais").monitoring_enabled is False
+    )
+    with pytest.raises(ValueError, match="só pode ligar com a política aprovada"):
+        validate(
+            replace(
+                _over_100(policy),
+                sum_rule="referencias_individuais",
+                monitoring_enabled=True,
+            )
+        )
+
+
+def test_the_rule_changes_the_policy_hash_and_survives_a_round_trip(tmp_path):
+    policy = _over_100(_policy(tmp_path))
+    with_rule = replace(policy, sum_rule="referencias_individuais")
+
+    assert with_rule.content_hash != policy.content_hash
+    save_policy(tmp_path, with_rule)
+    assert load_policy(tmp_path).content_hash == with_rule.content_hash
+
+
+def test_the_target_sum_ignores_inactive_lines_and_lines_without_a_target(tmp_path):
+    from iip.portfolio.target_policy import target_sum
+
+    policy = _policy(tmp_path)
+    assert target_sum(policy) == 0
+    mixed = replace(
+        policy,
+        lines=(
+            _defined(policy.lines[0], target=5.0),
+            replace(_defined(policy.lines[1], target=7.0), status="inativo"),
+            *policy.lines[2:],
+        ),
+    )
+
+    assert target_sum(mixed) == 5.0
+
+
+def test_the_note_shows_the_sum_as_informative_under_the_individual_rule(tmp_path):
+    policy = replace(_over_100(_policy(tmp_path)), sum_rule="referencias_individuais")
+
+    text = render_policy_report(policy, reconcile(policy, _rows(tmp_path)), TODAY)
+
+    assert "referências individuais por ativo, não uma carteira-alvo" in text
+    assert "soma atual dos alvos individuais definidos: 240%, informativa" in text
+    assert "desligado" in text  # o monitoramento segue desligado
+
+
+def test_the_command_says_the_sum_is_informative_under_the_individual_rule(tmp_path):
+    _write_snapshot(tmp_path)
+    save_policy(
+        tmp_path,
+        replace(_over_100(_policy(tmp_path)), sum_rule="referencias_individuais"),
+    )
+
+    result = _invoke(tmp_path)
+
+    assert result.exit_code == 0, result.output
+    flat = _flat(result.output)
+    assert "regradesoma:referencias_individuais" in flat
+    assert "240%(informativa" in flat
