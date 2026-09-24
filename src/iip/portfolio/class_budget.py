@@ -70,6 +70,22 @@ este mapa de valores por classe, quais classes estão fora da tolerância ou dos
     caso contrário, o dicionário vem vazio e ``enforce`` não bloqueia nada por essa via (um
     dicionário vazio para uma classe significa "esta dimensão não é declarada pela política",
     nunca "o alvo é zero").
+
+Protocolo de aprovação (registrado em 24/09/2026, nota gêmea em
+``02_Portfolio/Protocolo_Aprovacao.md``): ``ClassBudget.approval_status = "aprovada"``
+significa que as 7 classes estão ``definido`` e a soma dos targets de classe respeita o teto de
+100% -- nada mais. Não significa que o orçamento passa a comandar rebalanceamentos, nem que uma
+classe fora da faixa gera ação automática. Enquanto ``TargetPolicy.sum_rule =
+"referencias_individuais"``, essa aprovação **não ativa nenhuma restrição de escrita**: é
+documental/de referência, não operacional, até essa condição mudar. Aprovação NUNCA equivale a
+ativação: ``monitoring_enabled`` continua sendo uma decisão separada. As únicas duas condições
+que tornariam este orçamento um mecanismo prospectivo de verdade: (a) o usuário mudar
+``sum_rule`` para ``total_100``/``reserva`` (o que primeiro exige revisar as 35 linhas 3/5/15
+para que a soma passe a representar alocação real -- reduzi-las só para caber no teto do
+orçamento destruiria a função dos placeholders); ou (b) um mecanismo alternativo, ainda não
+desenhado, que dê a ``enforce`` um sinal prospectivo sem depender de ``sum_rule`` --
+explicitamente fora de escopo até virar um novo PR de arquitetura. Qualquer mudança de
+``sum_rule`` é MUDANÇA SEMÂNTICA da política, nunca um ajuste trivial de configuração.
 """
 
 from __future__ import annotations

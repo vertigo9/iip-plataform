@@ -37,6 +37,19 @@ alvo, nunca um indicador de progresso. ``read_weight`` lê o peso atual contra a
 "em formação" (abaixo da faixa numa posição em construção: esperado, não é desvio) de um desvio
 de verdade; é uma leitura pura, informativa: nada é sinalizado enquanto o monitoramento estiver
 desligado, e nada compra, vende, aporta ou rebalanceia.
+
+Protocolo de aprovação (registrado em 24/09/2026, nota gêmea em
+``02_Portfolio/Protocolo_Aprovacao.md``): ``approval_status = "aprovada"`` significa que todas
+as linhas ativas estão completas e válidas segundo ``validate()`` -- o que inclui ter uma
+``sum_rule`` escolhida e respeitada, não apenas cada linha isoladamente ``definido``. Não
+significa que a carteira será rebalanceada, que ordens serão emitidas, nem que os alvos
+individuais formam uma alocação-alvo de 100% (isso só vale sob ``total_100``). É um atestado de
+consistência interna do contrato -- nada além disso. Aprovação NUNCA equivale a ativação:
+``monitoring_enabled`` continua exigindo uma decisão explícita e posterior, separada de
+qualquer aprovação. Qualquer mudança futura de ``sum_rule`` (de ``referencias_individuais``
+para ``total_100``/``reserva``) deve ser tratada como MUDANÇA SEMÂNTICA da política -- uma
+revisão arquitetural deliberada, com PR e revisão próprios -- nunca como um simples ajuste de
+configuração (ver ``class_budget.py`` para o efeito disso sobre o orçamento por classe).
 """
 
 from __future__ import annotations
