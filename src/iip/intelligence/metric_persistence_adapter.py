@@ -14,6 +14,35 @@ from .metric_persistence import (
     build_knowledge_evidence,
 )
 
+# Classes de ativo (Registry) cuja série tem cota patrimonial/NAV de verdade -- "fund" cobre
+# FII/FI-Agro/FI-Infra; "fixed_income" cobre o caso real do AXIA3 (FMP-FGTS, tem cota
+# patrimonial genuína apesar de não estar classificado como "fund"). Ver PR de 24/09/2026
+# (auditoria de conectividade do vault, incidente de 2.139 evidências mal rotuladas).
+_NAV_PROMOTION_ASSET_CLASSES = frozenset({"fund", "fixed_income"})
+
+
+def _require_nav_promotion_domain(ticker: str) -> None:
+    """``persist_historical_series_metrics`` é um caminho de promoção NAV/cota patrimonial e
+    só serve para o domínio de fundos -- nunca ações, ETFs ou qualquer outra classe. Levanta
+    ANTES de qualquer escrita em Evidence (nada é gravado se isto falhar); nunca reclassifica
+    silenciosamente para outra semântica (ex. "é ação, então deve ser MARKET_VALUE") -- isso
+    seria introduzir uma semântica nova sem ninguém ter pedido. Import tardio pelo mesmo
+    motivo do ``knowledge/bridge.py``: ``iip.portfolio`` importa ``iip.knowledge``, e um
+    import de módulo aqui em cima arriscaria um ciclo se ``iip.intelligence`` um dia for
+    importado de dentro de ``iip.portfolio``."""
+    from iip.portfolio.registry import get_asset
+
+    asset = get_asset(ticker, include_closed=True)
+    found = (
+        asset.asset_class if asset is not None else "desconhecido (fora do registro)"
+    )
+    if asset is None or asset.asset_class not in _NAV_PROMOTION_ASSET_CLASSES:
+        raise ValueError(
+            "persist_historical_series_metrics() é um caminho de promoção NAV/cota "
+            f"patrimonial e não pode ser usado para {ticker!r} (classe {found!r}). Use a "
+            "série histórica de preço diretamente (Historical/<ticker>.json)."
+        )
+
 
 class EvidenceSink(Protocol):
     def persist_evidence(self, evidence: object) -> None: ...
@@ -530,7 +559,14 @@ def persist_historical_series_metrics(
     month); semantic dimension is always ``NAV`` since
     ``valor_patrimonial_cotas`` is unambiguously cota patrimonial, no
     market-value/LTM confusion possible for this field.
+
+    Guard de domínio (24/09/2026): levanta ``ValueError`` -- e não grava nada -- se
+    ``series.ticker`` não for um fundo (Registry) elegível a esta semântica NAV. Corrige um
+    incidente real: esta função foi usada fora do domínio documentado (20 fundos) contra 14
+    ações, produzindo 2.139 evidências rotuladas "Cota_Patrimonial"/NAV para o que era, na
+    verdade, preço de fechamento -- ver ``_require_nav_promotion_domain``.
     """
+    _require_nav_promotion_domain(series.ticker)
     persisted: list[str] = []
     for obs in series.observations:
         if obs.valor_patrimonial_cotas is None:
