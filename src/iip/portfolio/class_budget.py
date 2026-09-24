@@ -86,6 +86,18 @@ orçamento destruiria a função dos placeholders); ou (b) um mecanismo alternat
 desenhado, que dê a ``enforce`` um sinal prospectivo sem depender de ``sum_rule`` --
 explicitamente fora de escopo até virar um novo PR de arquitetura. Qualquer mudança de
 ``sum_rule`` é MUDANÇA SEMÂNTICA da política, nunca um ajuste trivial de configuração.
+
+ANTI-PADRÃO explícito (achado real, auditoria pós-governança de 24/09/2026, com A e B já
+``aprovada``): a classe ETFs tem hoje peso real 4,13% contra um orçamento aprovado de
+``target=0%, min=0%, max=4%`` -- ou seja, ``check_against_targets`` (camada A, alimentada por
+``real_class_weights``) reporta ``BREACH_MIN_MAX`` para essa classe. **Isso não é, e nunca deve
+ser lido como, uma recomendação de venda.** É observação estrutural pura, porque
+``prospective_class_targets(policy)`` continua ``{}`` sob ``referencias_individuais`` -- não há
+guard ativo, aprovar B não mudou isso. A leitura da camada A é **sempre** só observação,
+**independente de** ``approval_status`` (``check_against_targets`` nunca olha esse campo, nunca
+levanta exceção, para nenhuma fonte de dado); só ``enforce()`` -- e só quando alimentado por
+``prospective_class_targets()``, nunca por peso real -- pode bloquear alguma coisa. Ver
+``test_a_real_weight_min_max_breach_is_pure_observation_never_a_sell_signal``.
 """
 
 from __future__ import annotations

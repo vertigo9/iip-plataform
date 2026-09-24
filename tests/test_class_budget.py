@@ -367,6 +367,38 @@ def test_check_against_targets_ignores_a_class_absent_from_the_value_map():
     assert check_against_targets(budget, {}) == ()
 
 
+@pytest.mark.parametrize("approval_status", ["pendente", "aprovada"])
+def test_a_real_weight_min_max_breach_is_pure_observation_never_a_sell_signal(
+    approval_status,
+):
+    """Propriedade arquitetural (auditoria pós-governança de 24/09/2026, achado do ETF real:
+    4,13% de peso vs máximo de 4% do orçamento aprovado): um desvio de min/máx lido contra o
+    PESO REAL (``real_class_weights``, camada A de monitoramento) é sempre só observação --
+    nunca uma recomendação de venda, nunca um bloqueio -- e isso NÃO MUDA com
+    ``approval_status``. Só ``enforce()``, alimentado por ``prospective_class_targets()``
+    (nunca por peso real), pode levantar ``ValueError``; ``check_against_targets`` em si
+    jamais levanta nada, para nenhuma fonte de dado."""
+    budget = replace(
+        _budget(),
+        approval_status=approval_status,
+        lines=tuple(
+            _budget_line(cid, target=0.0, tolerance=0.0, low=0.0, high=4.0)
+            for cid in CLASS_IDS
+        ),
+    )
+    real_weights = {cid: 4.13 for cid in CLASS_IDS}  # acima do max=4 em toda classe
+
+    breaches = check_against_targets(budget, real_weights)  # nunca levanta, so retorna
+
+    assert len(breaches) == len(CLASS_IDS)
+    assert all(b.kind == BREACH_MIN_MAX for b in breaches)
+    assert all(b.automatic_action == "nenhuma" for b in breaches)
+    # a leitura e IDENTICA pendente ou aprovada: aprovar B nao muda o que a camada A relata
+    assert breaches == check_against_targets(
+        replace(budget, approval_status="pendente"), real_weights
+    )
+
+
 # --- a ponte entre orçamento de classe e política individual (auditoria de 24/09/2026) --------
 #
 # Achado: a política real usa a regra uniforme 3/5/15 (cada ativo com um placeholder de 5%,
