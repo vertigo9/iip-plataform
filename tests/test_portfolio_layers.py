@@ -519,4 +519,10 @@ def test_only_the_command_and_the_note_use_the_layers():
         if any(n.startswith("iip.portfolio.layers") for n in _imports(path))
     }
 
-    assert users == {"src/iip/obsidian/layers_report.py", "src/iip/cli/main.py"}
+    # class_budget.py só importa CLASS_LABELS (a taxonomia das 7 classes), a mesma fonte única
+    # usada em Camadas.md -- não usa build_layers/Holdings/GroupView. Ver test_class_budget.py.
+    assert users == {
+        "src/iip/obsidian/layers_report.py",
+        "src/iip/cli/main.py",
+        "src/iip/portfolio/class_budget.py",
+    }
