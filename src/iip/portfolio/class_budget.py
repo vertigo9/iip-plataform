@@ -37,6 +37,39 @@ Como ``TargetPolicy`` é imutável e representa o conjunto INTEIRO de linhas (n�
 "política candidata" já É a nova composição da classe -- não há necessidade de somar
 separadamente "soma atual + efeito da mudança": ``class_sums(candidata)`` já reflete o estado
 depois da mudança proposta, antes de qualquer escrita em disco.
+
+Três dimensões diferentes, que este módulo NUNCA confunde entre si (achado da auditoria de
+consistência de 24/09/2026, ao preencher os 7 targets de classe reais):
+  - **peso real** (``Current.md`` via ``reconcile()``): o estado observado da carteira;
+  - **alvo individual** (``PolicyLine.target_pct``): a referência/intenção declarada de UM
+    ativo -- sob a regra ``referencias_individuais`` (a de hoje), 14 ações com alvo 5% cada
+    somam 70%, e isso não significa "70% de intenção para a classe Ações": são 14 referências
+    independentes, cada uma válida por si só, sem se somar a um sentido de carteira;
+  - **alvo de classe** (``ClassBudgetLine.target_pct``, este módulo): a intenção AGREGADA e
+    deliberada para a classe inteira, decidida separadamente pelo usuário.
+
+``class_sums(policy)`` é uma operação matemática válida sobre os ``target_pct`` individuais,
+mas o resultado só tem SIGNIFICADO de alocação de classe quando a própria política declara
+isso via ``TargetPolicy.sum_rule`` (``"total_100"`` ou ``"reserva"``: aí os alvos individuais
+representam de fato frações de uma carteira real). Sob ``sum_rule`` nulo ou
+``"referencias_individuais"`` -- o caso de hoje, nas 35 linhas -- a soma é só um número
+mecânico sem esse significado, e ``prospective_class_targets`` retorna ``{}`` para deixar isso
+explícito: **não fabricar um alvo de classe a partir de referências que nunca pretenderam
+somar**.
+
+Duas camadas usam a MESMA função de comparação (``check_against_targets``), alimentada por
+fontes diferentes conforme o propósito -- ela é agnóstica à origem do dado, só responde "dado
+este mapa de valores por classe, quais classes estão fora da tolerância ou dos limites?":
+
+  - **Camada A -- monitoramento** (leitura, NUNCA bloqueia): ``real_class_weights(rows)``, o
+    peso real via ``reconcile()``/``Current.md`` -- "onde a carteira está frente ao
+    orçamento?";
+  - **Camada B -- guard de escrita** (``enforce``, usado por ``save_policy_guarded``, só
+    bloqueia com o orçamento ``aprovada``): ``prospective_class_targets(policy)`` -- só produz
+    um sinal quando ``sum_rule`` autoriza a soma dos alvos individuais como alocação real;
+    caso contrário, o dicionário vem vazio e ``enforce`` não bloqueia nada por essa via (um
+    dicionário vazio para uma classe significa "esta dimensão não é declarada pela política",
+    nunca "o alvo é zero").
 """
 
 from __future__ import annotations
@@ -50,8 +83,12 @@ from pathlib import Path
 
 from iip.portfolio.layers import CLASS_LABELS
 from iip.portfolio.policy_validation import check_number, check_target_range, fail
-from iip.portfolio.target_policy import TargetPolicy, save_policy
+from iip.portfolio.target_policy import SnapshotRow, TargetPolicy, save_policy
 from iip.portfolio.target_policy import validate as validate_policy
+
+# sum_rule sob os quais os target_pct individuais representam de fato frações de uma carteira
+# real (e portanto podem alimentar um sinal prospectivo de classe); ver docstring do módulo.
+_AGGREGATING_SUM_RULES = frozenset({"total_100", "reserva"})
 
 BUDGET_RELATIVE_PATH = Path("02_Portfolio") / "Orcamento_Classe.json"
 BUDGET_SCHEMA = "class-budget-1"
@@ -120,13 +157,14 @@ class ClassBudget:
 
 @dataclass(frozen=True)
 class ClassBreach:
-    """Leitura pura: a soma dos alvos individuais definidos de uma classe contra a faixa do
-    orçamento. Sempre computada (informativa); nunca decide, executa, aporta ou rebalanceia.
+    """Leitura pura: um valor de classe (peso real ou alvo prospectivo, conforme a fonte
+    passada a ``check_against_targets``) contra a faixa do orçamento. Sempre computada
+    (informativa); nunca decide, executa, aporta ou rebalanceia.
     """
 
     class_id: str
     kind: str  # BREACH_TOLERANCE ou BREACH_MIN_MAX
-    sum_pct: float
+    sum_pct: float  # o valor comparado: peso real OU alvo prospectivo, conforme a fonte
     target_pct: float
     tolerance_pp: float
     min_pct: float
@@ -319,7 +357,13 @@ def build_initial_budget(
 def class_sums(policy: TargetPolicy) -> dict[str, float]:
     """A soma, por classe, dos ``target_pct`` DEFINIDOS das linhas ativas da política
     individual -- a mesma composição que ``layers.py`` já soma por classe (``class_targets``),
-    só que aqui como um dicionário simples, sem depender do snapshot."""
+    só que aqui como um dicionário simples, sem depender do snapshot.
+
+    É uma operação matemática válida, mas o resultado só tem significado de alocação de classe
+    quando ``TargetPolicy.sum_rule`` autoriza isso -- ver ``prospective_class_targets``. Usar
+    esta função diretamente como guard de orçamento reproduz o bug que a auditoria de
+    24/09/2026 encontrou (14 ações x 5% interpretadas como 70% de intenção da classe Ações).
+    """
     sums: dict[str, float] = defaultdict(float)
     for line in policy.lines:
         if line.status == "inativo" or line.target_pct is None:
@@ -328,19 +372,48 @@ def class_sums(policy: TargetPolicy) -> dict[str, float]:
     return dict(sums)
 
 
+def prospective_class_targets(policy: TargetPolicy) -> dict[str, float]:
+    """O agregado de classe a usar pelo GUARD de escrita (``enforce``/``save_policy_guarded``).
+
+    Só existe quando a própria política declara, via ``sum_rule``, que os alvos individuais
+    representam alocação real da carteira (``"total_100"`` ou ``"reserva"``). Sob
+    ``"referencias_individuais"`` ou ``sum_rule`` nulo -- o caso de hoje, nas 35 linhas --
+    retorna ``{}``: não porque as classes tenham alvo 0%, mas porque essa dimensão não é
+    declarada pela política. ``check_against_targets`` trata uma classe ausente do dicionário
+    como "sem dado", nunca como "dado zero"."""
+    if policy.sum_rule not in _AGGREGATING_SUM_RULES:
+        return {}
+    return class_sums(policy)
+
+
+def real_class_weights(rows: tuple[SnapshotRow, ...]) -> dict[str, float]:
+    """O peso REAL por classe (``Current.md``), para a camada A -- monitoramento informativo,
+    nunca bloqueia. Mesma agregação que ``layers.py`` já faz por classe, aqui como um
+    dicionário simples, sem depender do registro/setor/segmento (que ``layers.py`` usa para as
+    camadas mais profundas e este módulo não precisa)."""
+    total = sum(r.value for r in rows)
+    if total <= 0:
+        return {}
+    sums: dict[str, float] = defaultdict(float)
+    for row in rows:
+        sums[row.asset_class] += row.value
+    return {class_id: value / total * 100 for class_id, value in sums.items()}
+
+
 def check_against_targets(
-    budget: ClassBudget, policy: TargetPolicy
+    budget: ClassBudget, class_values: dict[str, float]
 ) -> tuple[ClassBreach, ...]:
-    """Leitura pura e sempre computada (informativa), independente de ``approval_status``: para
-    cada classe ``definida`` do orçamento, compara a soma dos alvos individuais definidos dessa
-    classe contra a faixa. Não decide, executa, aporta ou rebalanceia -- só quem chama
-    (``enforce``) decide se um ``BREACH_MIN_MAX`` bloqueia alguma coisa."""
-    sums = class_sums(policy)
+    """Leitura pura, agnóstica à origem do dado: dado este mapa de valores por classe (peso
+    real, via ``real_class_weights``, ou alvo prospectivo, via ``prospective_class_targets``),
+    quais classes ``definidas`` do orçamento estão fora da tolerância ou dos limites? Uma
+    classe ausente de ``class_values`` é ignorada (sem dado, não é tratada como zero). Não
+    decide, executa, aporta ou rebalanceia -- só quem chama (``enforce``) decide se um
+    ``BREACH_MIN_MAX`` bloqueia alguma coisa."""
     breaches: list[ClassBreach] = []
     for line in budget.lines:
-        if line.status != "definido":
+        if line.status != "definido" or line.class_id not in class_values:
             continue
-        current = sums.get(line.class_id, 0.0)
+        current = class_values[line.class_id]
         target, tolerance, low, high = line.numbers
         if current < low or current > high:
             kind = BREACH_MIN_MAX
@@ -356,16 +429,20 @@ def check_against_targets(
 
 def enforce(budget: ClassBudget | None, policy: TargetPolicy) -> None:
     """Levanta ``ValueError`` -- e não grava nada -- quando o orçamento está ``aprovada`` e a
-    política candidata estoura o mín/máx (rígido) de alguma classe ``definida``. Com o
-    orçamento ``None`` ou ``pendente``, nunca bloqueia (a leitura de desvio segue disponível via
-    ``check_against_targets``, só informativa)."""
+    política candidata tem um alvo de classe PROSPECTIVO (``prospective_class_targets``, só
+    existe sob ``sum_rule`` "total_100"/"reserva") que estoura o mín/máx (rígido) de alguma
+    classe ``definida``. Sob ``referencias_individuais`` (o caso de hoje) o dicionário vem
+    vazio e isto nunca bloqueia nada -- uma edição isolada de uma linha não é rejeitada pela
+    soma mecânica de placeholders de outras linhas. Com o orçamento ``None`` ou ``pendente``,
+    também nunca bloqueia (a leitura de desvio segue disponível via ``check_against_targets``,
+    só informativa)."""
     if budget is None or budget.approval_status != "aprovada":
         return
-    for breach in check_against_targets(budget, policy):
+    for breach in check_against_targets(budget, prospective_class_targets(policy)):
         if breach.kind != BREACH_MIN_MAX:
             continue
         raise ValueError(
-            f"classe {breach.class_id!r}: soma dos alvos individuais "
+            f"classe {breach.class_id!r}: alvo agregado prospectivo "
             f"({breach.sum_pct:g}%) fora do orçamento aprovado "
             f"[{breach.min_pct:g}%, {breach.max_pct:g}%]"
         )
