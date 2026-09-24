@@ -319,10 +319,13 @@ def test_only_the_command_and_the_note_wire_the_monitoring_event_module_in():
     }
 
 
-def test_the_daily_job_does_not_run_the_monitoring_event_module():
+def test_the_daily_job_runs_monitoring_events_since_pr_44():
+    """A partir do PR #44 o job diário roda `monitoring-events` (passo "Monitoramento de
+    pesos-alvo"). Detalhes de posição, exit code e notificação -- ver
+    `tests/test_monitoring_job_integration.py`."""
     script = Path("executar_atualizacao_diaria.ps1").read_text(encoding="utf-8")
 
-    assert "monitoring" not in script.lower()
+    assert "monitoring-events" in script
 
 
 @pytest.mark.parametrize(
@@ -529,9 +532,3 @@ def test_the_alert_file_flag_writes_new_deviations_then_stays_quiet_on_the_next_
     assert second.exit_code == 0, second.output
     # mesmos desvios de antes: nada novo, o arquivo de alerta é apagado
     assert not alert_path.exists()
-
-
-def test_the_command_never_decides_executes_or_notifies():
-    script = Path("executar_atualizacao_diaria.ps1").read_text(encoding="utf-8")
-
-    assert "monitoring-events" not in script
