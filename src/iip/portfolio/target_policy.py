@@ -44,10 +44,12 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
-import math
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from iip.portfolio.policy_validation import check_number as _check_number
+from iip.portfolio.policy_validation import check_target_range
+from iip.portfolio.policy_validation import fail as _fail
 from iip.portfolio.vault_snapshot import _parse_brl
 
 POLICY_RELATIVE_PATH = Path("02_Portfolio") / "Politica_Pesos_Alvo.json"
@@ -184,21 +186,8 @@ class TargetPolicy:
 
 
 # --- validação -----------------------------------------------------------------------------
-
-
-def _fail(label: str, reason: str) -> ValueError:
-    return ValueError(f"linha {label!r}: {reason}")
-
-
-def _check_number(
-    label: str, field_name: str, value: float | None, high: float
-) -> None:
-    if value is None:
-        return
-    if isinstance(value, bool) or not isinstance(value, int | float):
-        raise _fail(label, f"{field_name} precisa ser um número")
-    if not math.isfinite(value) or not 0 <= value <= high:
-        raise _fail(label, f"{field_name}={value} fora do intervalo 0 a {high:g}")
+# ``_fail``/``_check_number`` e a checagem de faixa (min/max/tolerância) vivem em
+# ``policy_validation.py``, compartilhadas com ``class_budget.py`` -- não duplicar aqui.
 
 
 def _validate_line(line: PolicyLine) -> None:  # noqa: C901 - uma checagem por regra
@@ -228,25 +217,7 @@ def _validate_line(line: PolicyLine) -> None:  # noqa: C901 - uma checagem por r
                 label, f"decided_on {line.decided_on!r} não é AAAA-MM-DD"
             ) from exc
     target, tolerance, low, high = line.numbers
-    if low is not None and high is not None and low > high:
-        raise _fail(label, f"min_pct ({low:g}) maior que max_pct ({high:g})")
-    if target is not None and low is not None and target < low:
-        raise _fail(label, f"alvo ({target:g}) abaixo do mínimo ({low:g})")
-    if target is not None and high is not None and target > high:
-        raise _fail(label, f"alvo ({target:g}) acima do máximo ({high:g})")
-    if target is not None and tolerance is not None:
-        if low is not None and target - tolerance < low:
-            raise _fail(
-                label,
-                f"a faixa (alvo - tolerância = {target - tolerance:g}) fica abaixo do "
-                f"mínimo ({low:g})",
-            )
-        if high is not None and target + tolerance > high:
-            raise _fail(
-                label,
-                f"a faixa (alvo + tolerância = {target + tolerance:g}) passa do máximo "
-                f"({high:g})",
-            )
+    check_target_range(label, target, tolerance, low, high)
     if line.stage not in STAGES:
         raise _fail(label, f"stage {line.stage!r} (use {' ou '.join(STAGES)})")
     if line.completion_date is not None:
