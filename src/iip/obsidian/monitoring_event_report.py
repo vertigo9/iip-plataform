@@ -1,10 +1,12 @@
 """A leitura estruturada do monitoramento como nota do vault: ``02_Portfolio/Monitoramento.md``.
 
-Sobrescrita a cada execução de ``iip monitoring-events --report``. Mostra os eventos que
+Sobrescrita a cada execução de ``iip monitoring-events --report`` -- manual, ou automática no
+passo "Monitoramento de pesos-alvo" do job diário. Mostra os eventos que
 ``build_monitoring_events`` gera (um por linha, todas as linhas da política): peso atual, faixa,
 estado e tipo de desvio. É informação, não ordem: nada aqui decide, executa ou notifica --
-``automatic_action`` é sempre ``"nenhuma"``. Este comando roda manualmente; não faz parte do
-job diário e não chama ``decide-portfolio``.
+``automatic_action`` é sempre ``"nenhuma"`` e este arquivo (a nota em si) nunca dispara a
+notificação do Windows -- isso é do arquivo de alerta (``--alert-file``), separado. Não chama
+``decide-portfolio``.
 """
 
 from __future__ import annotations
@@ -40,7 +42,7 @@ def render_monitoring_report(
         "",
         "# Monitoramento de pesos-alvo — leitura estruturada",
         "",
-        f"Gerado manualmente em {today:%d/%m/%Y} a partir da política {policy.version} (hash "
+        f"Gerado em {today:%d/%m/%Y} a partir da política {policy.version} (hash "
         f"{policy.content_hash}) contra o snapshot atual. É leitura, não ordem: nenhum evento "
         'decide, executa ou notifica -- `automatic_action` é sempre "nenhuma". Decisões de '
         "investimento (REDUZIR, VENDER, MANTER, aporte) continuam só em `decide-portfolio`, "
@@ -48,8 +50,9 @@ def render_monitoring_report(
         "",
         f"- **Monitoramento** (campo da política): "
         f"{'LIGADO' if policy.monitoring_enabled else 'desligado'}.",
-        "- **Este comando**: roda manualmente; não faz parte do job diário e não envia "
-        "notificação.",
+        '- **Este comando**: roda manualmente e também no job diário (passo "Monitoramento '
+        'de pesos-alvo"); a nota em si não envia notificação -- isso é do arquivo de alerta '
+        "(`--alert-file`), separado.",
         "",
         f"## Desvios ({len(deviations)})",
         "",

@@ -112,6 +112,18 @@ Write-Output "--- Camadas do patrimonio ---" | Tee-Object -FilePath $LogFile -Ap
 python -m iip.cli.main portfolio-layers --report 2>&1 | Tee-Object -FilePath $LogFile -Append
 $LayersExitCode = $LASTEXITCODE
 
+# Monitoramento de pesos-alvo (Monitoramento.md; estado em 02_Portfolio/
+# estado_monitoramento.json): a mesma leitura pura da politica+Current.md das Camadas, so que
+# comparada com o que ja foi visto (is_new). MONITORING_ENABLED CONTINUA false e a politica
+# CONTINUA pendente -- este passo so descreve o que mudou, nao decide nem executa nada, e nao
+# chama decide-portfolio nem rebalancing_alerts.py. O arquivo de alerta so existe se algum
+# desvio for NOVO desde a ultima execucao; e apagado antes para nunca reavisar o de ontem.
+$AlertaMonitoramento = Join-Path $LogDir "monitoring_alerts.txt"
+if (Test-Path $AlertaMonitoramento) { Remove-Item $AlertaMonitoramento -Force }
+Write-Output "--- Monitoramento de pesos-alvo ---" | Tee-Object -FilePath $LogFile -Append
+python -m iip.cli.main monitoring-events --report --alert-file $AlertaMonitoramento 2>&1 | Tee-Object -FilePath $LogFile -Append
+$MonitoringExitCode = $LASTEXITCODE
+
 # Macro (BACEN SGS e IBGE SIDRA): guarda cada valor com a data da coleta e escreve o contexto
 # (07_Research/Macro/Contexto_Macro.md). So contexto: nao decide aporte nem peso. O
 # armazenamento so grava o que mudou, entao rodar toda noite nao duplica nada.
@@ -144,7 +156,7 @@ Write-Output "--- Dashboard ---" | Tee-Object -FilePath $LogFile -Append
 python -m iip.cli.main dashboard 2>&1 | Tee-Object -FilePath $LogFile -Append
 $DashboardExitCode = $LASTEXITCODE
 
-Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, camadas: $LayersExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, alertas_macro: $MacroAlertExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
+Write-Output "=== Atualizacao terminada em $(Get-Date) -- health: $HealthExitCode, refresh: $RefreshExitCode, valuation: $ValueExitCode, decisao: $DecideExitCode, series: $SeriesExitCode, validacao: $ValidateExitCode, renda: $IncomeExitCode, exposicao: $ExposureExitCode, camadas: $LayersExitCode, monitoramento: $MonitoringExitCode, macro: $MacroExitCode, contexto: $MacroContextExitCode, sensibilidade: $SensitivityExitCode, alertas_macro: $MacroAlertExitCode, dashboard: $DashboardExitCode ===" | Tee-Object -FilePath $LogFile -Append
 
 if ($HealthExitCode -ne 0) {
     # O health falha por mais de um motivo: fonte de dado fora do ar OU plugin
@@ -188,6 +200,11 @@ if ($LayersExitCode -ne 0) {
     Notificar-Windows "IIP: falha nas camadas do patrimonio" $msg8 "Warning"
 }
 
+if ($MonitoringExitCode -ne 0) {
+    $msg9 = "O monitoramento de pesos-alvo nao foi gerado hoje (Monitoramento.md e o estado podem estar desatualizados). Veja " + $LogFile
+    Notificar-Windows "IIP: falha no monitoramento de pesos-alvo" $msg9 "Warning"
+}
+
 # Serie que piorou (ausente, defasada, zerada, irregular): avisa, mas nao e falha do job.
 if (Test-Path $AlertaSeries) {
     $Series = @(Get-Content $AlertaSeries -Encoding UTF8)
@@ -214,7 +231,18 @@ if (Test-Path $AlertaDecisoes) {
     Notificar-Windows ("IIP: " + $Mudancas.Count + " decisao(oes) mudaram") $Resumo $Icone
 }
 
-if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $LayersExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0 -and $MacroAlertExitCode -eq 0) {
+# Desvio de peso-alvo NOVO desde a ultima execucao: nao e falha do job nem ordem de nada --
+# so descreve o que mudou (a decisao de investimento continua so em decide-portfolio, camada
+# separada). Warning porque e um desvio real da carteira (mais proximo de atencao operacional
+# que de contexto), mas sem qualquer peso de julgamento sobre o ativo.
+if (Test-Path $AlertaMonitoramento) {
+    $Monitoramento = @(Get-Content $AlertaMonitoramento -Encoding UTF8)
+    $ResumoMonitoramento = ($Monitoramento | Select-Object -First 3) -join "; "
+    if ($Monitoramento.Count -gt 3) { $ResumoMonitoramento += "; e mais " + ($Monitoramento.Count - 3) }
+    Notificar-Windows ("IIP: " + $Monitoramento.Count + " desvio(s) novo(s) de peso-alvo") $ResumoMonitoramento "Warning"
+}
+
+if ($HealthExitCode -eq 0 -and $RefreshExitCode -eq 0 -and $ValueExitCode -eq 0 -and $DecideExitCode -eq 0 -and $SeriesExitCode -eq 0 -and $ValidateExitCode -eq 0 -and $IncomeExitCode -eq 0 -and $ExposureExitCode -eq 0 -and $LayersExitCode -eq 0 -and $MonitoringExitCode -eq 0 -and $DashboardExitCode -eq 0 -and $MacroExitCode -eq 0 -and $MacroContextExitCode -eq 0 -and $SensitivityExitCode -eq 0 -and $MacroAlertExitCode -eq 0) {
     exit 0
 }
 exit 1

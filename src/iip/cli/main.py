@@ -1997,8 +1997,9 @@ def monitoring_events_command(
     Camada só de leitura: não decide, não executa e não liga o monitoramento. `automatic_action`
     é sempre "nenhuma", mesmo nas linhas em desvio. `evaluate_run` compara com o que já foi
     visto (estado em 02_Portfolio/estado_monitoramento.json) só pra saber se um desvio é NOVO;
-    isso não é uma decisão, é a mesma pergunta que os alertas macro fazem. Rodado manualmente;
-    não faz parte do job diário e não chama `decide-portfolio`."""
+    isso não é uma decisão, é a mesma pergunta que os alertas macro fazem. Roda manualmente e
+    também como parte do job diário (passo "Monitoramento de pesos-alvo" de
+    executar_atualizacao_diaria.ps1); não chama `decide-portfolio`."""
     import datetime as _dt
 
     from iip.portfolio.monitoring_event import build_monitoring_events

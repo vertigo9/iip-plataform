@@ -658,7 +658,10 @@ def test_only_the_command_and_the_note_use_the_policy_module():
     }
 
 
-def test_the_daily_job_does_not_run_the_policy_or_any_monitoring():
+def test_the_daily_job_does_not_run_the_target_policy_command_directly():
+    """`target-policy` (o comando de edição/validação da política) continua fora do job.
+    `monitoring-events` (leitura da política contra o snapshot) entra a partir do PR #44 --
+    ver `tests/test_monitoring_job_integration.py`."""
     script = Path("executar_atualizacao_diaria.ps1").read_text(encoding="utf-8")
 
     assert "target-policy" not in script

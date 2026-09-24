@@ -6,11 +6,14 @@ num evento por linha, sem decidir nem executar nada: o monitor responde "o que m
 pertencem à camada de valuation/decisão (``decide-portfolio``), que este módulo não conhece,
 não importa e não chama.
 
-Este módulo é só a camada de dados: ``build_monitoring_events`` não tem I/O, não lê o relógio,
-não persiste nada, não notifica ninguém, e não é chamado por nenhum CLI, job ou outro motor.
-Ligar isso a algo (CLI, job, alerta, ``decide-portfolio``, ``rebalancing_alerts``) é uma etapa
-de integração futura e separada, ainda não autorizada. O contrato também não decide para onde o
-evento seria encaminhado: isso fica fora do dado até essa integração ser desenhada.
+Este módulo é só a camada de dados: ``build_monitoring_events`` não tem I/O, não lê o relógio e
+não persiste nada. É consumido pelo comando manual ``iip monitoring-events`` e, desde o job
+diário (``executar_atualizacao_diaria.ps1``, passo "Monitoramento de pesos-alvo"), também pela
+execução automática das 08:00 -- em nenhum dos dois casos o módulo decide, executa ou aponta
+para onde o evento vai; quem faz isso é ``monitoring_state.py`` (novidade) e, na ponta,
+``decide-portfolio``/``rebalancing_alerts``, que este módulo continua sem conhecer, importar
+ou chamar. O contrato também não decide para onde o evento seria encaminhado: isso fica fora do
+dado até essa integração ser desenhada.
 """
 
 from __future__ import annotations

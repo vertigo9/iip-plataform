@@ -147,8 +147,9 @@ def alert_lines(run: MonitoringRun) -> tuple[str, ...]:
 
 def write_alert_file(path: Path | str, run: MonitoringRun) -> tuple[str, ...]:
     """Grava as linhas em ``path`` (UTF-8) ou, sem desvio novo, apaga o de uma rodada
-    anterior. O arquivo é o que o agendador leria para a notificação do Windows (o job diário
-    não chama este comando ainda -- é rodado manualmente)."""
+    anterior. É o arquivo que o job diário lê para a notificação do Windows (passo
+    "Monitoramento de pesos-alvo" de ``executar_atualizacao_diaria.ps1``); o comando também
+    continua podendo ser rodado manualmente com o mesmo efeito."""
     target = Path(path)
     lines = alert_lines(run)
     if lines:
