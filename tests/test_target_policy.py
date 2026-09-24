@@ -623,6 +623,7 @@ def test_the_policy_code_does_not_import_decision_contribution_or_rebalancing_co
         root / "portfolio" / "target_policy.py",
         root / "obsidian" / "target_policy_report.py",
         root / "portfolio" / "monitoring_event.py",
+        root / "obsidian" / "monitoring_event_report.py",
     ]
 
     offenders = {
@@ -644,10 +645,12 @@ def test_only_the_command_and_the_note_use_the_policy_module():
 
     # o layers.py só LÊ os tipos da política (alvos definidos, para as camadas); não a grava
     # monitoring_event.py é a camada de leitura estruturada do monitoramento: só usa
-    # reconcile()/read_weight() (puro, sem I/O); não é chamado por CLI, job nem decide-portfolio
-    # -- ver test_monitoring_event.py e test_nothing_wires_the_monitoring_event_module_in
+    # reconcile()/read_weight() (puro, sem I/O). monitoring_event_report.py é a nota do vault
+    # que ela alimenta (comando `iip monitoring-events --report`, manual, fora do job diário) --
+    # ver test_monitoring_event.py
     assert users == {
         "src/iip/obsidian/target_policy_report.py",
+        "src/iip/obsidian/monitoring_event_report.py",
         "src/iip/portfolio/layers.py",
         "src/iip/portfolio/monitoring_event.py",
         "src/iip/cli/main.py",
