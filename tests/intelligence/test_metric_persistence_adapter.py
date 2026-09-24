@@ -560,11 +560,11 @@ def test_persist_ready_batch_ignores_sink_without_projection_method(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-def _make_series(observations):
+def _make_series(observations, ticker="CRAA11"):
     from iip.portfolio.historical_series import HistoricalObservation, HistoricalSeries
 
     return HistoricalSeries(
-        ticker="CRAA11",
+        ticker=ticker,
         cnpj="",
         provider="sparta_reports",
         observations=tuple(
@@ -576,7 +576,7 @@ def _make_series(observations):
                 rentabilidade_patrimonial_mes=None,
                 valor_ativo=None,
                 total_numero_cotistas=None,
-                document_id=f"sparta_reports:CRAA11:{period[:4]}:{doc_hash}",
+                document_id=f"sparta_reports:{ticker}:{period[:4]}:{doc_hash}",
                 document_hash=doc_hash,
                 discovered_year=int(period[:4]),
             )
@@ -663,3 +663,94 @@ def test_persist_historical_series_metrics_uses_custom_metric_name():
 
     evidence_id = sink.persisted_ids.pop()
     assert evidence_id.startswith("evidence:metric:")
+
+
+# ---------------------------------------------------------------------------
+# Guard de domínio (24/09/2026): persist_historical_series_metrics só promove NAV/cota
+# patrimonial para fundos (Registry) -- incidente real corrigido: a função foi usada fora do
+# domínio documentado (20 fundos) contra 14 ações, produzindo 2.139 evidências rotuladas
+# "Cota_Patrimonial"/NAV para o que era, na verdade, preço de fechamento.
+# ---------------------------------------------------------------------------
+
+
+def test_p1_an_equity_ticker_is_rejected():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 24.97, "hash1")], ticker="ABCB4")
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    with pytest.raises(ValueError, match="não pode ser usado para 'ABCB4'"):
+        persist_historical_series_metrics(series, sink)
+
+
+def test_p2_a_rejected_call_persists_nothing():
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series(
+        [("2025-01-01", 24.97, "hash1"), ("2025-02-01", 25.10, "hash2")],
+        ticker="ABCB4",
+    )
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    with pytest.raises(ValueError):
+        persist_historical_series_metrics(series, sink)
+
+    assert sink.size == 0
+
+
+@pytest.mark.parametrize("ticker", ["CRAA11", "AXIA3"])
+def test_p3_each_supported_fund_domain_still_works(ticker):
+    """CRAA11 (Registry: asset_class=fund, subtype=FI-Agro) e AXIA3 (Registry:
+    asset_class=fixed_income, subtype com cota patrimonial real do FMP-FGTS) são os dois
+    domínios que o Registry hoje reconhece como elegíveis a esta semântica NAV."""
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 101.67, "hash1")], ticker=ticker)
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    persisted_ids = persist_historical_series_metrics(series, sink)
+
+    assert len(persisted_ids) == 1
+    assert sink.size == 1
+
+
+@pytest.mark.parametrize("ticker", ["LFTB11", "NAOEXISTE99"])
+def test_p1b_etf_and_unknown_tickers_are_also_rejected(ticker):
+    """O guard não é "só ações": qualquer classe fora de fund/fixed_income é rejeitada --
+    LFTB11 é um ETF (Registry: asset_class=etf); NAOEXISTE99 não está no Registry."""
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 100.0, "hash1")], ticker=ticker)
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    with pytest.raises(ValueError, match=f"não pode ser usado para {ticker!r}"):
+        persist_historical_series_metrics(series, sink)
+
+    assert sink.size == 0
+
+
+def test_p4_the_guard_never_silently_relabels_equity_as_market_value():
+    """Não deve existir nenhum caminho que transforme 'é ação' em 'então grava como
+    MARKET_VALUE/PRICE' -- isso seria uma semântica nova sem requisito (ver auditoria de
+    24/09/2026: nenhum consumidor exige Evidence de preço para nenhuma classe). A única
+    saída permitida para um domínio não elegível é ValueError, nunca uma reclassificação.
+    """
+    from iip.intelligence.metric_persistence_adapter import (
+        persist_historical_series_metrics,
+    )
+
+    series = _make_series([("2025-01-01", 24.97, "hash1")], ticker="ABCB4")
+    sink = SimulatedKnowledgeBridgeAdapter()
+
+    with pytest.raises(ValueError):
+        persist_historical_series_metrics(series, sink, metric_name="MARKET_VALUE")
+
+    assert sink.size == 0
