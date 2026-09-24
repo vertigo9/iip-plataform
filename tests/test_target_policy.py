@@ -624,6 +624,7 @@ def test_the_policy_code_does_not_import_decision_contribution_or_rebalancing_co
         root / "obsidian" / "target_policy_report.py",
         root / "portfolio" / "monitoring_event.py",
         root / "obsidian" / "monitoring_event_report.py",
+        root / "portfolio" / "monitoring_state.py",
     ]
 
     offenders = {

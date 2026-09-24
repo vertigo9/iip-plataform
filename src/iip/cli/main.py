@@ -1977,17 +1977,36 @@ def target_policy_command(vault: str | None, init: bool, report: bool) -> None:
     default=False,
     help="Grava a nota 02_Portfolio/Monitoramento.md (sobrescrita a cada execução).",
 )
-def monitoring_events_command(vault: str | None, report: bool) -> None:
+@click.option(
+    "--alert-file",
+    default=None,
+    help="Arquivo de texto com uma linha por desvio NOVO (o agendador o leria para a "
+    "notificação do Windows). Sem desvio novo, o arquivo é apagado.",
+)
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Avalia e mostra, sem gravar estado, nota nem arquivo de alerta.",
+)
+def monitoring_events_command(
+    vault: str | None, report: bool, alert_file: str | None, dry_run: bool
+) -> None:
     """Leitura estruturada do monitoramento de pesos-alvo: um evento por linha da política.
 
-    Camada só de leitura: não decide, não executa, não notifica e não liga o monitoramento.
-    `automatic_action` é sempre "nenhuma", mesmo nas linhas em desvio. Rodado manualmente; não
-    faz parte do job diário e não chama `decide-portfolio`."""
+    Camada só de leitura: não decide, não executa e não liga o monitoramento. `automatic_action`
+    é sempre "nenhuma", mesmo nas linhas em desvio. `evaluate_run` compara com o que já foi
+    visto (estado em 02_Portfolio/estado_monitoramento.json) só pra saber se um desvio é NOVO;
+    isso não é uma decisão, é a mesma pergunta que os alertas macro fazem. Rodado manualmente;
+    não faz parte do job diário e não chama `decide-portfolio`."""
     import datetime as _dt
 
-    from iip.portfolio.monitoring_event import (
-        SEVERITY_DEVIATION,
-        build_monitoring_events,
+    from iip.portfolio.monitoring_event import build_monitoring_events
+    from iip.portfolio.monitoring_state import (
+        evaluate_run,
+        load_state,
+        save_state,
+        write_alert_file,
     )
     from iip.portfolio.target_policy import (
         SNAPSHOT_RELATIVE_PATH,
@@ -2002,8 +2021,9 @@ def monitoring_events_command(vault: str | None, report: bool) -> None:
     try:
         policy = load_policy(vault_path)
         rows = read_snapshot_rows(Path(vault_path) / SNAPSHOT_RELATIVE_PATH)
+        previous_state = load_state(vault_path)
     except ValueError as exc:
-        console.print(f"[bold red]Política ou snapshot inválidos:[/] {exc}")
+        console.print(f"[bold red]Política, snapshot ou estado inválidos:[/] {exc}")
         raise SystemExit(1) from exc
     if policy is None:
         console.print(
@@ -2013,7 +2033,8 @@ def monitoring_events_command(vault: str | None, report: bool) -> None:
 
     rec = reconcile(policy, rows)
     events = build_monitoring_events(policy, rec, hoje.isoformat())
-    deviations = [event for event in events if event.severity == SEVERITY_DEVIATION]
+    run = evaluate_run(events, previous_state, hoje, policy.content_hash)
+    deviations = run.deviations
 
     console.print(
         f"[bold]Eventos de monitoramento[/] — política {policy.version} (hash "
@@ -2029,28 +2050,41 @@ def monitoring_events_command(vault: str | None, report: bool) -> None:
         table.add_column("Linha")
         table.add_column("Peso atual", justify="right")
         table.add_column("Faixa", justify="right")
-        table.add_column("Estado")
         table.add_column("Tipo de desvio")
-        for event in sorted(deviations, key=lambda e: -e.current_weight_pct):
+        table.add_column("Desde")
+        table.add_column("Novo")
+        for tracked in sorted(deviations, key=lambda t: -t.event.current_weight_pct):
+            event = tracked.event
             band = (
                 "—"
                 if event.band_low is None
-                else f"{event.band_low:.2f}–{event.band_high:.2f}%"
+                else f"{event.band_low:.2f}-{event.band_high:.2f}%"
             )
             table.add_row(
                 event.line_id,
                 f"{event.current_weight_pct:.2f}%",
                 band,
-                event.state,
                 event.deviation_type or "—",
+                tracked.since or "—",
+                "[cyan]sim[/]" if tracked.is_new else "não",
             )
         console.print(table)
     else:
         console.print("[green]Nenhuma linha em desvio.[/]")
     console.print(
-        f"[dim]{len(events)} linhas lidas; {len(deviations)} em desvio; automatic_action "
-        "sempre 'nenhuma'. Leitura, não ordem: nada é decidido, executado ou notificado.[/]"
+        f"[dim]{len(events)} linhas lidas; {len(deviations)} em desvio "
+        f"({len(run.notifiable)} novo(s)); automatic_action sempre 'nenhuma'. Leitura, não "
+        "ordem: nada é decidido, executado ou notificado.[/]"
     )
+    if dry_run:
+        console.print("[dim]--dry-run: nada foi gravado.[/]")
+        return
+    console.print(f"[dim]Estado: {save_state(vault_path, run.state)}[/]")
+    if alert_file:
+        lines = write_alert_file(alert_file, run)
+        console.print(
+            f"[dim]{len(lines)} linha(s) para notificação em {alert_file}.[/]"
+        )
     if report:
         from iip.obsidian.monitoring_event_report import write_monitoring_report
 

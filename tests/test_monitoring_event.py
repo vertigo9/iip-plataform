@@ -315,6 +315,7 @@ def test_only_the_command_and_the_note_wire_the_monitoring_event_module_in():
     assert users == {
         "src/iip/cli/main.py",
         "src/iip/obsidian/monitoring_event_report.py",
+        "src/iip/portfolio/monitoring_state.py",
     }
 
 
@@ -463,7 +464,10 @@ def test_the_command_stops_when_there_is_no_policy(tmp_path):
     assert "target-policy--init" in _flat(result.output).lower()
 
 
-def test_the_command_reads_and_shows_the_deviation_but_writes_nothing_without_report(
+MONITORING_STATE_PATH = Path("02_Portfolio") / "estado_monitoramento.json"
+
+
+def test_the_command_never_touches_the_policy_but_saves_monitoring_state_by_default(
     tmp_path,
 ):
     _defined_policy(tmp_path)  # BBSE3 90k de 100k = 90%, bem acima do máximo de 15%
@@ -480,6 +484,9 @@ def test_the_command_reads_and_shows_the_deviation_but_writes_nothing_without_re
         encoding="utf-8"
     )
     assert before == after  # o comando é só leitura: a política não muda
+    # mas o estado do MONITORAMENTO é gravado mesmo sem --report/--alert-file (como o
+    # macro-alerts já faz), para o histórico de "já visto" ficar coerente entre execuções
+    assert (tmp_path / MONITORING_STATE_PATH).exists()
 
 
 def test_the_report_flag_writes_the_note(tmp_path):
@@ -491,6 +498,37 @@ def test_the_report_flag_writes_the_note(tmp_path):
     assert (tmp_path / REPORT_RELATIVE_PATH).exists()
     text = (tmp_path / REPORT_RELATIVE_PATH).read_text(encoding="utf-8")
     assert "BBSE3" in text and "acima_do_maximo" in text
+
+
+def test_dry_run_saves_nothing_even_with_report_and_alert_file(tmp_path):
+    _defined_policy(tmp_path)
+    alert_path = tmp_path / "alerta.txt"
+
+    result = _invoke(tmp_path, "--report", "--alert-file", str(alert_path), "--dry-run")
+
+    assert result.exit_code == 0, result.output
+    assert "--dry-run" in result.output
+    assert not (tmp_path / REPORT_RELATIVE_PATH).exists()
+    assert not (tmp_path / MONITORING_STATE_PATH).exists()
+    assert not alert_path.exists()
+
+
+def test_the_alert_file_flag_writes_new_deviations_then_stays_quiet_on_the_next_run(
+    tmp_path,
+):
+    _defined_policy(tmp_path)  # BBSE3 e LVBI11 entram em desvio
+    alert_path = tmp_path / "alerta.txt"
+
+    first = _invoke(tmp_path, "--alert-file", str(alert_path))
+    assert first.exit_code == 0, first.output
+    assert alert_path.exists()
+    first_text = alert_path.read_text(encoding="utf-8")
+    assert "BBSE3" in first_text
+
+    second = _invoke(tmp_path, "--alert-file", str(alert_path))
+    assert second.exit_code == 0, second.output
+    # mesmos desvios de antes: nada novo, o arquivo de alerta é apagado
+    assert not alert_path.exists()
 
 
 def test_the_command_never_decides_executes_or_notifies():
