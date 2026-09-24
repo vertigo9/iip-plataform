@@ -10,6 +10,45 @@ from .redundancy import find_redundant_exposures
 from .repository import ObsidianRepository
 from .sync import ProjectionSyncEngine, ProjectionSyncResult
 
+# Mapeia (asset_class, subtype) do Registry para a chave de classe que o locator do vault
+# (``AssetVaultLocator``/``_ASSET_CLASS_FOLDERS``) espera -- pela regra REALMENTE em uso nos
+# note-sets já existentes no vault, não pelo alias que o locator declara (ver PR de correção
+# de 24/09/2026: ``_ASSET_CLASS_FOLDERS["fi-infra"] = "FIInfra"``, mas nenhuma pasta "FIInfra"
+# jamais existiu -- os 3 fundos FI-Infra da carteira estão todos em "FixedIncome", junto com
+# AXIA3. Essa divergência entre o locator e o vault real é um achado à parte, deliberadamente
+# NÃO corrigido aqui -- ver auditoria futura do locator).
+_SUBTYPE_TO_LOCATOR_CLASS = {
+    "FII": "fii",
+    "FI-Agro": "fiagro",
+    "FI-Infra": "fixed_income",  # não "fi-infra": ver nota acima
+}
+
+
+def _locator_asset_class(ticker: str) -> str:
+    """A classe canônica (na taxonomia que o locator do vault entende) para este ticker,
+    derivada do Registry -- nunca fabricada ou adivinhada. Ausente do registro (nem ativo nem
+    encerrado) é erro, não um padrão silencioso.
+
+    Import tardio: ``iip.portfolio`` importa ``iip.knowledge`` (via ``e2e.py``), então um
+    import de módulo de ``iip.portfolio.registry`` aqui em cima criaria um ciclo."""
+    from iip.portfolio.registry import get_asset
+
+    asset = get_asset(ticker, include_closed=True)
+    if asset is None:
+        raise ValueError(
+            f"{ticker!r}: não está no registro (nem ativo nem encerrado) -- não é possível "
+            "resolver a classe canônica para a projeção no vault"
+        )
+    if asset.asset_class == "fund":
+        try:
+            return _SUBTYPE_TO_LOCATOR_CLASS[asset.subtype]
+        except KeyError as exc:
+            raise ValueError(
+                f"{ticker!r}: subtype de fundo {asset.subtype!r} sem mapeamento conhecido "
+                "para a classe do vault"
+            ) from exc
+    return asset.asset_class
+
 
 class KnowledgeBridge:
     """Application service connecting IIP domain events/use-cases to the Obsidian projection."""
@@ -73,7 +112,12 @@ class KnowledgeBridge:
         )
 
     def sync_evidence_projection(self, evidence: Evidence) -> ProjectionSyncResult:
-        """Project evidence facts into the canonical sources note."""
+        """Project evidence facts into the canonical sources note.
+
+        A classe do ativo é resolvida pelo Registry (``_locator_asset_class``), nunca fixada
+        -- correção de um bug pré-existente que fixava sempre ``"FII"`` (já documentado, antes
+        desta correção, em ``iip.portfolio.historical_series._persist_atlas_evidence``: filava
+        a seção de fontes de qualquer ticker não-FII na pasta FIIs)."""
         facts = "\n".join(f"- {fact}" for fact in evidence.relevant_facts)
         content = (
             f"Data: {evidence.date.isoformat()}\n"
@@ -82,8 +126,9 @@ class KnowledgeBridge:
             f"Fonte: {evidence.source_url or ''}\n"
             f"{facts}"
         ).rstrip()
+        asset_class = _locator_asset_class(evidence.ticker)
         return self.sync_asset_section(
-            evidence.ticker, "FII", "sources", "IIP:evidence", content
+            evidence.ticker, asset_class, "sources", "IIP:evidence", content
         )
 
     def sync_snapshot_projection(

@@ -163,13 +163,15 @@ def _persist_atlas_evidence(bridge: Any, document: AtlasDocument) -> None:
     """Persist a fetched document as real Atlas evidence.
 
     Calls ``bridge.persist_evidence`` directly rather than
-    ``AtlasKnowledgeAdapter.persist()`` -- that convenience method also
-    calls ``sync_evidence_projection``, which hardcodes asset_class
-    "FII" for the mirrored note section (a pre-existing bug, confirmed
-    live: it would misfile the sources section of non-FII tickers like
-    an equity or fixed_income position into the FIIs folder). The
-    evidence store write itself (``04_Evidence/<id>.md``) is
-    asset-class-agnostic and unaffected by that bug.
+    ``AtlasKnowledgeAdapter.persist()``, which also calls
+    ``sync_evidence_projection`` -- kept minimal on purpose here (no
+    note-section sync), not to dodge a bug: ``sync_evidence_projection``
+    used to hardcode asset_class "FII" for the mirrored note section
+    (misfiling non-FII tickers' sources section into the FIIs folder),
+    fixed in the PR of 24/09/2026 (it now resolves the real class via
+    the Registry). The evidence store write itself
+    (``04_Evidence/<id>.md``) was always asset-class-agnostic and
+    unaffected either way.
     """
     from iip.atlas.knowledge_adapter import AtlasKnowledgeAdapter
 
