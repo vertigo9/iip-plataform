@@ -1965,6 +1965,100 @@ def target_policy_command(vault: str | None, init: bool, report: bool) -> None:
         console.print(f"[dim]{write_policy_report(vault_path, policy, rec, hoje)}[/]")
 
 
+@cli.command("monitoring-events")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Monitoramento.md (sobrescrita a cada execução).",
+)
+def monitoring_events_command(vault: str | None, report: bool) -> None:
+    """Leitura estruturada do monitoramento de pesos-alvo: um evento por linha da política.
+
+    Camada só de leitura: não decide, não executa, não notifica e não liga o monitoramento.
+    `automatic_action` é sempre "nenhuma", mesmo nas linhas em desvio. Rodado manualmente; não
+    faz parte do job diário e não chama `decide-portfolio`."""
+    import datetime as _dt
+
+    from iip.portfolio.monitoring_event import (
+        SEVERITY_DEVIATION,
+        build_monitoring_events,
+    )
+    from iip.portfolio.target_policy import (
+        SNAPSHOT_RELATIVE_PATH,
+        load_policy,
+        read_snapshot_rows,
+        reconcile,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    # data de calendário (idade do dado), não timestamp
+    hoje = _dt.date.today()  # noqa: DTZ011
+    try:
+        policy = load_policy(vault_path)
+        rows = read_snapshot_rows(Path(vault_path) / SNAPSHOT_RELATIVE_PATH)
+    except ValueError as exc:
+        console.print(f"[bold red]Política ou snapshot inválidos:[/] {exc}")
+        raise SystemExit(1) from exc
+    if policy is None:
+        console.print(
+            "[yellow]Sem política de pesos-alvo. Rode `iip target-policy --init` primeiro.[/]"
+        )
+        raise SystemExit(1)
+
+    rec = reconcile(policy, rows)
+    events = build_monitoring_events(policy, rec, hoje.isoformat())
+    deviations = [event for event in events if event.severity == SEVERITY_DEVIATION]
+
+    console.print(
+        f"[bold]Eventos de monitoramento[/] — política {policy.version} (hash "
+        f"{policy.content_hash}), {len(events)} linhas."
+    )
+    console.print(
+        "Monitoramento (campo da política): "
+        f"{'ligado' if policy.monitoring_enabled else 'desligado'}; este comando só lê, nunca "
+        "decide, executa ou notifica."
+    )
+    if deviations:
+        table = Table(title=f"Linhas em desvio ({len(deviations)} de {len(events)})")
+        table.add_column("Linha")
+        table.add_column("Peso atual", justify="right")
+        table.add_column("Faixa", justify="right")
+        table.add_column("Estado")
+        table.add_column("Tipo de desvio")
+        for event in sorted(deviations, key=lambda e: -e.current_weight_pct):
+            band = (
+                "—"
+                if event.band_low is None
+                else f"{event.band_low:.2f}–{event.band_high:.2f}%"
+            )
+            table.add_row(
+                event.line_id,
+                f"{event.current_weight_pct:.2f}%",
+                band,
+                event.state,
+                event.deviation_type or "—",
+            )
+        console.print(table)
+    else:
+        console.print("[green]Nenhuma linha em desvio.[/]")
+    console.print(
+        f"[dim]{len(events)} linhas lidas; {len(deviations)} em desvio; automatic_action "
+        "sempre 'nenhuma'. Leitura, não ordem: nada é decidido, executado ou notificado.[/]"
+    )
+    if report:
+        from iip.obsidian.monitoring_event_report import write_monitoring_report
+
+        console.print(
+            f"[dim]{write_monitoring_report(vault_path, events, policy, hoje)}[/]"
+        )
+
+
 @cli.command("portfolio-layers")
 @click.option(
     "--vault",
