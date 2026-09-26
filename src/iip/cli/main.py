@@ -2121,7 +2121,7 @@ def monitoring_events_command(
     "--init-contrato",
     is_flag=True,
     default=False,
-    help="Cria 02_Portfolio/Aporte_Contrato.json com os valores da rev. 4, PENDENTE (nunca "
+    help="Cria 02_Portfolio/Aporte_Contrato.json com os valores da rev. 4.1, PENDENTE (nunca "
     "sobrescreve um arquivo existente; a aprovação é sua, no arquivo).",
 )
 def aporte_proposto_command(
@@ -2131,7 +2131,7 @@ def aporte_proposto_command(
     report: bool,
     init_contrato: bool,
 ) -> None:
-    """Proposta mensal de aporte (APORTE_PROPOSTO_V1 rev. 4) para aprovação humana.
+    """Proposta mensal de aporte (APORTE_PROPOSTO_V1 rev. 4.1) para aprovação humana.
 
     Só roda por este comando manual: não está no job diário nem em agendador. Lê o contrato, a
     política de pesos-alvo, o orçamento por classe, as notas DEC-* da rodada completa do ciclo,
@@ -2177,6 +2177,10 @@ def aporte_proposto_command(
     )
     for reason in proposal.failed_preconditions:
         console.print(f"  [yellow]pré-condição:[/] {reason}")
+    console.print(
+        f"  Current.md: snapshot_date {proposal.current_snapshot_date or '—'}, base "
+        f"{proposal.snapshot_date_basis or '—'}, captura {proposal.captured_at or '—'}"
+    )
     for inc in proposal.inconsistencies:
         console.print(f"  [yellow]{inc.kind}:[/] {inc.position_id} — {inc.detail}")
     if proposal.lines:

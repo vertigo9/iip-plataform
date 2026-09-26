@@ -1,9 +1,15 @@
-"""Contrato do aporte proposto (APORTE_PROPOSTO_V1, revisão 4): ``02_Portfolio/Aporte_Contrato.json``.
+"""Contrato do aporte proposto (APORTE_PROPOSTO_V1, revisão normativa 4.1):
+``02_Portfolio/Aporte_Contrato.json``.
 
 É o arquivo que o gerador de proposta (``aporte.py``) exige ``aprovada`` antes de calcular
-qualquer coisa. Texto aprovado pelo usuário em 26/09/2026 (SHA-256 do documento
-``63bbeda126534b80716bf4b477bedc1d530db4c44d09dea2e47f91ebc905f7a0``); este módulo só
-transcreve o schema (§2) e as regras de rejeição (§14) dele.
+qualquer coisa. Base: rev. 4 (SHA-256 do documento
+``63bbeda126534b80716bf4b477bedc1d530db4c44d09dea2e47f91ebc905f7a0``), com a revisão 4.1 de
+proveniência temporal do snapshot (especificação aprovada em 26/09/2026, SHA-256 do documento
+``452e879741752189b5ce16618329c0ffd3b741f78f0f2c15b6eded6b08f33f61``). Este módulo só transcreve
+o schema e as regras de rejeição delas. A 4.1 mantém ``version = "1"`` e acrescenta dois campos
+normativos (entram no payload e no hash): ``revision = "4.1"`` e ``snapshot_date_basis_order``.
+Um contrato gravado sem ``revision`` é da rev. 4 e é recusado com esse motivo: precisa ser
+recriado pendente e reaprovado (nunca é convertido em silêncio).
 
 Mesmo padrão de ``class_budget.py``: dataclass imutável, ``validate`` que levanta
 ``ValueError`` com o motivo, ``content_hash`` de 16 hex sobre o payload canônico (sem a
@@ -28,6 +34,15 @@ from iip.knowledge.models import Verdict
 CONTRACT_RELATIVE_PATH = Path("02_Portfolio") / "Aporte_Contrato.json"
 CONTRACT_TYPE = "aporte_proposto_contract"
 CONTRACT_VERSION = "1"
+CONTRACT_REVISION = "4.1"
+# Rev. 4.1 §4: lista única -- vocabulário permitido E ordem de precedência das bases da
+# snapshot_date. A precedência é garantia do procedimento de captura/conversão; o motor só valida
+# que a base registrada pertence a esta lista e que as regras dela foram cumpridas.
+SNAPSHOT_DATE_BASIS_ORDER = (
+    "source_declared_date",
+    "source_reference_date",
+    "capture_date",
+)
 APPROVAL_STATUSES = ("pendente", "aprovada")
 AUTOMATIC_ACTION = "nenhuma"
 
@@ -75,6 +90,8 @@ _ROOT_KEYS = frozenset(
         "monthly_asset_cap_pct",
         "approval_status",
         "decided_on",
+        "revision",
+        "snapshot_date_basis_order",
         *_FIXED_FIELDS,
     }
 )
@@ -85,6 +102,8 @@ _WEIGHT_SUM_TOLERANCE = 1e-9
 @dataclass(frozen=True)
 class AporteContract:
     version: str = CONTRACT_VERSION
+    revision: str = CONTRACT_REVISION
+    snapshot_date_basis_order: tuple[str, ...] = SNAPSHOT_DATE_BASIS_ORDER
     origin: str = ""
     monthly_budget_brl: float = 1350.0
     eligible_verdicts: tuple[str, ...] = V1_ELIGIBLE
@@ -141,6 +160,16 @@ def validate(
     """Levanta ``ValueError`` com o motivo se o contrato deve ser rejeitado (§14)."""
     if contract.version != CONTRACT_VERSION:
         raise ValueError(f"version {contract.version!r}, esperado {CONTRACT_VERSION!r}")
+    if contract.revision != CONTRACT_REVISION:
+        raise ValueError(
+            f"revision {contract.revision!r}, esperado {CONTRACT_REVISION!r}"
+        )
+    order = contract.snapshot_date_basis_order
+    if tuple(order) != SNAPSHOT_DATE_BASIS_ORDER:
+        raise ValueError(
+            f"snapshot_date_basis_order={list(order)!r}; a rev. 4.1 fixa "
+            f"{list(SNAPSHOT_DATE_BASIS_ORDER)!r} (vocabulário e ordem)"
+        )
     if not _is_number(contract.monthly_budget_brl) or contract.monthly_budget_brl <= 0:
         raise ValueError(
             f"monthly_budget_brl={contract.monthly_budget_brl!r} precisa ser > 0"
@@ -212,6 +241,8 @@ def _payload(contract: AporteContract, *, with_origin: bool = True) -> dict:
     payload = {
         "type": CONTRACT_TYPE,
         "version": contract.version,
+        "revision": contract.revision,
+        "snapshot_date_basis_order": list(contract.snapshot_date_basis_order),
         "monthly_budget_brl": contract.monthly_budget_brl,
         "eligible_verdicts": list(contract.eligible_verdicts),
         "vetoed_verdicts": list(contract.vetoed_verdicts),
@@ -251,6 +282,12 @@ def load_contract(vault_path: str | Path) -> AporteContract | None:
     try:
         if not isinstance(raw, dict):
             raise ValueError("a raiz precisa ser um objeto")
+        if "revision" not in raw:
+            raise ValueError(
+                "contrato sem 'revision': é da rev. 4, e o código exige a rev. "
+                f"{CONTRACT_REVISION}. Ele precisa ser recriado pendente e reaprovado; "
+                "nada é convertido automaticamente"
+            )
         unknown = set(raw) - _ROOT_KEYS
         if unknown:
             raise ValueError(f"chave desconhecida na raiz {sorted(unknown)}")
@@ -259,13 +296,19 @@ def load_contract(vault_path: str | Path) -> AporteContract | None:
             raise ValueError(f"faltam chaves: {sorted(missing)}")
         if raw["type"] != CONTRACT_TYPE:
             raise ValueError(f"type {raw['type']!r}, esperado {CONTRACT_TYPE!r}")
-        for name in ("eligible_verdicts", "vetoed_verdicts"):
+        for name in (
+            "eligible_verdicts",
+            "vetoed_verdicts",
+            "snapshot_date_basis_order",
+        ):
             if not isinstance(raw[name], list) or not all(
                 isinstance(v, str) for v in raw[name]
             ):
                 raise ValueError(f"{name} precisa ser uma lista de textos")
         contract = AporteContract(
             version=raw["version"],
+            revision=raw["revision"],
+            snapshot_date_basis_order=tuple(raw["snapshot_date_basis_order"]),
             origin=str(raw.get("origin", "")),
             monthly_budget_brl=raw["monthly_budget_brl"],
             eligible_verdicts=tuple(raw["eligible_verdicts"]),
@@ -287,9 +330,9 @@ def load_contract(vault_path: str | Path) -> AporteContract | None:
 
 
 def build_contract(
-    *, origin: str = "criado pendente a partir da rev. 4 aprovada"
+    *, origin: str = "criado pendente a partir da rev. 4.1 aprovada"
 ) -> AporteContract:
-    """O contrato v1 com os valores da rev. 4, sempre ``pendente``: a aprovação é do usuário,
+    """O contrato v1 com os valores da rev. 4.1, sempre ``pendente``: a aprovação é do usuário,
     gravada por ele no arquivo (mesmo protocolo da política e do orçamento por classe).
     """
     contract = AporteContract(origin=origin)

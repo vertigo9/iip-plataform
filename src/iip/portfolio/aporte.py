@@ -36,6 +36,7 @@ from iip.knowledge.models import Verdict
 from iip.knowledge.repository import ObsidianRepository
 from iip.portfolio.aporte_contract import (
     AUTOMATIC_ACTION,
+    SNAPSHOT_DATE_BASIS_ORDER,
     AporteContract,
     load_contract,
 )
@@ -66,8 +67,15 @@ REASON_BUDGET = "orcamento_classe_nao_aprovado"
 REASON_NO_ROUND = "sem_rodada_completa_no_ciclo"
 REASON_NO_PRICE_SNAPSHOT = "sem_snapshot_de_preco_no_ciclo"
 REASON_RECONCILIATION = "reconciliacao_inconsistente"
+# Motivos temporais do Current.md (rev. 4.1 §8.1), NESTA ordem normativa: só o primeiro
+# aplicável é registrado.
 REASON_CURRENT_DATE_MISSING = "current_snapshot_date_missing"
+REASON_CURRENT_BASIS_MISSING = "current_snapshot_basis_missing"
+REASON_CURRENT_CAPTURE_MISSING = "current_snapshot_capture_missing"
+REASON_CURRENT_DATE_INCONSISTENT = "current_snapshot_date_inconsistent"
 REASON_CURRENT_OUT_OF_CYCLE = "current_snapshot_fora_do_ciclo"
+BASIS_CAPTURE_DATE = "capture_date"
+CAPTURE_DATE_WARNING = "Data de captura, não data declarada pela fonte."
 REASON_NO_ELIGIBLE = "nenhum_elegivel"
 
 # Exclusões individuais (§5), na ordem em que são testadas.
@@ -90,6 +98,7 @@ INCONS_REOPENED = "posicao_encerrada_ativa_no_current"
 INCONS_NEW_MEMBER = "posicao_fora_dos_membros_do_grupo"
 
 _CYCLE_RE = re.compile(r"^\d{4}-(0[1-9]|1[0-2])$")
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _EPS = 1e-6  # tolerância monetária (R$) nas comparações de invariantes e estados
 
 
@@ -114,13 +123,25 @@ class DecisionNote:
 
 
 @dataclass(frozen=True)
+class SnapshotProvenance:
+    """A proveniência temporal gravada no cabeçalho do ``Current.md`` (rev. 4.1), como texto
+    cru. ``processed_at`` e o mtime do arquivo não entram aqui de propósito: não têm
+    autoridade temporal (§3, §10)."""
+
+    snapshot_date: str | None = None
+    basis: str | None = None  # snapshot_date_basis
+    evidence: str | None = None  # snapshot_date_evidence
+    captured_at: str | None = None
+
+
+@dataclass(frozen=True)
 class AporteInputs:
     cycle: str  # AAAA-MM
     contract: AporteContract | None
     policy: TargetPolicy | None
     budget: ClassBudget | None
     rows: tuple[SnapshotRow, ...]
-    current_snapshot_date: _dt.date | None  # None = campo ausente ou inválido
+    current_provenance: SnapshotProvenance
     decisions: tuple[DecisionNote, ...]
     price_snapshot_date: _dt.date | None  # None = nenhuma pasta de snapshot no ciclo
     prices: Mapping[str, float | None]  # ticker -> preço do snapshot do ciclo
@@ -197,6 +218,9 @@ class Proposal:
     inconsistencies: tuple[Inconsistency, ...] = ()
     decision_round: DecisionRound | None = None
     current_snapshot_date: str | None = None
+    snapshot_date_basis: str | None = None
+    snapshot_date_evidence: str | None = None
+    captured_at: str | None = None
     price_snapshot_date: str | None = None
     contract_hash: str | None = None
     target_policy_hash: str | None = None
@@ -235,6 +259,72 @@ class Proposal:
             _dt.date.fromisoformat(self.price_snapshot_date)
             - _dt.date.fromisoformat(self.current_snapshot_date)
         ).days
+
+
+# --- proveniência temporal do Current.md (rev. 4.1) ---------------------------------------
+
+
+def _iso_date(raw: str | None) -> _dt.date | None:
+    """Só ``AAAA-MM-DD`` exato; qualquer outra coisa é inválida (nada é completado)."""
+    if raw is None or not _DATE_RE.match(raw.strip()):
+        return None
+    try:
+        return _dt.date.fromisoformat(raw.strip())
+    except ValueError:
+        return None
+
+
+def captured_local_date(raw: str | None) -> _dt.date | None:
+    """A data LOCAL de ``captured_at`` (§5): com hora, o fuso é obrigatório e a data é a do fuso
+    declarado (nunca convertida para UTC); só com data, é usada literalmente. Inválido ou hora
+    sem fuso -> ``None``."""
+    if raw is None or not raw.strip():
+        return None
+    text = raw.strip()
+    if "T" not in text:
+        return _iso_date(text)
+    if not _DATE_RE.match(text[:10]):
+        return None
+    try:
+        moment = _dt.datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if moment.tzinfo is None or moment.utcoffset() is None:
+        return None
+    return moment.date()
+
+
+def check_snapshot_provenance(
+    prov: SnapshotProvenance,
+    cycle: str,
+    basis_order: tuple[str, ...] = SNAPSHOT_DATE_BASIS_ORDER,
+) -> tuple[_dt.date | None, str | None]:
+    """A ``snapshot_date`` comprovada e o PRIMEIRO motivo temporal aplicável, na ordem
+    normativa do §8.1 (``None`` se passou). Pura; nunca usa mtime, ``processed_at`` nem a data
+    do sistema. A precedência entre as bases é garantia do procedimento de captura, não daqui:
+    este teste só confere que a base registrada pertence ao vocabulário e cumpre as regras
+    dela."""
+    snapshot_date = _iso_date(prov.snapshot_date)
+    if snapshot_date is None:
+        return None, REASON_CURRENT_DATE_MISSING
+    if (
+        prov.basis not in basis_order
+        or prov.evidence is None
+        or not prov.evidence.strip()
+    ):
+        return snapshot_date, REASON_CURRENT_BASIS_MISSING
+    has_capture = prov.captured_at is not None and bool(prov.captured_at.strip())
+    captured = captured_local_date(prov.captured_at)
+    if prov.basis == BASIS_CAPTURE_DATE:
+        if captured is None:
+            return snapshot_date, REASON_CURRENT_CAPTURE_MISSING
+        if snapshot_date != captured:
+            return snapshot_date, REASON_CURRENT_DATE_INCONSISTENT
+    elif has_capture and (captured is None or snapshot_date > captured):
+        return snapshot_date, REASON_CURRENT_DATE_INCONSISTENT
+    if snapshot_date.isoformat()[:7] != cycle:
+        return snapshot_date, REASON_CURRENT_OUT_OF_CYCLE
+    return snapshot_date, None
 
 
 # --- universo e rodada completa (§3, §3.1) -------------------------------------------------
@@ -357,6 +447,19 @@ def blocking_inconsistencies(rec: Reconciliation) -> tuple[Inconsistency, ...]:
 # --- a proposta ----------------------------------------------------------------------------
 
 
+def _provenance_fields(inputs: AporteInputs) -> dict:
+    """O que o relatório preserva da proveniência (rev. 4.1 §12): a data só quando é uma data
+    válida; base, evidência e captura como gravadas."""
+    prov = inputs.current_provenance
+    snapshot_date = _iso_date(prov.snapshot_date)
+    return {
+        "current_snapshot_date": snapshot_date.isoformat() if snapshot_date else None,
+        "snapshot_date_basis": prov.basis,
+        "snapshot_date_evidence": prov.evidence,
+        "captured_at": prov.captured_at,
+    }
+
+
 def _empty(
     inputs: AporteInputs, reason: str, failed: tuple[str, ...] = (), **extra
 ) -> Proposal:
@@ -367,11 +470,7 @@ def _empty(
         reason=reason,
         failed_preconditions=failed,
         budget=contract.monthly_budget_brl if contract else 0.0,
-        current_snapshot_date=(
-            inputs.current_snapshot_date.isoformat()
-            if inputs.current_snapshot_date
-            else None
-        ),
+        **_provenance_fields(inputs),
         price_snapshot_date=(
             inputs.price_snapshot_date.isoformat()
             if inputs.price_snapshot_date
@@ -422,16 +521,20 @@ def build_proposal(
         failed.append(REASON_NO_PRICE_SNAPSHOT)
     # Reconciliação: só os três bloqueios globais contam. Um Current.md sem posições (ou sem
     # a linha X) não é inconsistência: vira exclusão individual adiante; a falta do arquivo
-    # já aparece como current_snapshot_date_missing.
+    # já aparece como motivo temporal (current_snapshot_date_missing).
     rec = reconcile(policy, inputs.rows) if policy is not None else None
     split = split_reconciliation(rec) if rec is not None else None
     inconsistencies = split.blocking if split is not None else ()
     if inconsistencies:
         failed.append(REASON_RECONCILIATION)
-    if inputs.current_snapshot_date is None:
-        failed.append(REASON_CURRENT_DATE_MISSING)
-    elif not _in_cycle(inputs.current_snapshot_date, inputs.cycle):
-        failed.append(REASON_CURRENT_OUT_OF_CYCLE)
+    # §4.7 + rev. 4.1 §8.1: no máximo UM motivo temporal, o primeiro na ordem normativa
+    _, temporal_reason = check_snapshot_provenance(
+        inputs.current_provenance,
+        inputs.cycle,
+        contract.snapshot_date_basis_order if contract else SNAPSHOT_DATE_BASIS_ORDER,
+    )
+    if temporal_reason is not None:
+        failed.append(temporal_reason)
     if failed:
         return _empty(
             inputs,
@@ -591,7 +694,7 @@ def build_proposal(
         failed_preconditions=(),
         budget=contract.monthly_budget_brl,
         lines=tuple(lines),
-        current_snapshot_date=inputs.current_snapshot_date.isoformat(),
+        **_provenance_fields(inputs),
         price_snapshot_date=price_date,
         contract_hash=contract.content_hash,
         target_policy_hash=policy.content_hash,
@@ -715,14 +818,24 @@ def read_decision_notes(vault_path: str | Path) -> tuple[DecisionNote, ...]:
     return tuple(notes)
 
 
-def read_current_snapshot_date(path: str | Path) -> _dt.date | None:
-    """O ``snapshot_date`` do cabeçalho do ``Current.md``; ``None`` se ausente ou inválido. A
-    data de modificação do arquivo nunca é usada (§3)."""
-    raw = _frontmatter(Path(path)).get("snapshot_date", "").strip().strip("\"'")
-    try:
-        return _dt.date.fromisoformat(raw) if raw else None
-    except ValueError:
-        return None
+def read_snapshot_provenance(path: str | Path) -> SnapshotProvenance:
+    """Os campos de proveniência do cabeçalho do ``Current.md`` (rev. 4.1), sem interpretação:
+    a validação é de ``check_snapshot_provenance``. A data de modificação do arquivo e o
+    ``processed_at`` nunca são lidos como data (§3, §10)."""
+    meta = _frontmatter(Path(path))
+
+    def field_value(key: str) -> str | None:
+        raw = meta.get(key)
+        if raw is None:
+            return None
+        return raw.strip().strip("\"'")
+
+    return SnapshotProvenance(
+        snapshot_date=field_value("snapshot_date"),
+        basis=field_value("snapshot_date_basis"),
+        evidence=field_value("snapshot_date_evidence"),
+        captured_at=field_value("captured_at"),
+    )
 
 
 def latest_price_snapshot(
@@ -775,8 +888,10 @@ def load_inputs(
         policy=load_policy(vault),
         budget=load_budget(vault),
         rows=rows,
-        current_snapshot_date=(
-            read_current_snapshot_date(current_path) if current_path.exists() else None
+        current_provenance=(
+            read_snapshot_provenance(current_path)
+            if current_path.exists()
+            else SnapshotProvenance()
         ),
         decisions=decisions,
         price_snapshot_date=price_date,
