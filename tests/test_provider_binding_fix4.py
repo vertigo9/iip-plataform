@@ -24,9 +24,9 @@ def test_pending_provider_is_not_promoted():
 
 def test_implementation_gap_is_only_fund_managers():
     gap = OperationalProviderPlanner().implementation_gap()
-    assert len(gap) == 10
+    assert len(gap) == 11
     assert "sparta" in gap
     assert "kinea" in gap
     assert "xp_asset" not in gap
-    assert "patria" not in gap
+    assert "patria" in gap
     assert "ri_company" not in gap
