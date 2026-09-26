@@ -118,6 +118,7 @@ def to_knowledge_decision(
             if decision.thesis_exit is not None
             else ()
         ),
+        decision_score=decision.score,
         thesis_exit_critical_failure=(
             decision.thesis_exit.critical_failure
             if decision.thesis_exit is not None

@@ -39,6 +39,9 @@ class Decision:
     thesis_exit_attention_gates: tuple[str, ...] = ()
     thesis_exit_unknown_gates: tuple[str, ...] = ()
     thesis_exit_critical_failure: bool | None = None
+    # O ``Decision.score`` que o motor produziu, gravado tal como veio (sem recálculo).
+    # ``None`` = decisão sem score (as notas gravadas antes deste campo existir).
+    decision_score: float | None = None
 
 
 @dataclass(frozen=True)
