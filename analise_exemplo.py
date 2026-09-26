@@ -14,7 +14,7 @@ data = AssetData(
         "dividend_yield": 7.5,
         "debt_to_equity": 0.5,
         "interest_coverage": 6.0,
-    }
+    },
 )
 
 analyzer = EquityAnalyzer()

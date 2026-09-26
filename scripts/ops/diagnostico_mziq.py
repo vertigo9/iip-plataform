@@ -18,15 +18,18 @@ with sync_playwright() as p:
     def on_response(response):
         url = response.url
 
-        if any(x in url.lower() for x in (
-            "mziq",
-            "api",
-            "filemanager",
-            "document",
-            "documento",
-            "category",
-            "year",
-        )):
+        if any(
+            x in url.lower()
+            for x in (
+                "mziq",
+                "api",
+                "filemanager",
+                "document",
+                "documento",
+                "category",
+                "year",
+            )
+        ):
             print(
                 f"\n[RESPONSE] {response.status} {response.request.method} {url}",
                 flush=True,
@@ -73,7 +76,9 @@ with sync_playwright() as p:
 
     print("\n[DIAGNÓSTICO] página carregada.", flush=True)
     print("[DIAGNÓSTICO] navegador ficará aberto.", flush=True)
-    print("[DIAGNÓSTICO] Se aparecer o seletor, clique manualmente em 2019.", flush=True)
+    print(
+        "[DIAGNÓSTICO] Se aparecer o seletor, clique manualmente em 2019.", flush=True
+    )
     print("[DIAGNÓSTICO] Depois aguarde alguns segundos.", flush=True)
 
     time.sleep(15)

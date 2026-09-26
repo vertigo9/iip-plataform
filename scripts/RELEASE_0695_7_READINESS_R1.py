@@ -102,9 +102,7 @@ def main() -> int:
         )
 
     if len(r4_rows) != 31:
-        raise RuntimeError(
-            f"FAIL-CLOSED: R4 expected 31 rows, found {len(r4_rows)}"
-        )
+        raise RuntimeError(f"FAIL-CLOSED: R4 expected 31 rows, found {len(r4_rows)}")
 
     # ------------------------------------------------------------------
     # Index R4
@@ -118,14 +116,10 @@ def main() -> int:
         row_number = normalized(row.get("Row"))
 
         if not row_number:
-            raise RuntimeError(
-                "FAIL-CLOSED: R4 contains a row without Row identifier"
-            )
+            raise RuntimeError("FAIL-CLOSED: R4 contains a row without Row identifier")
 
         if row_number in r4_by_row:
-            raise RuntimeError(
-                f"FAIL-CLOSED: duplicate R4 Row={row_number}"
-            )
+            raise RuntimeError(f"FAIL-CLOSED: duplicate R4 Row={row_number}")
 
         r4_by_row[row_number] = row
 
@@ -157,8 +151,7 @@ def main() -> int:
 
         if not candidates:
             raise RuntimeError(
-                f"FAIL-CLOSED: authorization row {auth_row} "
-                f"has no R4 counterpart"
+                f"FAIL-CLOSED: authorization row {auth_row} " f"has no R4 counterpart"
             )
 
         if len(candidates) != 1:
@@ -178,10 +171,7 @@ def main() -> int:
                 normalized(auth.get("SHA256")).upper()
                 == normalized(r4.get("SHA256")).upper()
             ),
-            "Metric": (
-                normalized(auth.get("Metric"))
-                == normalized(r4.get("Metric"))
-            ),
+            "Metric": (normalized(auth.get("Metric")) == normalized(r4.get("Metric"))),
             "Resolved_Period": (
                 normalized(auth.get("Resolved_Period"))
                 == normalized(r4.get("Resolved_Period"))
@@ -193,61 +183,45 @@ def main() -> int:
         }
 
         if not all(integrity_checks.values()):
-            failed = [
-                key for key, ok in integrity_checks.items() if not ok
-            ]
+            failed = [key for key, ok in integrity_checks.items() if not ok]
 
             raise RuntimeError(
                 f"FAIL-CLOSED: R4 mismatch at authorization row "
                 f"{auth_row}: {failed}"
             )
 
-        classification = normalized(
-            r4.get("Identity_Classification_R4")
-        )
+        classification = normalized(r4.get("Identity_Classification_R4"))
 
-        identity_status = normalized(
-            r4.get("Identity_Status_R4")
-        )
+        identity_status = normalized(r4.get("Identity_Status_R4"))
 
         observation_key = r4_identity_key(r4)
 
         if not observation_key:
             raise RuntimeError(
-                f"FAIL-CLOSED: row {auth_row} has no "
-                f"Observation_Key_R4"
+                f"FAIL-CLOSED: row {auth_row} has no " f"Observation_Key_R4"
             )
 
         # --------------------------------------------------------------
         # Semantic decision
         # --------------------------------------------------------------
 
-        if (
-            classification == "UNIQUE"
-            and identity_status == "IDENTITY_READY"
-        ):
+        if classification == "UNIQUE" and identity_status == "IDENTITY_READY":
             decision = "CANONICAL"
             write_action = "CANONICAL_READY"
 
-        elif (
-            classification == "EXACT_DUPLICATE"
-            and identity_status == "DEDUPLICABLE"
-        ):
+        elif classification == "EXACT_DUPLICATE" and identity_status == "DEDUPLICABLE":
             decision = "ALIAS_EXACT_DUPLICATE"
             write_action = "ALIAS_ONLY"
 
         elif (
             classification == "SEMANTICALLY_DISTINCT_CANDIDATES"
             and identity_status == "IDENTITY_READY_WITH_DIMENSION"
-            and normalized(r4.get("Semantic_Dimension_Status_R4"))
-            == "RESOLVED"
+            and normalized(r4.get("Semantic_Dimension_Status_R4")) == "RESOLVED"
         ):
             decision = "CANONICAL_WITH_DIMENSION"
             write_action = "CANONICAL_READY_WITH_DIMENSION"
 
-        elif (
-            identity_status == "BLOCKED_SEMANTIC_IDENTITY"
-        ):
+        elif identity_status == "BLOCKED_SEMANTIC_IDENTITY":
             decision = "BLOCKED_SEMANTIC_IDENTITY"
             write_action = "NO_WRITE"
 
@@ -260,18 +234,10 @@ def main() -> int:
         # Never transform NOT_GRANTED into GRANTED.
         # --------------------------------------------------------------
 
-        auth_persistence = normalized(
-            auth.get("Metric_Persistence_Authorization")
-        )
-        auth_kb = normalized(
-            auth.get("KnowledgeBridge_Write_Authorization")
-        )
-        auth_vault = normalized(
-            auth.get("Vault_Write_Authorization")
-        )
-        explicit_grant = normalized(
-            auth.get("Explicit_Grant")
-        )
+        auth_persistence = normalized(auth.get("Metric_Persistence_Authorization"))
+        auth_kb = normalized(auth.get("KnowledgeBridge_Write_Authorization"))
+        auth_vault = normalized(auth.get("Vault_Write_Authorization"))
+        explicit_grant = normalized(auth.get("Explicit_Grant"))
 
         if auth_persistence != "NOT_GRANTED":
             raise RuntimeError(
@@ -310,19 +276,11 @@ def main() -> int:
                 "Authorization_Knowledge_Evidence_ID": auth.get(
                     "Knowledge_Evidence_ID", ""
                 ),
-                "R4_Metric_Evidence_ID": r4.get(
-                    "Metric_Evidence_ID", ""
-                ),
-                "R4_Knowledge_Evidence_ID": r4.get(
-                    "Knowledge_Evidence_ID", ""
-                ),
+                "R4_Metric_Evidence_ID": r4.get("Metric_Evidence_ID", ""),
+                "R4_Knowledge_Evidence_ID": r4.get("Knowledge_Evidence_ID", ""),
                 "Observation_Key_R4": observation_key,
-                "Context_Join_Key_R4": r4.get(
-                    "Context_Join_Key_R4", ""
-                ),
-                "Semantic_Dimension_R4": r4.get(
-                    "Semantic_Dimension_R4", ""
-                ),
+                "Context_Join_Key_R4": r4.get("Context_Join_Key_R4", ""),
+                "Semantic_Dimension_R4": r4.get("Semantic_Dimension_R4", ""),
                 "Semantic_Dimension_Status_R4": r4.get(
                     "Semantic_Dimension_Status_R4", ""
                 ),
@@ -367,29 +325,20 @@ def main() -> int:
             "CANONICAL",
             "CANONICAL_WITH_DIMENSION",
         }:
-            canonical_observation_keys.add(
-                row["Observation_Key_R4"]
-            )
+            canonical_observation_keys.add(row["Observation_Key_R4"])
 
         elif decision == "ALIAS_EXACT_DUPLICATE":
-            canonical_observation_keys.add(
-                row["Observation_Key_R4"]
-            )
+            canonical_observation_keys.add(row["Observation_Key_R4"])
 
     # ------------------------------------------------------------------
     # Exact duplicate validation
     # ------------------------------------------------------------------
 
     exact_duplicate_rows = [
-        row
-        for row in output
-        if row["Identity_Classification_R4"] == "EXACT_DUPLICATE"
+        row for row in output if row["Identity_Classification_R4"] == "EXACT_DUPLICATE"
     ]
 
-    exact_duplicate_groups = {
-        row["Observation_Key_R4"]
-        for row in exact_duplicate_rows
-    }
+    exact_duplicate_groups = {row["Observation_Key_R4"] for row in exact_duplicate_rows}
 
     # ------------------------------------------------------------------
     # Blocked rows
@@ -408,8 +357,7 @@ def main() -> int:
     blocked_semantic_rows = [
         row
         for row in output
-        if row["Canonical_Decision_R2"]
-        == "BLOCKED_SEMANTIC_IDENTITY"
+        if row["Canonical_Decision_R2"] == "BLOCKED_SEMANTIC_IDENTITY"
     ]
 
     # ------------------------------------------------------------------
@@ -417,16 +365,13 @@ def main() -> int:
     # ------------------------------------------------------------------
 
     canonical_unique = [
-        row
-        for row in output
-        if row["Canonical_Decision_R2"] == "CANONICAL"
+        row for row in output if row["Canonical_Decision_R2"] == "CANONICAL"
     ]
 
     canonical_with_dimension = [
         row
         for row in output
-        if row["Canonical_Decision_R2"]
-        == "CANONICAL_WITH_DIMENSION"
+        if row["Canonical_Decision_R2"] == "CANONICAL_WITH_DIMENSION"
     ]
 
     canonical_identity_count = len(
@@ -448,34 +393,20 @@ def main() -> int:
     assert len(output) == 31
 
     assert all(
-        row["Metric_Persistence_Authorization"] == "NOT_GRANTED"
-        for row in output
+        row["Metric_Persistence_Authorization"] == "NOT_GRANTED" for row in output
     )
 
     assert all(
-        row["KnowledgeBridge_Write_Authorization"] == "NOT_GRANTED"
-        for row in output
+        row["KnowledgeBridge_Write_Authorization"] == "NOT_GRANTED" for row in output
     )
 
-    assert all(
-        row["Vault_Write_Authorization"] == "NOT_GRANTED"
-        for row in output
-    )
+    assert all(row["Vault_Write_Authorization"] == "NOT_GRANTED" for row in output)
 
-    assert all(
-        row["Explicit_Grant"] == "NOT_GRANTED"
-        for row in output
-    )
+    assert all(row["Explicit_Grant"] == "NOT_GRANTED" for row in output)
 
-    assert all(
-        row["Execution_Status"] == "NOT_AUTHORIZED"
-        for row in output
-    )
+    assert all(row["Execution_Status"] == "NOT_AUTHORIZED" for row in output)
 
-    assert all(
-        row["Vault_Modified"] == "FALSE"
-        for row in output
-    )
+    assert all(row["Vault_Modified"] == "FALSE" for row in output)
 
     # Current R4 structure should yield:
     #
@@ -529,19 +460,14 @@ def main() -> int:
     # Add canonical group metadata to every row
     # ------------------------------------------------------------------
 
-    group_sizes = {
-        key: len(rows)
-        for key, rows in canonical_groups.items()
-    }
+    group_sizes = {key: len(rows) for key, rows in canonical_groups.items()}
 
     for row in output:
         row["Canonical_Group_Size_R2"] = str(
             group_sizes.get(row["Observation_Key_R4"], 0)
         )
 
-        row["Canonical_Identity_Count_R2"] = str(
-            canonical_identity_count
-        )
+        row["Canonical_Identity_Count_R2"] = str(canonical_identity_count)
 
     # ------------------------------------------------------------------
     # Write CSV
@@ -566,15 +492,9 @@ def main() -> int:
     # Summary
     # ------------------------------------------------------------------
 
-    decision_counts = Counter(
-        row["Canonical_Decision_R2"]
-        for row in output
-    )
+    decision_counts = Counter(row["Canonical_Decision_R2"] for row in output)
 
-    classification_counts = Counter(
-        row["Identity_Classification_R4"]
-        for row in output
-    )
+    classification_counts = Counter(row["Identity_Classification_R4"] for row in output)
 
     summary = {
         "stage": "06.31.2",

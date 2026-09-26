@@ -15,14 +15,16 @@ stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 backup = TARGET.with_name(f"patria.py.bak_v3_{stamp}")
 shutil.copy2(TARGET, backup)
 
+
 def replace_function(text, name, new_body):
     pattern = re.compile(rf"(?ms)^def {re.escape(name)}\\(.*?(?=^def |\\Z)")
     m = pattern.search(text)
     if not m:
         raise RuntimeError(f"Não encontrei a função {name}() em {TARGET}")
-    return text[:m.start()] + new_body.rstrip() + "\n\n" + text[m.end():]
+    return text[: m.start()] + new_body.rstrip() + "\n\n" + text[m.end() :]
 
-new_find_year = r'''def _find_year_select(page):
+
+new_find_year = r"""def _find_year_select(page):
     # A página do Patria mudou algumas vezes. Não dependemos da posição
     # do <select>; procuramos o select que contenha anos (2019, 2020...).
     selects = page.locator("select")
@@ -50,9 +52,9 @@ new_find_year = r'''def _find_year_select(page):
 
     print(f"[DIAGNÓSTICO] selects encontrados: {count}", flush=True)
     raise RuntimeError("Não encontrei o seletor de ano na Central de Documentos.")
-'''
+"""
 
-new_collect = r'''def _collect_links(page, ticker: str, year: int) -> list[Document]:
+new_collect = r"""def _collect_links(page, ticker: str, year: int) -> list[Document]:
     links = page.locator("a[href]")
     seen: set[str] = set()
     documents: list[Document] = []
@@ -108,9 +110,9 @@ new_collect = r'''def _collect_links(page, ticker: str, year: int) -> list[Docum
         )
 
     return documents
-'''
+"""
 
-new_select_year = r'''def _select_year(page, year: int) -> bool:
+new_select_year = r"""def _select_year(page, year: int) -> bool:
     sel = _find_year_select(page)
     wanted = str(year)
 
@@ -130,7 +132,7 @@ new_select_year = r'''def _select_year(page, year: int) -> bool:
             continue
 
     return False
-'''
+"""
 
 for name, body in [
     ("_find_year_select", new_find_year),
@@ -153,4 +155,6 @@ print("Depois teste:")
 print(r'python ".\scripts\patria_harvester.py" --ticker PCIP11 --years 2023 --headed')
 print()
 print("E só então:")
-print(r'python ".\scripts\patria_harvester.py" --ticker PCIP11 --years 2019-2026 --headed')
+print(
+    r'python ".\scripts\patria_harvester.py" --ticker PCIP11 --years 2019-2026 --headed'
+)

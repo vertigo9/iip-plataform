@@ -36,7 +36,9 @@ def main() -> None:
     print(f"1) Preparando vault de demonstração em: {VAULT_PATH}\n")
     bridge = KnowledgeBridge(str(VAULT_PATH))
 
-    print("2) Persistindo a evidência que sustenta a decisão (exigida pela auditoria)...")
+    print(
+        "2) Persistindo a evidência que sustenta a decisão (exigida pela auditoria)..."
+    )
     evidencia = Evidence(
         evidence_id="EV-PCIP11-DEMO-001",
         ticker=TICKER,
@@ -49,7 +51,9 @@ def main() -> None:
     caminho_evidencia = bridge.persist_evidence(evidencia)
     print(f"   -> evidência gravada em: {caminho_evidencia}\n")
 
-    print("3) Montando o Opportunity Score (módulo canônico: portfolio_decision.opportunity)...")
+    print(
+        "3) Montando o Opportunity Score (módulo canônico: portfolio_decision.opportunity)..."
+    )
     opportunity = build(
         TICKER,
         intrinsic_score=9.0,
@@ -104,7 +108,9 @@ def main() -> None:
     )
 
     print("\n===== RESULTADO =====")
-    print(f"Elegível: {resultado.eligibility.eligible} ({resultado.eligibility.reason})")
+    print(
+        f"Elegível: {resultado.eligibility.eligible} ({resultado.eligibility.reason})"
+    )
     print(f"Persistido: {resultado.persisted}")
     print(f"Decisão gravada em: {resultado.decision_path}")
     print(f"Nota de scoring gravada em: {resultado.scoring_note_path}")

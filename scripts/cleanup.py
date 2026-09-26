@@ -20,7 +20,7 @@ def cleanup():
         "build",
         "*.egg-info",
     ]
-    
+
     removed = 0
     for pattern in patterns:
         for item in root.rglob(pattern):
@@ -33,8 +33,9 @@ def cleanup():
                     removed += 1
             except Exception:
                 pass
-    
+
     print(f"Cleaned {removed} items")
+
 
 if __name__ == "__main__":
     cleanup()
