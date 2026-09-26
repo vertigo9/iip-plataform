@@ -45,7 +45,7 @@ target-version = "py312"
 # Historico arquivado e material a revisar nao sao codigo mantido: ficam fora
 # do lint (eram 326 dos 403 erros do "ruff check ."). O CI ja so olhava
 # src/ e tests/, entao isto so alinha o "ruff check ." local com ele.
-extend-exclude = ["archive", "_lixo_para_revisar"]
+extend-exclude = ["archive"]
 
 [tool.ruff.lint]
 # Conjunto que ja estava sendo tratado como padrao real do projeto
@@ -97,7 +97,7 @@ select = [
 # Mesmo alvo do ruff.
 [tool.black]
 target-version = ["py312"]
-extend-exclude = "(iip_knowledge_bridge|archive|_lixo_para_revisar)"
+extend-exclude = "(archive)"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
