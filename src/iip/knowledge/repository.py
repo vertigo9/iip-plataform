@@ -7,6 +7,7 @@ Knowledge/Vault/Projection layers.
 
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import asdict, dataclass, is_dataclass
 from pathlib import Path
@@ -168,6 +169,11 @@ class ObsidianRepository:
             f"confidence: {decision.confidence}\n"
         )
 
+        # só quando houver score: uma decisão sem score gera a mesma nota de antes. ``!r`` é a
+        # representação exata do float (ida e volta sem perda), sem arredondar de novo.
+        if decision.decision_score is not None:
+            content += f"decision_score: {decision.decision_score!r}\n"
+
         if decision.thesis_exit_state is not None:
             content += (
                 f"thesis_exit_state: {decision.thesis_exit_state}\n"
@@ -185,6 +191,37 @@ class ObsidianRepository:
 
         content += "---\n"
         return self._write_once(path, content)
+
+    @staticmethod
+    def read_decision_score(path: Path | str) -> float | None:
+        """O ``decision_score`` gravado numa nota ``DEC-*``, ou ``None`` se a nota não o tem
+        (as decisões gravadas antes deste campo existir). Só lê o que está escrito: nada é
+        inferido. Levanta ``ValueError`` se o arquivo não for uma nota de decisão ou se o
+        valor gravado não for um número finito (``nan``/``inf`` nunca saem do motor e
+        contaminariam qualquer cálculo que use o score). A faixa do score não é validada
+        aqui: isso é contrato do motor, não da persistência."""
+        lines = Path(path).read_text(encoding="utf-8").splitlines()
+        if not lines or lines[0].strip() != "---":
+            raise ValueError(f"not a decision note (no front matter): {path}")
+        fields: dict[str, str] = {}
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            key, sep, value = line.partition(":")
+            if sep and not line.startswith((" ", "-")):
+                fields[key.strip()] = value.strip()
+        if fields.get("type") != "decision":
+            raise ValueError(f"not a decision note: {path}")
+        raw = fields.get("decision_score")
+        if raw is None:
+            return None
+        try:
+            score = float(raw)
+        except ValueError as exc:
+            raise ValueError(f"invalid decision_score {raw!r} in {path}") from exc
+        if not math.isfinite(score):
+            raise ValueError(f"decision_score must be finite, got {raw!r} in {path}")
+        return score
 
     @staticmethod
     def _position_lines(positions: tuple[Any, ...]) -> str:
