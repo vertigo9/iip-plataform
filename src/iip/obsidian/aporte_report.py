@@ -12,7 +12,12 @@ from __future__ import annotations
 from pathlib import Path
 
 from iip.obsidian.frontmatter import flow_line
-from iip.portfolio.aporte import Proposal, report_relative_path
+from iip.portfolio.aporte import (
+    BASIS_CAPTURE_DATE,
+    CAPTURE_DATE_WARNING,
+    Proposal,
+    report_relative_path,
+)
 
 
 def _brl(value: float) -> str:
@@ -45,6 +50,9 @@ def render_aporte_report(
         flow_line("failed_preconditions", list(proposal.failed_preconditions)),
         f"decision_round_date: {round_.date if round_ and round_.date else ''}",
         f"current_snapshot_date: {proposal.current_snapshot_date or ''}",
+        f"snapshot_date_basis: {proposal.snapshot_date_basis or ''}",
+        flow_line("snapshot_date_evidence", proposal.snapshot_date_evidence or ""),
+        flow_line("captured_at", proposal.captured_at or ""),
         f"price_snapshot_date: {proposal.price_snapshot_date or ''}",
         "dias_entre_current_e_preco: "
         + ("" if proposal.date_gap_days is None else str(proposal.date_gap_days)),
@@ -74,6 +82,11 @@ def render_aporte_report(
         'movimentação financeira (`automatic_action: "nenhuma"`).',
         "",
     ]
+    if proposal.snapshot_date_basis == BASIS_CAPTURE_DATE:
+        lines += [
+            f"> **Atenção:** a `snapshot_date` do Current.md — {CAPTURE_DATE_WARNING}",
+            "",
+        ]
     if proposal.failed_preconditions:
         lines += ["## Pré-condições que falharam", ""]
         lines += [f"- `{reason}`" for reason in proposal.failed_preconditions]

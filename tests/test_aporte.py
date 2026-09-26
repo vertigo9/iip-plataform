@@ -1,4 +1,4 @@
-"""APORTE_PROPOSTO_V1 rev. 4: contrato, rodada completa, pré-condições, exclusões,
+"""APORTE_PROPOSTO_V1 rev. 4 + revisão normativa 4.1 (proveniência do snapshot): contrato, rodada completa, pré-condições, exclusões,
 distribuição, invariantes, leitura do vault, relatório, comando manual e guards de arquitetura.
 
 Contrato vinculante: SHA-256 63bbeda126534b80716bf4b477bedc1d530db4c44d09dea2e47f91ebc905f7a0.
@@ -20,6 +20,7 @@ from iip.obsidian.aporte_report import render_aporte_report, write_aporte_report
 from iip.portfolio import aporte as A
 from iip.portfolio.aporte_contract import (
     CONTRACT_RELATIVE_PATH,
+    SNAPSHOT_DATE_BASIS_ORDER,
     AporteContract,
     build_contract,
     load_contract,
@@ -44,6 +45,17 @@ CYCLE = "2026-09"
 ROUND = "2026-09-26"
 
 # --- fixtures em memória -------------------------------------------------------------------
+
+
+def _prov(**changes) -> A.SnapshotProvenance:
+    """Proveniência válida por padrão: data declarada pela fonte, com evidência."""
+    base = A.SnapshotProvenance(
+        snapshot_date="2026-09-21",
+        basis="source_declared_date",
+        evidence="posição em 21/09/2026",
+        captured_at=None,
+    )
+    return replace(base, **changes)
 
 
 def _contract(**changes) -> AporteContract:
@@ -162,7 +174,7 @@ def _inputs(**changes) -> A.AporteInputs:
         policy=_policy(),
         budget=_budget(),
         rows=_rows(),
-        current_snapshot_date=dt.date(2026, 9, 21),
+        current_provenance=_prov(),
         decisions=_decisions(),
         price_snapshot_date=dt.date(2026, 9, 26),
         prices={"AAA11": 10.0, "BBB11": 100.0, "CCC3": 30.0, "DDD3": 20.0},
@@ -191,12 +203,19 @@ def test_the_built_contract_is_the_rev4_v1_and_is_born_pending():
     assert len(contract.content_hash) == 16
 
 
-# O payload normativo da rev. 4 (§2), escrito à mão a partir do contrato aprovado
-# (SHA-256 63bbeda1...f7a0) -- não derivado do código. Mudar qualquer valor aqui é mudar o
+# O payload normativo da rev. 4 (§2, SHA-256 do documento 63bbeda1...f7a0) com a revisão 4.1
+# (documento 452e8797...3f61: revision + snapshot_date_basis_order), escrito à mão a partir das
+# especificações aprovadas -- não derivado do código. Mudar qualquer valor aqui é mudar o
 # contrato, o que exige nova decisão do usuário.
-REV4_NORMATIVE_PAYLOAD = {
+REV41_NORMATIVE_PAYLOAD = {
     "type": "aporte_proposto_contract",
     "version": "1",
+    "revision": "4.1",
+    "snapshot_date_basis_order": [
+        "source_declared_date",
+        "source_reference_date",
+        "capture_date",
+    ],
     "monthly_budget_brl": 1350.0,
     "eligible_verdicts": ["COMPRAR", "MANTER"],
     "vetoed_verdicts": ["AGUARDAR", "REDUZIR", "ENCERRAR", "AUMENTAR"],
@@ -225,18 +244,20 @@ REV4_NORMATIVE_PAYLOAD = {
     "approval_status": "pendente",
     "decided_on": None,
 }
-REV4_CONTRACT_HASH = "74edf96e82027053"  # content_hash do payload acima (sem a origem)
+# content_hash do payload acima (sem a origem). Era 74edf96e82027053 na rev. 4: a troca é
+# deliberada (rev. 4.1 aprovada em 26/09/2026), não um efeito colateral.
+REV41_CONTRACT_HASH = "9158b9a4e6d4a235"
 
 
 def test_the_built_contract_is_exactly_the_rev4_normative_payload(tmp_path):
-    """O que `--init-contrato` grava é o payload da rev. 4, campo a campo -- não só algo
+    """O que `--init-contrato` grava é o payload da rev. 4.1, campo a campo -- não só algo
     semanticamente equivalente. Nenhum campo a mais, nenhum a menos."""
     path = save_contract(tmp_path, build_contract())
     written = json.loads(path.read_text(encoding="utf-8"))
     written.pop("origin")
 
-    assert written == REV4_NORMATIVE_PAYLOAD
-    assert build_contract().content_hash == REV4_CONTRACT_HASH
+    assert written == REV41_NORMATIVE_PAYLOAD
+    assert build_contract().content_hash == REV41_CONTRACT_HASH
 
 
 def test_the_init_command_writes_exactly_the_rev4_payload(tmp_path):
@@ -249,7 +270,7 @@ def test_the_init_command_writes_exactly_the_rev4_payload(tmp_path):
         (tmp_path / CONTRACT_RELATIVE_PATH).read_text(encoding="utf-8")
     )
     written.pop("origin")
-    assert written == REV4_NORMATIVE_PAYLOAD
+    assert written == REV41_NORMATIVE_PAYLOAD
 
 
 @pytest.mark.parametrize(
@@ -277,6 +298,23 @@ def test_the_init_command_writes_exactly_the_rev4_payload(tmp_path):
         {"eligible_verdicts": ("COMPRAR", "MANTER", "AGUARDAR")},
         {"eligible_verdicts": ("MANTER", "MANTER")},
         {"vetoed_verdicts": ("AGUARDAR", "REDUZIR", "ENCERRAR", "AUMENTAR", "XPTO")},
+        {"revision": "4"},
+        {"revision": "4.2"},
+        {
+            "snapshot_date_basis_order": (
+                "capture_date",
+                "source_reference_date",
+                "source_declared_date",
+            )
+        },
+        {
+            "snapshot_date_basis_order": (
+                "source_declared_date",
+                "source_reference_date",
+            )
+        },
+        {"snapshot_date_basis_order": (*SNAPSHOT_DATE_BASIS_ORDER, "mtime")},
+        {"snapshot_date_basis_order": (*SNAPSHOT_DATE_BASIS_ORDER, "capture_date")},
         {"approval_status": "ativada"},
         {"approval_status": "aprovada", "decided_on": None},
         {"decided_on": "26/09/2026"},
@@ -443,9 +481,12 @@ def test_an_inactive_line_is_outside_the_universe():
         ({"decisions": ()}, A.REASON_NO_ROUND),
         ({"price_snapshot_date": None}, A.REASON_NO_PRICE_SNAPSHOT),
         ({"price_snapshot_date": dt.date(2026, 8, 31)}, A.REASON_NO_PRICE_SNAPSHOT),
-        ({"current_snapshot_date": None}, A.REASON_CURRENT_DATE_MISSING),
         (
-            {"current_snapshot_date": dt.date(2026, 8, 31)},
+            {"current_provenance": _prov(snapshot_date=None)},
+            A.REASON_CURRENT_DATE_MISSING,
+        ),
+        (
+            {"current_provenance": _prov(snapshot_date="2026-08-31")},
             A.REASON_CURRENT_OUT_OF_CYCLE,
         ),
     ],
@@ -459,7 +500,9 @@ def test_each_failed_precondition_makes_the_proposal_empty(changes, reason):
 
 
 def test_all_failed_preconditions_are_listed_and_the_first_is_the_reason():
-    proposal = A.build_proposal(_inputs(contract=None, current_snapshot_date=None))
+    proposal = A.build_proposal(
+        _inputs(contract=None, current_provenance=_prov(snapshot_date=None))
+    )
 
     assert proposal.failed_preconditions == (
         A.REASON_CONTRACT,
@@ -519,7 +562,9 @@ def test_a_current_snapshot_without_positions_is_not_a_reconciliation_failure():
 
 
 def test_a_missing_current_md_is_only_a_missing_snapshot_date():
-    proposal = A.build_proposal(_inputs(rows=(), current_snapshot_date=None))
+    proposal = A.build_proposal(
+        _inputs(rows=(), current_provenance=_prov(snapshot_date=None))
+    )
 
     assert proposal.failed_preconditions == (A.REASON_CURRENT_DATE_MISSING,)
 
@@ -828,12 +873,19 @@ def _brl(value: float) -> str:
     return "R$ " + f"{value:,.2f}".replace(",", "_").replace(".", ",").replace("_", ".")
 
 
-def _write_vault(vault: Path, *, snapshot_date="2026-09-21", contract=True) -> None:
+def _write_vault(
+    vault: Path, *, snapshot_date="2026-09-21", contract=True, extra_front=()
+) -> None:
     portfolio = vault / "02_Portfolio"
     portfolio.mkdir(parents=True, exist_ok=True)
     front = ["---", "type: portfolio"]
     if snapshot_date:
-        front.append(f"snapshot_date: {snapshot_date}")
+        front += [
+            f"snapshot_date: {snapshot_date}",
+            "snapshot_date_basis: source_declared_date",
+            'snapshot_date_evidence: "posição em 21/09/2026"',
+        ]
+    front += list(extra_front)
     lines = [
         *front,
         "---",
@@ -888,26 +940,28 @@ def test_load_inputs_reads_the_vault_and_the_price_snapshot(tmp_path):
 
     inputs = A.load_inputs(vault, snaps, CYCLE)
 
-    assert inputs.current_snapshot_date == dt.date(2026, 9, 21)
+    assert inputs.current_provenance == _prov()
     assert inputs.price_snapshot_date == dt.date(2026, 9, 26)
     assert inputs.prices["AAA11"] == 10.0
     assert {n.ticker for n in inputs.decisions} == {"AAA11", "BBB11", "CCC3", "DDD3"}
     assert A.build_proposal(inputs).state == A.STATE_PARTIAL
 
 
-def test_the_current_snapshot_date_comes_only_from_the_header(tmp_path):
+def test_the_provenance_comes_only_from_the_header(tmp_path):
     vault = tmp_path / "vault"
     _write_vault(vault, snapshot_date=None)
     path = vault / "02_Portfolio" / "Current.md"
 
-    assert A.read_current_snapshot_date(path) is None  # mtime nunca é usado
+    assert A.read_snapshot_provenance(path) == A.SnapshotProvenance()
     path.write_text(
         path.read_text(encoding="utf-8").replace(
             "type: portfolio", "type: portfolio\nsnapshot_date: 21/09/2026"
         ),
         encoding="utf-8",
     )
-    assert A.read_current_snapshot_date(path) is None
+    prov = A.read_snapshot_provenance(path)
+    assert prov.snapshot_date == "21/09/2026"
+    assert A.check_snapshot_provenance(prov, CYCLE)[1] == A.REASON_CURRENT_DATE_MISSING
 
 
 def test_an_unreadable_score_in_a_note_becomes_none(tmp_path):
@@ -955,6 +1009,9 @@ def test_the_report_records_the_full_trace(tmp_path):
         "cycle: 2026-09",
         "decision_round_date: 2026-09-26",
         "current_snapshot_date: 2026-09-21",
+        "snapshot_date_basis: source_declared_date",
+        'snapshot_date_evidence: "posição em 21/09/2026"',
+        'captured_at: ""',
         "price_snapshot_date: 2026-09-26",
         "dias_entre_current_e_preco: 5",
         f"contract_hash: {proposal.contract_hash}",
@@ -974,7 +1031,10 @@ def test_the_report_records_the_full_trace(tmp_path):
 
 def test_an_empty_report_lists_the_failed_preconditions_and_inconsistencies():
     proposal = A.build_proposal(
-        _inputs(rows=_rows(ZZZ11=("fii", 1.0)), current_snapshot_date=None)
+        _inputs(
+            rows=_rows(ZZZ11=("fii", 1.0)),
+            current_provenance=_prov(snapshot_date=None),
+        )
     )
 
     text = render_aporte_report(proposal)
@@ -983,6 +1043,234 @@ def test_an_empty_report_lists_the_failed_preconditions_and_inconsistencies():
     assert "reconciliacao_inconsistente" in text
     assert "current_snapshot_date_missing" in text
     assert "`ZZZ11`" in text
+
+
+# --- proveniência temporal do Current.md (rev. 4.1) ---------------------------------------
+
+
+def _check(**changes):
+    return A.check_snapshot_provenance(_prov(**changes), CYCLE)
+
+
+def test_the_basis_list_is_the_vocabulary_and_the_order():
+    assert SNAPSHOT_DATE_BASIS_ORDER == (
+        "source_declared_date",
+        "source_reference_date",
+        "capture_date",
+    )
+
+
+@pytest.mark.parametrize("basis", list(SNAPSHOT_DATE_BASIS_ORDER))
+def test_each_valid_basis_passes(basis):
+    captured = "2026-09-21T10:00:00-03:00" if basis == "capture_date" else None
+
+    assert _check(basis=basis, captured_at=captured) == (dt.date(2026, 9, 21), None)
+
+
+@pytest.mark.parametrize(
+    "basis", [None, "", "mtime", "processed_at", "SOURCE_DECLARED_DATE"]
+)
+def test_a_missing_or_unknown_basis_is_basis_missing(basis):
+    assert _check(basis=basis)[1] == A.REASON_CURRENT_BASIS_MISSING
+
+
+@pytest.mark.parametrize("evidence", [None, "", "   "])
+def test_a_basis_without_evidence_is_not_proven(evidence):
+    assert _check(evidence=evidence)[1] == A.REASON_CURRENT_BASIS_MISSING
+
+
+@pytest.mark.parametrize(
+    "captured",
+    [None, "", "ontem", "2026-09-21T10:00:00", "2026-09-21 10:00", "21/09/2026"],
+)
+def test_capture_basis_without_a_valid_capture_is_capture_missing(captured):
+    result = _check(basis="capture_date", captured_at=captured)
+
+    assert result[1] == A.REASON_CURRENT_CAPTURE_MISSING
+
+
+def test_capture_basis_requires_the_exact_local_capture_date():
+    assert (
+        _check(
+            basis="capture_date",
+            snapshot_date="2026-09-20",
+            captured_at="2026-09-21T10:00:00-03:00",
+        )[1]
+        == A.REASON_CURRENT_DATE_INCONSISTENT
+    )
+
+
+def test_the_local_date_of_the_declared_timezone_defines_the_cycle():
+    late = "2026-09-30T23:30:00-03:00"  # 01/10 em UTC
+
+    assert _check(
+        basis="capture_date", snapshot_date="2026-09-30", captured_at=late
+    ) == (dt.date(2026, 9, 30), None)
+    assert (
+        _check(basis="capture_date", snapshot_date="2026-10-01", captured_at=late)[1]
+        == A.REASON_CURRENT_DATE_INCONSISTENT
+    )
+    assert A.captured_local_date("2026-09-30T23:30:00Z") == dt.date(2026, 9, 30)
+
+
+def test_a_date_only_capture_is_used_literally():
+    assert _check(
+        basis="capture_date", snapshot_date="2026-09-21", captured_at="2026-09-21"
+    ) == (dt.date(2026, 9, 21), None)
+
+
+@pytest.mark.parametrize("basis", ["source_declared_date", "source_reference_date"])
+def test_a_source_date_after_the_capture_is_inconsistent(basis):
+    capture = "2026-09-21T10:00:00-03:00"
+
+    assert (
+        _check(basis=basis, snapshot_date="2026-09-20", captured_at=capture)[1] is None
+    )
+    assert (
+        _check(basis=basis, snapshot_date="2026-09-21", captured_at=capture)[1] is None
+    )
+    assert (
+        _check(basis=basis, snapshot_date="2026-09-22", captured_at=capture)[1]
+        == A.REASON_CURRENT_DATE_INCONSISTENT
+    )
+
+
+@pytest.mark.parametrize("basis", ["source_declared_date", "source_reference_date"])
+@pytest.mark.parametrize("captured", ["2026-09-21T10:00:00", "ontem"])
+def test_an_invalid_capture_under_a_source_basis_is_inconsistent(basis, captured):
+    assert (
+        _check(basis=basis, captured_at=captured)[1]
+        == A.REASON_CURRENT_DATE_INCONSISTENT
+    )
+
+
+def test_the_capture_is_optional_for_source_bases():
+    assert _check(basis="source_reference_date", captured_at=None)[1] is None
+
+
+def test_out_of_cycle_is_checked_with_the_proven_date():
+    assert _check(snapshot_date="2026-08-31")[1] == A.REASON_CURRENT_OUT_OF_CYCLE
+
+
+def test_the_temporal_reasons_follow_the_normative_order():
+    assert (
+        _check(snapshot_date=None, basis="x", evidence=None, captured_at="x")[1]
+        == A.REASON_CURRENT_DATE_MISSING
+    )
+    assert (
+        _check(basis="x", evidence=None, captured_at="x")[1]
+        == A.REASON_CURRENT_BASIS_MISSING
+    )
+    assert (
+        _check(basis="capture_date", snapshot_date="2026-08-31", captured_at=None)[1]
+        == A.REASON_CURRENT_CAPTURE_MISSING
+    )
+    assert (
+        _check(
+            basis="capture_date", snapshot_date="2026-08-31", captured_at="2026-08-30"
+        )[1]
+        == A.REASON_CURRENT_DATE_INCONSISTENT
+    )
+
+
+def test_only_the_first_temporal_reason_reaches_the_proposal():
+    prov = _prov(
+        basis="capture_date", snapshot_date="2026-08-31", captured_at="2026-08-30"
+    )
+
+    proposal = A.build_proposal(_inputs(current_provenance=prov))
+
+    assert proposal.failed_preconditions == (A.REASON_CURRENT_DATE_INCONSISTENT,)
+
+
+def test_a_bare_hand_written_date_is_not_enough():
+    """Não retroatividade: um Current.md com só `snapshot_date` (como o de 21/09) não vira
+    snapshot comprovado."""
+    prov = A.SnapshotProvenance(snapshot_date="2026-09-21")
+
+    assert A.check_snapshot_provenance(prov, CYCLE)[1] == A.REASON_CURRENT_BASIS_MISSING
+
+
+def test_the_file_mtime_is_never_used(tmp_path):
+    import os
+
+    vault, snaps = tmp_path / "vault", tmp_path / "snaps"
+    _write_vault(vault, snapshot_date=None)
+    _write_prices(snaps)
+    stamp = dt.datetime(2026, 9, 21, 12, 0).timestamp()
+    os.utime(vault / "02_Portfolio" / "Current.md", (stamp, stamp))
+
+    proposal = A.build_proposal(A.load_inputs(vault, snaps, CYCLE))
+
+    assert proposal.failed_preconditions == (A.REASON_CURRENT_DATE_MISSING,)
+
+
+def test_processed_at_has_no_temporal_authority(tmp_path):
+    vault, snaps = tmp_path / "vault", tmp_path / "snaps"
+    _write_vault(
+        vault,
+        snapshot_date=None,
+        extra_front=("processed_at: 2026-09-21T14:18:32-03:00",),
+    )
+    _write_prices(snaps)
+
+    proposal = A.build_proposal(A.load_inputs(vault, snaps, CYCLE))
+    assert proposal.failed_preconditions == (A.REASON_CURRENT_DATE_MISSING,)
+
+    only_processed = _prov(basis="capture_date", captured_at=None)
+    assert (
+        A.check_snapshot_provenance(only_processed, CYCLE)[1]
+        == A.REASON_CURRENT_CAPTURE_MISSING
+    )
+
+
+def test_the_capture_basis_is_read_from_the_header(tmp_path):
+    vault, snaps = tmp_path / "vault", tmp_path / "snaps"
+    _write_vault(
+        vault,
+        snapshot_date=None,
+        extra_front=(
+            "snapshot_date: 2026-09-21",
+            "snapshot_date_basis: capture_date",
+            'snapshot_date_evidence: "data declarada pelo usuário no ato da captura"',
+            'captured_at: "2026-09-21T14:10:00-03:00"',
+        ),
+    )
+    _write_prices(snaps)
+
+    inputs = A.load_inputs(vault, snaps, CYCLE)
+    proposal = A.build_proposal(inputs)
+
+    assert inputs.current_provenance.captured_at == "2026-09-21T14:10:00-03:00"
+    assert proposal.state == A.STATE_PARTIAL
+    assert proposal.snapshot_date_basis == "capture_date"
+
+
+def test_the_report_warns_when_the_date_is_a_capture_date():
+    prov = _prov(
+        basis="capture_date",
+        evidence="carimbo do PDF gerado pelo site",
+        captured_at="2026-09-21T14:10:00-03:00",
+    )
+
+    captured = render_aporte_report(A.build_proposal(_inputs(current_provenance=prov)))
+    declared = render_aporte_report(A.build_proposal(_inputs()))
+
+    assert A.CAPTURE_DATE_WARNING in captured
+    assert 'captured_at: "2026-09-21T14:10:00-03:00"' in captured
+    assert "snapshot_date_basis: capture_date" in captured
+    assert A.CAPTURE_DATE_WARNING not in declared
+
+
+def test_a_rev4_contract_without_revision_is_refused_with_its_reason(tmp_path):
+    path = save_contract(tmp_path, _contract())
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw.pop("revision")
+    raw.pop("snapshot_date_basis_order")
+    path.write_text(json.dumps(raw), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="rev. 4"):
+        load_contract(tmp_path)
 
 
 # --- comando manual ------------------------------------------------------------------------
