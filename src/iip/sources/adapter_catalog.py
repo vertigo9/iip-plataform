@@ -73,14 +73,6 @@ ADAPTER_CATALOG: tuple[AdapterDescriptor, ...] = (
         "Produces structured series/profile data, not one document per asset.",
     ),
     AdapterDescriptor(
-        "patria",
-        ("fund",),
-        AdapterKind.LEGACY_FILE,
-        AdapterReadiness.CONTRACT_REQUIRED,
-        "iip.harvest.patria.harvest",
-        "Legacy browser harvester writes files and needs an Atlas file adapter.",
-    ),
-    AdapterDescriptor(
         "patria_mziq",
         ("fund",),
         AdapterKind.DOCUMENT,

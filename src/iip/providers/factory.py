@@ -38,15 +38,6 @@ class ProviderFactory:
         if isclass(symbol):
             return symbol(**(credential_kwargs or {}))
 
-        # Legacy Pátria integration is a module-level implementation, not a
-        # provider class. Preserve it as the provider object.
-        if (
-            hasattr(symbol, "collect")
-            or hasattr(symbol, "harvest")
-            or hasattr(symbol, "discover")
-        ):
-            return symbol
-
         return symbol
 
     def _resolve_credential_kwargs(

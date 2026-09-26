@@ -8,10 +8,8 @@ def test_ready_providers_have_real_implementations():
     factory = ProviderFactory()
 
     xp = factory.create("xp_asset")
-    patria = factory.create("patria")
 
     assert xp is not None and xp.provider is not None
-    assert patria is not None and patria.provider is not None
 
 
 def test_pending_providers_are_not_instantiated():
@@ -58,7 +56,8 @@ def test_gap_lists_pending_institutional_managers():
     gap = OperationalProviderPlanner().implementation_gap()
     assert "sparta" in gap
     assert "kinea" in gap
-    assert len(gap) == 10
+    assert "patria" in gap
+    assert len(gap) == 11
 
 
 def test_validator_action_for_unknown_provider():
@@ -82,7 +81,7 @@ def test_validator_action_for_ready_provider():
 def test_roadmap_has_all_twelve_fund_managers():
     roadmap = build_provider_roadmap()
     assert len(roadmap) == 12
-    assert sum(item.status == ProviderStatus.READY for item in roadmap) == 2
+    assert sum(item.status == ProviderStatus.READY for item in roadmap) == 1
 
 
 def test_roadmap_requires_validation_before_implementation():
