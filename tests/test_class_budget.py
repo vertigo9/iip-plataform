@@ -722,9 +722,11 @@ def _imports(path: Path) -> set[str]:
     return found
 
 
-def test_class_budget_is_not_imported_by_anything_in_src_yet():
-    """Ainda não há CLI/relatório/integração ao job (etapa seguinte, autorizada à parte);
-    hoje só os testes usam este módulo. Atualizar esta lista quando isso mudar."""
+def test_class_budget_is_imported_only_by_the_aporte_proposal():
+    """Não há CLI/relatório/integração ao job próprios do orçamento. O único consumidor em src
+    é o aporte proposto (APORTE_PROPOSTO_V1 rev. 4, 26/09/2026), que só LÊ o orçamento aprovado
+    (``load_budget``) para o limite de classe da proposta. Atualizar esta lista quando isso
+    mudar."""
     root = Path("src/iip")
     users = {
         str(path).replace("\\", "/")
@@ -735,7 +737,7 @@ def test_class_budget_is_not_imported_by_anything_in_src_yet():
             for n in _imports(path)
         )
     }
-    assert users == set()
+    assert users == {"src/iip/portfolio/aporte.py"}
 
 
 def test_class_budget_does_not_import_decision_or_execution_layers():

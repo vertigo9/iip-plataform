@@ -2094,6 +2094,134 @@ def monitoring_events_command(
         )
 
 
+@cli.command("aporte-proposto")
+@click.option(
+    "--vault",
+    default=None,
+    help="Caminho do vault (padrão: IIP_OBSIDIAN_VAULT do .env).",
+)
+@click.option(
+    "--ciclo",
+    default=None,
+    help="Mês da proposta, AAAA-MM (padrão: o mês corrente).",
+)
+@click.option(
+    "--snapshots-dir",
+    type=click.Path(),
+    default="portfolio_snapshots",
+    help="Diretório dos snapshots diários do refresh-portfolio (um subdiretório por data).",
+)
+@click.option(
+    "--report",
+    is_flag=True,
+    default=False,
+    help="Grava a nota 02_Portfolio/Aporte_AAAA-MM.md (sobrescrita a cada execução).",
+)
+@click.option(
+    "--init-contrato",
+    is_flag=True,
+    default=False,
+    help="Cria 02_Portfolio/Aporte_Contrato.json com os valores da rev. 4, PENDENTE (nunca "
+    "sobrescreve um arquivo existente; a aprovação é sua, no arquivo).",
+)
+def aporte_proposto_command(
+    vault: str | None,
+    ciclo: str | None,
+    snapshots_dir: str,
+    report: bool,
+    init_contrato: bool,
+) -> None:
+    """Proposta mensal de aporte (APORTE_PROPOSTO_V1 rev. 4) para aprovação humana.
+
+    Só roda por este comando manual: não está no job diário nem em agendador. Lê o contrato, a
+    política de pesos-alvo, o orçamento por classe, as notas DEC-* da rodada completa do ciclo,
+    o Current.md e o snapshot de preços. Nunca executa nada: `automatic_action` é sempre
+    "nenhuma" e a proposta nasce com aprovação pendente."""
+    import datetime as _dt
+
+    from iip.portfolio.aporte import (
+        AporteInvariantError,
+        build_proposal,
+        load_inputs,
+    )
+    from iip.portfolio.aporte_contract import (
+        CONTRACT_RELATIVE_PATH,
+        build_contract,
+        save_contract,
+    )
+
+    vault_path = vault or str(get_settings().obsidian_vault)
+    if init_contrato:
+        target = Path(vault_path) / CONTRACT_RELATIVE_PATH
+        if target.exists():
+            console.print(f"[yellow]{target} já existe; nada foi gravado.[/]")
+            raise SystemExit(1)
+        console.print(
+            f"[dim]Contrato pendente gravado: {save_contract(vault_path, build_contract())}[/]"
+        )
+        return
+    hoje = _dt.date.today()  # noqa: DTZ011 - mês de calendário, não timestamp
+    cycle = ciclo or hoje.strftime("%Y-%m")
+    try:
+        proposal = build_proposal(load_inputs(vault_path, snapshots_dir, cycle))
+    except AporteInvariantError as exc:
+        console.print(f"[bold red]Proposta rejeitada:[/] {exc}")
+        raise SystemExit(1) from exc
+    except ValueError as exc:
+        console.print(f"[bold red]Dado inválido:[/] {exc}")
+        raise SystemExit(1) from exc
+
+    console.print(
+        f"[bold]Aporte proposto {proposal.cycle}:[/] {proposal.state}"
+        + (f" ({proposal.reason})" if proposal.reason else "")
+    )
+    for reason in proposal.failed_preconditions:
+        console.print(f"  [yellow]pré-condição:[/] {reason}")
+    for inc in proposal.inconsistencies:
+        console.print(f"  [yellow]{inc.kind}:[/] {inc.position_id} — {inc.detail}")
+    if proposal.lines:
+        table = Table(title=f"Ranking — orçamento R$ {proposal.budget:.2f}")
+        for header in (
+            "Ativo",
+            "Veredito",
+            "I",
+            "G",
+            "OS",
+            "Ideal",
+            "Preço",
+            "Cotas",
+            "Valor",
+        ):
+            table.add_column(
+                header, justify="left" if header in ("Ativo", "Veredito") else "right"
+            )
+        for ln in proposal.lines:
+            table.add_row(
+                ln.ticker,
+                ln.verdict,
+                f"{ln.decision_score:.2f}",
+                f"{ln.gap:.4f}",
+                f"{ln.opportunity_score:.4f}",
+                f"{ln.ideal:.2f}",
+                f"{ln.price:.2f}",
+                str(ln.shares),
+                f"{ln.value:.2f}",
+            )
+        console.print(table)
+        console.print(
+            f"Σ ideal {proposal.sum_ideal:.2f} · Σ valor {proposal.sum_value:.2f} · saldo não "
+            f"alocado {proposal.unallocated:.2f} (nunca redistribuído)."
+        )
+    console.print(
+        f"[dim]{len(proposal.exclusions)} exclusão(ões). Proposta, não ordem: "
+        "automatic_action 'nenhuma', aprovação da proposta pendente.[/]"
+    )
+    if report:
+        from iip.obsidian.aporte_report import write_aporte_report
+
+        console.print(f"[dim]{write_aporte_report(vault_path, proposal)}[/]")
+
+
 @cli.command("portfolio-layers")
 @click.option(
     "--vault",

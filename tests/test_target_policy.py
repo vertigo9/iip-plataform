@@ -650,8 +650,11 @@ def test_only_the_command_and_the_note_use_the_policy_module():
     # reconcile()/read_weight() (puro, sem I/O). monitoring_event_report.py é a nota do vault
     # que ela alimenta (comando `iip monitoring-events --report`, manual, fora do job diário) --
     # ver test_monitoring_event.py. class_budget.py só LÊ (validate/save_policy) para oferecer
-    # o caminho atômico save_policy_guarded -- ver test_class_budget.py.
+    # o caminho atômico save_policy_guarded -- ver test_class_budget.py. aporte.py (proposta de
+    # aporte, comando manual `iip aporte-proposto`) só LÊ a política e usa reconcile() -- ver
+    # test_aporte.py.
     assert users == {
+        "src/iip/portfolio/aporte.py",
         "src/iip/obsidian/target_policy_report.py",
         "src/iip/obsidian/monitoring_event_report.py",
         "src/iip/portfolio/layers.py",
