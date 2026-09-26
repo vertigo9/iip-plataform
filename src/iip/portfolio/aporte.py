@@ -300,9 +300,32 @@ def find_decision_round(
 # --- reconciliação (§4.6) ------------------------------------------------------------------
 
 
+@dataclass(frozen=True)
+class ReconciliationSplit:
+    """A reconciliação separada nas duas consequências que o contrato distingue (§4.6, §5):
+
+    - ``blocking``: SÓ ``uncovered``, ``reopened`` e ``new_members`` -- bloqueiam a proposta
+      inteira (``reconciliacao_inconsistente``);
+    - ``absent_line_ids``: linhas ativas sem posição no ``Current.md`` -- NUNCA bloqueiam; cada
+      uma vira a exclusão individual ``sem_posicao_no_current`` (§5), sem peso inferido.
+
+    ``Reconciliation.consistent`` mistura as duas coisas (conta ``absent_lines``) e não é usado
+    em nenhum caminho do aporte (há teste de AST)."""
+
+    blocking: tuple[Inconsistency, ...]
+    absent_line_ids: tuple[str, ...]
+
+
+def split_reconciliation(rec: Reconciliation) -> ReconciliationSplit:
+    return ReconciliationSplit(
+        blocking_inconsistencies(rec),
+        tuple(sorted(ln.id for ln in rec.absent_lines)),
+    )
+
+
 def blocking_inconsistencies(rec: Reconciliation) -> tuple[Inconsistency, ...]:
-    """Só a lista fechada do §4.6. ``Reconciliation.consistent`` NÃO serve aqui: ele também
-    conta ``absent_lines`` (linha sem posição), que no contrato é exclusão individual.
+    """Só a lista fechada do §4.6 (``uncovered``, ``reopened``, ``new_members``). Não olha
+    ``absent_lines`` nem ``missing_members``: ausência de posição não é inconsistência.
     """
     found = [
         Inconsistency(
@@ -397,9 +420,13 @@ def build_proposal(
         failed.append(REASON_NO_ROUND)
     if not _in_cycle(inputs.price_snapshot_date, inputs.cycle):
         failed.append(REASON_NO_PRICE_SNAPSHOT)
-    rec = reconcile(policy, inputs.rows) if policy is not None and inputs.rows else None
-    inconsistencies = blocking_inconsistencies(rec) if rec is not None else ()
-    if rec is None or inconsistencies:
+    # Reconciliação: só os três bloqueios globais contam. Um Current.md sem posições (ou sem
+    # a linha X) não é inconsistência: vira exclusão individual adiante; a falta do arquivo
+    # já aparece como current_snapshot_date_missing.
+    rec = reconcile(policy, inputs.rows) if policy is not None else None
+    split = split_reconciliation(rec) if rec is not None else None
+    inconsistencies = split.blocking if split is not None else ()
+    if inconsistencies:
         failed.append(REASON_RECONCILIATION)
     if inputs.current_snapshot_date is None:
         failed.append(REASON_CURRENT_DATE_MISSING)
@@ -414,11 +441,17 @@ def build_proposal(
             inconsistencies=inconsistencies,
         )
     assert contract is not None and policy is not None and budget is not None
-    assert round_ is not None and rec is not None
+    assert round_ is not None and rec is not None and split is not None
 
     total = rec.total
     weight_by_line = {lw.line.id: lw for lw in rec.weights}
-    rows_by_id = {r.id: r for r in inputs.rows}
+    # posições de cada linha pelo MESMO critério do reconcile (policy.resolve: id, alias ou
+    # membro), sem depender de ids únicos no Current.md
+    rows_by_line: dict[str, list[SnapshotRow]] = defaultdict(list)
+    for row in inputs.rows:
+        resolved = policy.resolve(row.id)
+        if resolved is not None:
+            rows_by_line[resolved.id].append(row)
     class_weight: dict[str, float] = defaultdict(float)
     for lw in rec.weights:  # §8: peso da classe agregado pela classe da POLÍTICA
         class_weight[lw.line.asset_class] += lw.weight_pct
@@ -446,15 +479,17 @@ def build_proposal(
                 Exclusion(line.id, note.ticker, f"{EXCL_VETOED}:{note.verdict}")
             )
             continue
-        if not lw.present:
+        positions = rows_by_line.get(line.id, [])
+        if line.id in split.absent_line_ids or not positions:
+            # §5.2: exclusão individual; o peso 0 do reconcile NUNCA é usado como dado
             exclusions.append(Exclusion(line.id, note.ticker, EXCL_NO_POSITION))
             continue
+        # §5.3: basta UMA posição da linha (id ou alias) com classe diferente da política;
+        # o detalhe é ordenado, então a ordem das linhas do Current.md não muda o resultado
         divergent = sorted(
-            {
-                rows_by_id[pid].asset_class
-                for pid in lw.present
-                if rows_by_id[pid].asset_class != line.asset_class
-            }
+            f"{row.id}={row.asset_class}"
+            for row in positions
+            if row.asset_class != line.asset_class
         )
         if divergent:
             exclusions.append(

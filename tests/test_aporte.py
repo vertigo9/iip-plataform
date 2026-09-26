@@ -191,6 +191,67 @@ def test_the_built_contract_is_the_rev4_v1_and_is_born_pending():
     assert len(contract.content_hash) == 16
 
 
+# O payload normativo da rev. 4 (§2), escrito à mão a partir do contrato aprovado
+# (SHA-256 63bbeda1...f7a0) -- não derivado do código. Mudar qualquer valor aqui é mudar o
+# contrato, o que exige nova decisão do usuário.
+REV4_NORMATIVE_PAYLOAD = {
+    "type": "aporte_proposto_contract",
+    "version": "1",
+    "monthly_budget_brl": 1350.0,
+    "eligible_verdicts": ["COMPRAR", "MANTER"],
+    "vetoed_verdicts": ["AGUARDAR", "REDUZIR", "ENCERRAR", "AUMENTAR"],
+    "verdict_vocabulary": "knowledge",
+    "score_formula": "decision_score * (0.75 + 0.25 * gap)",
+    "intrinsic_weight": 0.75,
+    "gap_weight": 0.25,
+    "income_component": False,
+    "distribution": "greedy_by_rank",
+    "class_source": "target_policy",
+    "class_limit": "class_target",
+    "asset_limit": "individual_target",
+    "monthly_asset_cap_pct": 25.0,
+    "decision_score_persistence": "required",
+    "decision_universe": "policy_active_asset_lines",
+    "decision_round": "latest_complete_round_in_cycle",
+    "decision_fallback": "none",
+    "current_snapshot_date": "front_matter_required",
+    "price_source": "refresh_daily_snapshot",
+    "validity": "same_month",
+    "units": "whole_shares",
+    "leftover": "explicit_not_redistributed",
+    "cadence": "monthly",
+    "trigger": "manual_command",
+    "automatic_action": "nenhuma",
+    "approval_status": "pendente",
+    "decided_on": None,
+}
+REV4_CONTRACT_HASH = "74edf96e82027053"  # content_hash do payload acima (sem a origem)
+
+
+def test_the_built_contract_is_exactly_the_rev4_normative_payload(tmp_path):
+    """O que `--init-contrato` grava é o payload da rev. 4, campo a campo -- não só algo
+    semanticamente equivalente. Nenhum campo a mais, nenhum a menos."""
+    path = save_contract(tmp_path, build_contract())
+    written = json.loads(path.read_text(encoding="utf-8"))
+    written.pop("origin")
+
+    assert written == REV4_NORMATIVE_PAYLOAD
+    assert build_contract().content_hash == REV4_CONTRACT_HASH
+
+
+def test_the_init_command_writes_exactly_the_rev4_payload(tmp_path):
+    result = CliRunner().invoke(
+        cli, ["aporte-proposto", "--vault", str(tmp_path), "--init-contrato"]
+    )
+    assert result.exit_code == 0, result.output
+
+    written = json.loads(
+        (tmp_path / CONTRACT_RELATIVE_PATH).read_text(encoding="utf-8")
+    )
+    written.pop("origin")
+    assert written == REV4_NORMATIVE_PAYLOAD
+
+
 @pytest.mark.parametrize(
     "changes",
     [
@@ -382,7 +443,6 @@ def test_an_inactive_line_is_outside_the_universe():
         ({"decisions": ()}, A.REASON_NO_ROUND),
         ({"price_snapshot_date": None}, A.REASON_NO_PRICE_SNAPSHOT),
         ({"price_snapshot_date": dt.date(2026, 8, 31)}, A.REASON_NO_PRICE_SNAPSHOT),
-        ({"rows": ()}, A.REASON_RECONCILIATION),
         ({"current_snapshot_date": None}, A.REASON_CURRENT_DATE_MISSING),
         (
             {"current_snapshot_date": dt.date(2026, 8, 31)},
@@ -434,6 +494,137 @@ def test_a_line_without_position_and_a_class_divergence_do_not_block():
     assert _reasons(proposal)["BBB11"] == A.EXCL_NO_POSITION
     assert _reasons(proposal)["CCC3"] == A.EXCL_CLASS_DIVERGENT
     assert proposal.inconsistencies == ()
+
+
+# --- ausência de posição não é bloqueio global (§4.6 x §5.2) -------------------------------
+
+
+def test_split_keeps_absent_lines_out_of_the_global_blocks():
+    policy = _policy()
+    rows = tuple(r for r in _rows() if r.id not in ("AAA11", "BBB11"))
+
+    split = A.split_reconciliation(A.reconcile(policy, rows))
+
+    assert split.blocking == ()
+    assert split.absent_line_ids == ("AAA11", "BBB11")
+
+
+def test_a_current_snapshot_without_positions_is_not_a_reconciliation_failure():
+    proposal = A.build_proposal(_inputs(rows=()))
+
+    assert proposal.failed_preconditions == ()
+    assert proposal.inconsistencies == ()
+    assert proposal.reason == A.REASON_NO_ELIGIBLE
+    assert {r for t, r in _reasons(proposal).items()} == {A.EXCL_NO_POSITION}
+
+
+def test_a_missing_current_md_is_only_a_missing_snapshot_date():
+    proposal = A.build_proposal(_inputs(rows=(), current_snapshot_date=None))
+
+    assert proposal.failed_preconditions == (A.REASON_CURRENT_DATE_MISSING,)
+
+
+def test_absent_lines_never_appear_among_the_global_inconsistencies():
+    rows = (
+        *(r for r in _rows() if r.id != "AAA11"),
+        SnapshotRow("ZZZ11", "Z", "fii", 1.0),
+    )
+
+    proposal = A.build_proposal(_inputs(rows=rows))
+
+    assert proposal.reason == A.REASON_RECONCILIATION
+    assert [(i.kind, i.position_id) for i in proposal.inconsistencies] == [
+        (A.INCONS_UNRESOLVED, "ZZZ11")
+    ]
+
+
+def test_an_absent_line_is_never_a_candidate_with_an_inferred_zero_weight():
+    rows = tuple(r for r in _rows() if r.id != "AAA11")
+
+    proposal = A.build_proposal(_inputs(rows=rows))
+
+    assert "AAA11" not in {ln.ticker for ln in proposal.lines}
+    assert _reasons(proposal)["AAA11"] == A.EXCL_NO_POSITION
+
+
+def test_the_aporte_code_never_uses_reconciliation_consistent():
+    for path in APORTE_FILES:
+        tree = ast.parse(path.read_text(encoding="utf-8"))
+        uses = [
+            node.lineno
+            for node in ast.walk(tree)
+            if isinstance(node, ast.Attribute) and node.attr == "consistent"
+        ]
+        assert uses == [], (path, uses)
+
+
+# --- classe divergente: matriz de posições (§5.3) ------------------------------------------
+
+
+def _fmp_inputs(*fmp_rows: SnapshotRow) -> A.AporteInputs:
+    """Linha FMP-FGTS (classe fundo na política) decidida pelo apelido AXIA3."""
+    policy = _policy(_asset("FMP-FGTS", "fundo", aliases=("AXIA3",)))
+    return _inputs(
+        policy=policy,
+        rows=(*_rows(), *fmp_rows),
+        decisions=(*_decisions(), _dec("AXIA3")),
+        prices={"AAA11": 10.0, "BBB11": 100.0, "CCC3": 30.0, "AXIA3": 10.0},
+    )
+
+
+def test_same_class_position_follows_to_the_ranking():
+    proposal = A.build_proposal(
+        _fmp_inputs(SnapshotRow("FMP-FGTS", "F", "fundo", 1_000.0))
+    )
+
+    assert "AXIA3" in {ln.ticker for ln in proposal.lines}
+    assert "AXIA3" not in _reasons(proposal)
+
+
+def test_divergent_class_position_excludes_only_that_asset():
+    proposal = A.build_proposal(
+        _fmp_inputs(SnapshotRow("FMP-FGTS", "F", "acao", 1_000.0))
+    )
+
+    [exc] = [e for e in proposal.exclusions if e.ticker == "AXIA3"]
+    assert exc.reason == A.EXCL_CLASS_DIVERGENT
+    assert exc.detail == "política: fundo; Current.md: FMP-FGTS=acao"
+    assert proposal.state != A.STATE_EMPTY
+    assert proposal.inconsistencies == ()
+
+
+def test_no_position_for_the_line_is_sem_posicao_not_divergence():
+    proposal = A.build_proposal(_fmp_inputs())
+
+    assert _reasons(proposal)["AXIA3"] == A.EXCL_NO_POSITION
+    assert proposal.inconsistencies == ()
+
+
+def test_mixed_id_and_alias_positions_with_one_divergent_class_are_deterministic():
+    ok = SnapshotRow("FMP-FGTS", "F", "fundo", 600.0)
+    bad = SnapshotRow("AXIA3", "A", "acao", 400.0)
+
+    forward = A.build_proposal(_fmp_inputs(ok, bad))
+    backward = A.build_proposal(_fmp_inputs(bad, ok))
+
+    [exc] = [e for e in forward.exclusions if e.ticker == "AXIA3"]
+    assert exc.reason == A.EXCL_CLASS_DIVERGENT
+    assert exc.detail == "política: fundo; Current.md: AXIA3=acao"
+    assert forward.exclusions == backward.exclusions
+    assert forward.lines == backward.lines
+
+
+def test_mixed_id_and_alias_positions_of_the_same_class_add_up():
+    proposal = A.build_proposal(
+        _fmp_inputs(
+            SnapshotRow("FMP-FGTS", "F", "fundo", 600.0),
+            SnapshotRow("AXIA3", "A", "fundo", 400.0),
+        )
+    )
+
+    [line] = [ln for ln in proposal.lines if ln.ticker == "AXIA3"]
+    total = sum(r.value for r in _rows()) + 1_000.0
+    assert line.weight_pct == pytest.approx(1_000.0 / total * 100)
 
 
 def test_the_cycle_must_be_a_month():
