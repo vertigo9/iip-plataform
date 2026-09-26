@@ -117,7 +117,9 @@ def main() -> None:
             json.dumps(network_log, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        mziq_only = [entry for entry in network_log if "mziq.com" in entry.get("url", "")]
+        mziq_only = [
+            entry for entry in network_log if "mziq.com" in entry.get("url", "")
+        ]
         (output_dir / "rede_mziq_apenas.json").write_text(
             json.dumps(mziq_only, ensure_ascii=False, indent=2), encoding="utf-8"
         )

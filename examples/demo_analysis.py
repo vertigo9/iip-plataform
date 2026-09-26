@@ -51,7 +51,7 @@ def create_equity_examples():
             "debt_to_equity": 0.45,
             "interest_coverage": 5.5,
             "current_ratio": 1.4,
-        }
+        },
     )
 
     # VALE3.SA — Vale
@@ -89,7 +89,7 @@ def create_equity_examples():
             "debt_to_equity": 0.30,
             "interest_coverage": 8.0,
             "current_ratio": 1.8,
-        }
+        },
     )
 
     # ITUB4.SA — Itaú Unibanco
@@ -127,11 +127,11 @@ def create_equity_examples():
             "debt_to_equity": 0.20,
             "interest_coverage": 12.0,
             "current_ratio": 1.5,
-        }
+        },
     )
 
     analyzer = EquityAnalyzer()
-    
+
     for stock in [petr4, vale3, itub4]:
         report = analyzer.analyze(stock)
         print(f"{report.asset_symbol} — {stock.industry}")
@@ -141,7 +141,9 @@ def create_equity_examples():
         print(f"  Nível de Risco: {report.risk_level}")
         print("")
         print("  Top 3 Pilares Fortes:")
-        sorted_pillars = sorted(report.pillar_scores, key=lambda x: x.score, reverse=True)[:3]
+        sorted_pillars = sorted(
+            report.pillar_scores, key=lambda x: x.score, reverse=True
+        )[:3]
         for ps in sorted_pillars:
             print(f"    • {ps.pillar.value.replace('_', ' ').title()}: {ps.score:.1f}")
         print("")
@@ -149,10 +151,13 @@ def create_equity_examples():
         weak_pillars = [ps for ps in report.pillar_scores if ps.score < 50]
         if weak_pillars:
             for ps in weak_pillars:
-                print(f"    • {ps.pillar.value.replace('_', ' ').title()}: {ps.score:.1f}")
+                print(
+                    f"    • {ps.pillar.value.replace('_', ' ').title()}: {ps.score:.1f}"
+                )
         else:
             print("    • Nenhum pilar crítico identificado")
         print("")
+
 
 def create_fii_examples():
     """Exemplos de análise de Fundos Imobiliários."""
@@ -194,7 +199,7 @@ def create_fii_examples():
             "leverage_to_npa": 0.25,
             "weighted_avg_debt_maturity_years": 7,
             "fixed_debt_ratio": 0.85,
-        }
+        },
     )
 
     # MXRF11.SA — Maxi Renda
@@ -230,11 +235,11 @@ def create_fii_examples():
             "leverage_to_npa": 0.30,
             "weighted_avg_debt_maturity_years": 5,
             "fixed_debt_ratio": 0.75,
-        }
+        },
     )
 
     analyzer = FIIAnalyzer()
-    
+
     for fii in [hlgg11, mxrf11]:
         report = analyzer.analyze(fii)
         print(f"{report.asset_symbol} — {fii.industry}")
@@ -246,8 +251,11 @@ def create_fii_examples():
         print("")
         print("  Destaque Principal:")
         top_pillar = max(report.pillar_scores, key=lambda x: x.score)
-        print(f"    • {top_pillar.pillar.value.replace('_', ' ').title()}: {top_pillar.score:.1f}")
+        print(
+            f"    • {top_pillar.pillar.value.replace('_', ' ').title()}: {top_pillar.score:.1f}"
+        )
         print("")
+
 
 def create_infra_examples():
     """Exemplos de análise de Fundos de Infraestrutura."""
@@ -294,12 +302,12 @@ def create_infra_examples():
             "net_debt_to_ebitda": 3.5,
             "weighted_avg_debt_maturity_years": 10,
             "interest_rate_hedge_ratio": 0.75,
-        }
+        },
     )
 
     analyzer = InfraAnalyzer()
     report = analyzer.analyze(btlg11)
-    
+
     print(f"{report.asset_symbol} — {btlg11.industry}")
     print("-" * 70)
     print(f"  Score Global: {report.overall_score:.1f}/100")
@@ -309,8 +317,11 @@ def create_infra_examples():
     print("  Pilares Principais:")
     for ps in report.pillar_scores:
         icon = "✓" if ps.score >= 70 else "⚠" if ps.score >= 50 else "✗"
-        print(f"    [{icon}] {ps.pillar.value.replace('_', ' ').title()}: {ps.score:.1f}")
+        print(
+            f"    [{icon}] {ps.pillar.value.replace('_', ' ').title()}: {ps.score:.1f}"
+        )
     print("")
+
 
 def create_agro_examples():
     """Exemplos de análise de Fundos Agrícolas."""
@@ -360,12 +371,12 @@ def create_agro_examples():
             "crop_insurance_coverage_ratio": 0.90,
             "debt_to_assets_ratio": 0.32,
             "liquidity_reserve_months": 5,
-        }
+        },
     )
 
     analyzer = AgroAnalyzer()
     report = analyzer.analyze(rzag11)
-    
+
     print(f"{report.asset_symbol} — {rzag11.industry}")
     print("-" * 70)
     print(f"  Score Global: {report.overall_score:.1f}/100")
@@ -379,6 +390,7 @@ def create_agro_examples():
         print(f"    ✓ {ps.pillar.value.replace('_', ' ').title()}: {ps.score:.1f}")
     print("")
 
+
 def generate_comparison_report():
     """Gerar relatório comparativo em JSON."""
     print("=" * 70)
@@ -389,29 +401,48 @@ def generate_comparison_report():
     comparison = {
         "generated_at": datetime.now().isoformat(),
         "framework_version": "11.0",
-        "assets": []
+        "assets": [],
     }
 
     # Adicionar análises de exemplo
     equity_analyzer = EquityAnalyzer()
     fi_analyzer = FIIAnalyzer()
-    
-    petr4_report = equity_analyzer.analyze(AssetData(
-        symbol="PETR4.SA", sector="Petróleo", industry="Refino",
-        financials={"ebit": 52e9, "net_income": 41e9, "revenue": 470e9, 
-                   "equity": 410e9, "invested_capital": 520e9, "dividend_yield": 9.5}
-    ))
-    
-    hlgg11_report = fi_analyzer.analyze(AssetData(
-        symbol="HGLG11.SA", sector="Imobiliário", industry="Logística",
-        financials={"occupancy_rate": 0.97, "dividend_yield": 10.5, "avg_lease_term_years": 9}
-    ))
-    
+
+    petr4_report = equity_analyzer.analyze(
+        AssetData(
+            symbol="PETR4.SA",
+            sector="Petróleo",
+            industry="Refino",
+            financials={
+                "ebit": 52e9,
+                "net_income": 41e9,
+                "revenue": 470e9,
+                "equity": 410e9,
+                "invested_capital": 520e9,
+                "dividend_yield": 9.5,
+            },
+        )
+    )
+
+    hlgg11_report = fi_analyzer.analyze(
+        AssetData(
+            symbol="HGLG11.SA",
+            sector="Imobiliário",
+            industry="Logística",
+            financials={
+                "occupancy_rate": 0.97,
+                "dividend_yield": 10.5,
+                "avg_lease_term_years": 9,
+            },
+        )
+    )
+
     comparison["assets"].extend([petr4_report.to_dict(), hlgg11_report.to_dict()])
-    
+
     print(json.dumps(comparison, indent=2, ensure_ascii=False))
     print("")
     print("✓ Relatório exportado (formato JSON)")
+
 
 if __name__ == "__main__":
     print("")
@@ -421,7 +452,7 @@ if __name__ == "__main__":
     print("║" + " " * 68 + "║")
     print("╚" + "=" * 68 + "╝")
     print("")
-    
+
     create_equity_examples()
     print("")
     create_fii_examples()
@@ -431,7 +462,7 @@ if __name__ == "__main__":
     create_agro_examples()
     print("")
     generate_comparison_report()
-    
+
     print("")
     print("=" * 70)
     print("EXEMPLOS COMPLETOS — TODOS OS ANALYZERS DEMONSTRADOS")

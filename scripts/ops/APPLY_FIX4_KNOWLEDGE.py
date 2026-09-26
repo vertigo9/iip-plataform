@@ -53,5 +53,7 @@ match = pattern.search(text)
 if not match:
     raise SystemExit("Função antiga não encontrada; nenhum arquivo foi alterado.")
 
-path.write_text(text[:match.start()] + replacement + "\n\n" + text[match.end():], encoding="utf-8")
+path.write_text(
+    text[: match.start()] + replacement + "\n\n" + text[match.end() :], encoding="utf-8"
+)
 print("FIX4 aplicado com sucesso.")

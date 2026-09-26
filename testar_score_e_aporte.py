@@ -75,7 +75,9 @@ def main() -> None:
     )
 
     print("2) Opportunity Score + decisão...")
-    opportunity = build(TICKER, intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5)
+    opportunity = build(
+        TICKER, intrinsic_score=9.0, allocation_gap=0.5, income_need=0.5
+    )
     decisao = Decision(
         ticker=TICKER,
         verdict=Verdict.COMPRAR,

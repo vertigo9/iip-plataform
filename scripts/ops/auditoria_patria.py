@@ -8,6 +8,7 @@ Uso:
 Opcional:
     python ".\auditoria_patria.py" --ticker PCI11 --output data/patria
 """
+
 from __future__ import annotations
 
 import argparse
@@ -40,7 +41,7 @@ def detect_type(path: Path) -> str:
         return "PDF"
     if head.startswith(b"PK\x03\x04"):
         return "ZIP/OOXML"
-    if head.startswith(b"\xD0\xCF\x11\xE0"):
+    if head.startswith(b"\xd0\xcf\x11\xe0"):
         return "OLE"
     if head.startswith(b"<?xml") or head.lstrip().startswith(b"<?xml"):
         return "XML"
@@ -84,7 +85,8 @@ def main() -> int:
         rows = list(csv.DictReader(f))
 
     files = [
-        p for p in root.rglob("*")
+        p
+        for p in root.rglob("*")
         if p.is_file()
         and p.name != "manifest.csv"
         and "_audit" not in p.parts
@@ -126,12 +128,14 @@ def main() -> int:
         if digest:
             by_sha.setdefault(digest, []).append(p)
 
-        file_records.append({
-            "file": str(p.relative_to(root)),
-            "size": size,
-            "type": typ,
-            "sha256": digest or "",
-        })
+        file_records.append(
+            {
+                "file": str(p.relative_to(root)),
+                "size": size,
+                "type": typ,
+                "sha256": digest or "",
+            }
+        )
 
     # Índices do manifesto
     manifest_sha = Counter()
@@ -164,21 +168,19 @@ def main() -> int:
         digest = row["sha256"].strip()
         paths = by_sha.get(digest, [])
         if not paths:
-            hash_mismatches.append({
-                "reason": "HASH_DO_MANIFESTO_NAO_ENCONTRADO_NO_DISCO",
-                "year": row.get("year", ""),
-                "category": row.get("category", ""),
-                "title": row.get("title", ""),
-                "url": row.get("url", ""),
-                "sha256": digest,
-            })
+            hash_mismatches.append(
+                {
+                    "reason": "HASH_DO_MANIFESTO_NAO_ENCONTRADO_NO_DISCO",
+                    "year": row.get("year", ""),
+                    "category": row.get("category", ""),
+                    "title": row.get("title", ""),
+                    "url": row.get("url", ""),
+                    "sha256": digest,
+                }
+            )
 
     # Duplicidades
-    duplicate_urls = [
-        {"url": u, "count": c}
-        for u, c in manifest_url.items()
-        if c > 1
-    ]
+    duplicate_urls = [{"url": u, "count": c} for u, c in manifest_url.items() if c > 1]
     duplicate_hashes = [
         {
             "sha256": h,
@@ -192,13 +194,14 @@ def main() -> int:
     # Arquivos físicos que não aparecem no manifesto por hash.
     manifest_hash_set = set(manifest_sha)
     orphan_files = [
-        r for r in file_records
-        if r["sha256"] and r["sha256"] not in manifest_hash_set
+        r for r in file_records if r["sha256"] and r["sha256"] not in manifest_hash_set
     ]
 
     # Extensões/tipos
     type_counts = Counter(r["type"] for r in file_records)
-    ext_counts = Counter(Path(r["file"]).suffix.lower() or "<sem extensão>" for r in file_records)
+    ext_counts = Counter(
+        Path(r["file"]).suffix.lower() or "<sem extensão>" for r in file_records
+    )
 
     # Por ano
     year_downloaded = Counter()
@@ -254,7 +257,10 @@ def main() -> int:
 
         f.write("POR ANO — registrados / baixados\n")
         f.write("-" * 78 + "\n")
-        for y in sorted(manifest_year, key=lambda x: safe_int(x) if safe_int(x) is not None else 99999):
+        for y in sorted(
+            manifest_year,
+            key=lambda x: safe_int(x) if safe_int(x) is not None else 99999,
+        ):
             f.write(f"{y}: {manifest_year[y]} / {year_downloaded[y]}\n")
 
         f.write("\nPOR CATEGORIA\n")
@@ -325,7 +331,9 @@ def main() -> int:
     print(f"Arquivos órfãos:        {len(orphan_files)}")
     print()
     print("POR ANO (registrados / baixados)")
-    for y in sorted(manifest_year, key=lambda x: safe_int(x) if safe_int(x) is not None else 99999):
+    for y in sorted(
+        manifest_year, key=lambda x: safe_int(x) if safe_int(x) is not None else 99999
+    ):
         print(f"  {y}: {manifest_year[y]} / {year_downloaded[y]}")
     print()
     print(f"Relatório : {report}")
